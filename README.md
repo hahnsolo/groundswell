@@ -2,6 +2,8 @@
 
 Enter a postal code, see the issues your neighbours care about, meet up, and push for change together.
 
+> **New here? Start with the [handbook in `docs/`](docs/README.md)**, plain-language guides to how it all fits together: [accounts and costs](docs/accounts-and-costs.md), [keys and secrets](docs/keys-and-secrets.md), [day-to-day tasks](docs/day-to-day.md), [DNS](docs/dns.md), [security and spam](docs/security-and-spam.md) and [troubleshooting](docs/troubleshooting.md).
+
 **Live features**
 
 - **Postal code → community.** US ZIP codes and Canadian postal codes resolve to a place and coordinates (via [zippopotam.us](https://zippopotam.us), cached in the DB). Only the coarse area is stored (ZIP / Canadian FSA), never a street address.
@@ -118,12 +120,12 @@ Every push to `main` on GitHub redeploys automatically; the build runs `prisma m
 
 **3. Your domain — GoDaddy DNS** (doesn't touch hahnsolo.ca or your Outlook email)
 - Vercel → Project → **Settings → Domains → Add** `groundswell.hahnsolo.ca`. It shows the record to create.
-- GoDaddy → **My Products → hahnsolo.ca → DNS → Add New Record:** Type `CNAME`, Name `groundswell`, Value = what Vercel shows (usually `cname.vercel-dns.com`), TTL default.
+- GoDaddy → **My Products → hahnsolo.ca → DNS → Add New Record:** Type `CNAME`, Name `groundswell`, Value = what Vercel shows (a project-specific `….vercel-dns-017.com` host, or `cname.vercel-dns.com`), TTL default.
 - Vercel issues the HTTPS certificate automatically once DNS updates (minutes to an hour).
 
 **4. Email — [Resend](https://resend.com)** (free tier)
 - **Domains → Add Domain** `groundswell.hahnsolo.ca` (a subdomain keeps app mail separate from your personal email's reputation).
-- Resend lists about 3 records (an `MX` and a `TXT` on `send.groundswell`, a DKIM `TXT` on `resend._domainkey.groundswell`). Add each in GoDaddy exactly as shown — in GoDaddy's **Name** field, enter only the part before `.hahnsolo.ca`.
+- Resend lists a few records (a DKIM `TXT` on `resend._domainkey.groundswell`, plus records on `send.groundswell` for bounces and SPF — ours is a single `CNAME`). Add each in GoDaddy exactly as shown — in GoDaddy's **Name** field, enter only the part before `.hahnsolo.ca`. A `_dmarc.groundswell` TXT (`v=DMARC1; p=none;`) is also recommended. The exact live records are in [docs/dns.md](docs/dns.md).
 - **Leave the existing `@` MX and TXT records alone** — they run your Microsoft 365 email.
 - Click **Verify** in Resend, then **API Keys → Create** and set `RESEND_API_KEY` and `MAIL_FROM` = `Groundswell <no-reply@groundswell.hahnsolo.ca>` in Vercel. Redeploy.
 
