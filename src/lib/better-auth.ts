@@ -69,7 +69,7 @@ export const auth = betterAuth({
   appName: "Groundswell",
   baseURL: process.env.APP_URL ?? "http://localhost:3000",
   secret: process.env.BETTER_AUTH_SECRET,
-  database: prismaAdapter(db, { provider: "sqlite" }),
+  database: prismaAdapter(db, { provider: "postgresql" }),
   // Apple posts its sign-in response back from its own origin.
   trustedOrigins: apple ? ["https://appleid.apple.com"] : [],
 

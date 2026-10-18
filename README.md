@@ -23,19 +23,21 @@ Enter a postal code, see the issues your neighbours care about, meet up, and pus
 
 ## Stack
 
-Next.js 16 (App Router, Cache Components, Server Actions) · React 19 · TypeScript · Tailwind CSS 4 · Prisma 6 · SQLite locally (Postgres in production) · Better Auth · Zod. Installable as a PWA.
+Next.js 16 (App Router, Cache Components, Server Actions) · React 19 · TypeScript · Tailwind CSS 4 · Prisma 6 · Postgres (Neon) · Better Auth · Zod. Installable as a PWA. Deployed on Vercel.
 
 ## Run it locally
 
+You need a Postgres database — the free Neon **dev** branch from the deploy steps below works well.
+
 ```bash
 npm install
-cp .env.example .env
-npm run db:migrate
-npm run db:seed
+cp .env.example .env      # then fill in DATABASE_URL / DIRECT_URL (dev branch) and BETTER_AUTH_SECRET
+npm run db:deploy         # create the tables
+npm run db:seed           # demo data (wipes the dev database)
 npm run dev
 ```
 
-Open http://localhost:3000 and try ZIP `90210` or postal code `M5V`. Demo accounts are listed at the top of `prisma/seed.ts` (the first one is an admin).
+Open http://localhost:3000 and try ZIP `90210` or postal code `M5V`. Demo accounts are listed at the top of `prisma/seed.ts` (the first one is an admin). `npm run dev` only listens on this computer; `npm run dev:lan` lets other devices on your network (e.g. your phone) connect.
 
 In development, verification and reset emails aren't sent — they're printed in the terminal running `npm run dev`, so you can click the link.
 
@@ -64,7 +66,7 @@ src/app/api/representatives Canadian representative lookup
 
 | Variable | Needed for | Where it comes from | Cost |
 |---|---|---|---|
-| `DATABASE_URL` | Always | Your Postgres host (Neon, Supabase, Railway…) | Free tier available |
+| `DATABASE_URL`, `DIRECT_URL` | Always | Neon → Connect (pooled + direct strings) | Free tier |
 | `APP_URL` | Always | Your site's public address | — |
 | `BETTER_AUTH_SECRET` | Always | Generate it yourself (command in `.env.example`) | Free |
 | `RESEND_API_KEY`, `MAIL_FROM` | Production (emails) | [resend.com](https://resend.com) → API Keys; verify your domain | Free tier |
@@ -99,13 +101,42 @@ Apple's "client secret" is a signed token that expires after 6 months; the app s
 
 Add an entry to `COUNTRIES` in `src/lib/countries.ts` (code, label, regex, normalizer). zippopotam.us already covers ~60 countries. If the country has a representatives API, add a branch in `RepLookup` and the `/api/representatives` route.
 
-## Going to production
+## Deploy (Vercel + Neon + Resend, at groundswell.hahnsolo.ca)
 
-1. **Database:** create a Postgres database (Neon, Supabase, RDS…). In `prisma/schema.prisma` set `provider = "postgresql"`, delete `prisma/migrations`, and run `npx prisma migrate dev --name init` against it. Set `DATABASE_URL`.
-2. **Env:** set `APP_URL` to the public URL (used in share links, letters, emailed links and OAuth callbacks) and a fresh `BETTER_AUTH_SECRET` (see `.env.example`). Create a [Resend](https://resend.com) account, verify your sending domain, and set `RESEND_API_KEY` and `MAIL_FROM`. The app refuses to send email in production without them. Add your production URL to the Google and Apple consoles.
-3. **Deploy:** Vercel works out of the box; any Node host works with `npm run build && npm start`.
-4. **Before opening to the public:**
-   - Set the Turnstile keys — without them the server logs a warning and sign-up has no bot check.
-   - In `src/lib/better-auth.ts`, change the adapter's `provider: "sqlite"` to `"postgresql"` along with the schema.
-   - Add terms of use / privacy policy and a code of conduct.
-   - For global scale, move nearby-issue search to PostGIS (`ST_DWithin`); the current bounding-box query is fine for thousands of issues per area.
+Every push to `main` on GitHub redeploys automatically; the build runs `prisma migrate deploy` first, so the live database stays in step with the code.
+
+**1. Database — [Neon](https://neon.tech)** (free)
+- Create a project (region near your users, e.g. AWS US East / Canada).
+- **Branches → Create branch** named `dev` — that's for your PC; `main` is for the live site.
+- For each branch, **Connect** shows two strings. The **pooled** one (host contains `-pooler`) is `DATABASE_URL` — add `&pgbouncer=true` to the end. The **direct** one is `DIRECT_URL`.
+- Put the `dev` branch strings in your local `.env`.
+
+**2. Hosting — [Vercel](https://vercel.com)** (free Hobby plan)
+- **Add New → Project → Import** `hahnsolo/groundswell` from GitHub.
+- Under **Environment Variables** add: `DATABASE_URL` + `DIRECT_URL` (Neon **main** branch), `APP_URL` = `https://groundswell.hahnsolo.ca`, a **new** `BETTER_AUTH_SECRET`, and the email/Turnstile keys below. Do **not** add `ALLOW_DB_SEED`.
+- **Deploy.** It's live at `groundswell-….vercel.app` in a couple of minutes.
+
+**3. Your domain — GoDaddy DNS** (doesn't touch hahnsolo.ca or your Outlook email)
+- Vercel → Project → **Settings → Domains → Add** `groundswell.hahnsolo.ca`. It shows the record to create.
+- GoDaddy → **My Products → hahnsolo.ca → DNS → Add New Record:** Type `CNAME`, Name `groundswell`, Value = what Vercel shows (usually `cname.vercel-dns.com`), TTL default.
+- Vercel issues the HTTPS certificate automatically once DNS updates (minutes to an hour).
+
+**4. Email — [Resend](https://resend.com)** (free tier)
+- **Domains → Add Domain** `groundswell.hahnsolo.ca` (a subdomain keeps app mail separate from your personal email's reputation).
+- Resend lists about 3 records (an `MX` and a `TXT` on `send.groundswell`, a DKIM `TXT` on `resend._domainkey.groundswell`). Add each in GoDaddy exactly as shown — in GoDaddy's **Name** field, enter only the part before `.hahnsolo.ca`.
+- **Leave the existing `@` MX and TXT records alone** — they run your Microsoft 365 email.
+- Click **Verify** in Resend, then **API Keys → Create** and set `RESEND_API_KEY` and `MAIL_FROM` = `Groundswell <no-reply@groundswell.hahnsolo.ca>` in Vercel. Redeploy.
+
+**5. Bot protection — [Cloudflare Turnstile](https://dash.cloudflare.com/?to=/:account/turnstile)** (free; no need to move DNS to Cloudflare)
+- **Add widget**, hostname `groundswell.hahnsolo.ca`, mode *Managed*. Set `NEXT_PUBLIC_TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY` in Vercel. Redeploy.
+
+**6. Make yourself admin**
+- Sign up on the live site and confirm your email. Then in Neon → **SQL Editor** (main branch):
+  `UPDATE "User" SET "isAdmin" = true WHERE email = 'you@example.com';`
+
+**Optional:** add `https://groundswell.hahnsolo.ca` (and `/api/auth/callback/google`) to your Google OAuth client to enable Google sign-in.
+
+### Before opening to the public
+- Add terms of use / privacy policy and a code of conduct.
+- Vercel's free Hobby plan is for non-commercial use; move to Pro if Groundswell takes donations or runs ads.
+- For global scale, move nearby-issue search to PostGIS (`ST_DWithin`); the current bounding-box query is fine for thousands of issues per area.

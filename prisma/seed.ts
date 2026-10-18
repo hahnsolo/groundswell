@@ -7,14 +7,18 @@ import { PrismaClient } from "@prisma/client";
 import { hashPassword } from "better-auth/crypto";
 
 // This script DELETES all data and creates an admin with a public password,
-// so it only ever runs against a local SQLite file, never a real database.
+// so it must never touch the live database. It only runs when your local
+// .env opts in with ALLOW_DB_SEED="yes" (never set that on the host), and
+// never in production or on Vercel.
 try {
   process.loadEnvFile(); // .env, like Prisma and Next.js read it
 } catch {
   // No .env file — rely on the real environment.
 }
-if (process.env.NODE_ENV === "production" || !process.env.DATABASE_URL?.startsWith("file:")) {
-  console.error("Refusing to seed: this only runs against a local SQLite database (DATABASE_URL=\"file:...\").");
+if (process.env.ALLOW_DB_SEED !== "yes" || process.env.NODE_ENV === "production" || process.env.VERCEL) {
+  console.error(
+    'Refusing to seed: this wipes the database. Only run it against your dev database, with ALLOW_DB_SEED="yes" in your local .env.',
+  );
   process.exit(1);
 }
 

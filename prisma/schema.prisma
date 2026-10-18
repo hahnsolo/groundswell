@@ -1,14 +1,15 @@
-// Groundswell data model.
-// Local dev uses SQLite. For production, switch `provider` to "postgresql"
-// (see README "Going to production") — the models are portable as written.
+// Groundswell data model. Postgres everywhere (Neon in dev and production).
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  // Pooled connection, used by the running app (many short-lived serverless connections).
+  url       = env("DATABASE_URL")
+  // Direct connection, used by `prisma migrate` (migrations can't run through a pooler).
+  directUrl = env("DIRECT_URL")
 }
 
 // ---------- Auth (managed by Better Auth — see src/lib/better-auth.ts) ----------
