@@ -2,7 +2,7 @@
 
 Enter a postal code, see the issues your neighbours care about, meet up, and push for change together.
 
-> **New here? Start with the [handbook in `docs/`](docs/README.md)**, plain-language guides to how it all fits together: [accounts and costs](docs/accounts-and-costs.md), [keys and secrets](docs/keys-and-secrets.md), [day-to-day tasks](docs/day-to-day.md), [DNS](docs/dns.md), [security and spam](docs/security-and-spam.md) and [troubleshooting](docs/troubleshooting.md).
+> **New here? Start with the [handbook in `docs/`](docs/README.md)**, plain-language guides to how it all fits together: a [picture walkthrough of every page](docs/walkthrough.md), [accounts and costs](docs/accounts-and-costs.md), [keys and secrets](docs/keys-and-secrets.md), [day-to-day tasks](docs/day-to-day.md), [DNS](docs/dns.md), [security and spam](docs/security-and-spam.md) and [troubleshooting](docs/troubleshooting.md).
 
 **Live features**
 

@@ -4,6 +4,7 @@ Plain-language guides to everything that runs Groundswell: what each piece is, w
 
 | Guide | Read it when… |
 |---|---|
+| [Walkthrough](walkthrough.md) | You want a picture-by-picture tour of every page and feature, and who can do what. |
 | [Accounts and costs](accounts-and-costs.md) | You want to know which services we use, what they do, and what could ever cost money. |
 | [Keys and secrets](keys-and-secrets.md) | You're adding, checking or replacing a setting or password-like key. |
 | [Day to day](day-to-day.md) | You're running the app on your PC, making a change, checking a deploy, or moderating. |
