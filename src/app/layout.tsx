@@ -1,9 +1,10 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 import { Geist, Geist_Mono } from "next/font/google";
 import { UserNav } from "@/components/user-nav";
 import { VerifyBanner } from "@/components/verify-banner";
+import { InstallPrompt, ServiceWorkerRegister } from "@/components/pwa";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -20,6 +21,18 @@ export const metadata: Metadata = {
   title: { default: "Groundswell — what matters where you live", template: "%s · Groundswell" },
   description:
     "Enter your postal code to see the issues your neighbours care about, meet up with them, and push for change together.",
+  applicationName: "Groundswell",
+  appleWebApp: { capable: true, title: "Groundswell", statusBarStyle: "default" },
+  icons: { apple: "/icons/apple-touch-icon.png" },
+  formatDetection: { telephone: false },
+};
+
+export const viewport: Viewport = {
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
+    { media: "(prefers-color-scheme: dark)", color: "#191d1b" },
+  ],
+  viewportFit: "cover",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -46,6 +59,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <footer className="border-t border-border py-6 text-center text-sm text-muted">
           Built for neighbours. Be kind, be specific, assume good faith.
         </footer>
+        <InstallPrompt />
+        <ServiceWorkerRegister />
       </body>
     </html>
   );
