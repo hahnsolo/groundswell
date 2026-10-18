@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
-import { peekToken } from "@/lib/tokens";
 import { ResetPasswordForm } from "@/components/account-forms";
 
 export const metadata: Metadata = { title: "Choose a new password" };
 
+// Reached via Better Auth's emailed link, which checks the token and redirects
+// here with ?token=… (valid) or ?error=INVALID_TOKEN.
 export default function ResetPasswordPage(props: PageProps<"/reset-password">) {
   return (
     <div className="mx-auto max-w-sm px-4 py-16">
@@ -18,8 +19,8 @@ export default function ResetPasswordPage(props: PageProps<"/reset-password">) {
 }
 
 async function Reset({ searchParams }: Pick<PageProps<"/reset-password">, "searchParams">) {
-  const { token } = await searchParams;
-  if (typeof token !== "string" || !(await peekToken(token, "reset_password"))) {
+  const { token, error } = await searchParams;
+  if (error || typeof token !== "string" || !token) {
     return (
       <p className="text-muted">
         This reset link is invalid, expired or already used.{" "}

@@ -1,19 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
 import { signIn, signUp } from "@/app/actions/auth";
 import { COUNTRIES } from "@/lib/countries";
-import { Field, FormError, SubmitButton, inputStyles } from "./ui";
+import { Field, FormError, SubmitButton, inputStyles, useFormAction } from "./ui";
 
 export function SignInForm({ next }: { next?: string }) {
-  const [state, action] = useActionState(signIn, null);
+  const [state, action] = useFormAction(signIn);
+  const v = state?.values;
   return (
     <form action={action} className="space-y-4">
       <input type="hidden" name="next" value={next ?? "/"} />
       <FormError message={state?.error} />
       <Field label="Email" name="email" errors={state?.fieldErrors}>
-        <input name="email" type="email" autoComplete="email" required className={inputStyles} />
+        <input name="email" type="email" autoComplete="email" required defaultValue={v?.email} className={inputStyles} />
       </Field>
       <Field label="Password" name="password" errors={state?.fieldErrors}>
         <input name="password" type="password" autoComplete="current-password" required className={inputStyles} />
@@ -37,16 +37,17 @@ export function SignInForm({ next }: { next?: string }) {
 }
 
 export function SignUpForm({ next }: { next?: string }) {
-  const [state, action] = useActionState(signUp, null);
+  const [state, action] = useFormAction(signUp);
+  const v = state?.values;
   return (
     <form action={action} className="space-y-4">
       <input type="hidden" name="next" value={next ?? "/"} />
       <FormError message={state?.error} />
       <Field label="Name" name="name" errors={state?.fieldErrors} hint="Shown next to what you post. First name is fine.">
-        <input name="name" autoComplete="given-name" required className={inputStyles} />
+        <input name="name" autoComplete="given-name" required defaultValue={v?.name} className={inputStyles} />
       </Field>
       <Field label="Email" name="email" errors={state?.fieldErrors}>
-        <input name="email" type="email" autoComplete="email" required className={inputStyles} />
+        <input name="email" type="email" autoComplete="email" required defaultValue={v?.email} className={inputStyles} />
       </Field>
       <Field label="Password" name="password" errors={state?.fieldErrors} hint="At least 10 characters.">
         <input name="password" type="password" autoComplete="new-password" minLength={10} required className={inputStyles} />
@@ -54,14 +55,21 @@ export function SignUpForm({ next }: { next?: string }) {
       <fieldset className="space-y-1.5">
         <legend className="text-sm font-medium">Home area (optional)</legend>
         <div className="flex gap-2">
-          <select name="country" aria-label="Country" className={`${inputStyles} w-40`} defaultValue="US">
+          <select name="country" aria-label="Country" className={`${inputStyles} w-40`} defaultValue={v?.country ?? "US"}>
             {COUNTRIES.map((c) => (
               <option key={c.code} value={c.code}>
                 {c.name}
               </option>
             ))}
           </select>
-          <input name="postal" aria-label="Postal or ZIP code" placeholder="Postal / ZIP code" autoComplete="postal-code" className={inputStyles} />
+          <input
+            name="postal"
+            aria-label="Postal or ZIP code"
+            placeholder="Postal / ZIP code"
+            autoComplete="postal-code"
+            defaultValue={v?.postal}
+            className={inputStyles}
+          />
         </div>
         {state?.fieldErrors?.postal?.[0] && <p className="text-sm text-red-600 dark:text-red-400">{state.fieldErrors.postal[0]}</p>}
       </fieldset>

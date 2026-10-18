@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useActionState } from "react";
-import { requestPasswordReset, resendVerification, resetPassword, verifyEmail } from "@/app/actions/auth";
-import { Field, FormError, SubmitButton, inputStyles } from "./ui";
+import { requestPasswordReset, resendVerification, resetPassword } from "@/app/actions/auth";
+import { Field, FormError, SubmitButton, inputStyles, useFormAction } from "./ui";
 
 export function ResendVerificationButton() {
   const [state, action] = useActionState(resendVerification, null);
@@ -16,21 +16,8 @@ export function ResendVerificationButton() {
   );
 }
 
-export function VerifyEmailForm({ token }: { token: string }) {
-  const [state, action] = useActionState(verifyEmail, null);
-  return (
-    <form action={action} className="space-y-4">
-      <input type="hidden" name="token" value={token} />
-      <FormError message={state?.error} />
-      <SubmitButton className="w-full" pendingText="Confirming…">
-        Confirm my email
-      </SubmitButton>
-    </form>
-  );
-}
-
 export function ForgotPasswordForm() {
-  const [state, action] = useActionState(requestPasswordReset, null);
+  const [state, action] = useFormAction(requestPasswordReset);
   if (state?.ok) {
     return (
       <p className="rounded-lg bg-brand-soft p-4 text-sm">
@@ -42,7 +29,7 @@ export function ForgotPasswordForm() {
     <form action={action} className="space-y-4">
       <FormError message={state?.error} />
       <Field label="Email" name="email" errors={state?.fieldErrors}>
-        <input name="email" type="email" autoComplete="email" required className={inputStyles} />
+        <input name="email" type="email" autoComplete="email" required defaultValue={state?.values?.email} className={inputStyles} />
       </Field>
       <SubmitButton className="w-full" pendingText="Sending…">
         Send reset link

@@ -1,34 +1,32 @@
 "use server";
 
-import { refresh } from "next/cache";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { APIError } from "better-auth/api";
 import { db } from "@/lib/db";
-import {
-  createSession,
-  destroyAllSessions,
-  destroySession,
-  getCurrentUser,
-  hashPassword,
-  safeNext,
-  verifyPassword,
-} from "@/lib/auth";
-import { consumeToken, sendPasswordResetEmail, sendVerificationEmail } from "@/lib/tokens";
+import { auth } from "@/lib/better-auth";
+import { getCurrentUser, safeNext } from "@/lib/auth";
 import { rateLimit } from "@/lib/rate-limit";
 import { fromZodError, type FormState } from "@/lib/forms";
 import { parsePostal } from "@/lib/countries";
 
+// Better Auth also rate-limits its own HTTP endpoints; these app-level limits
+// cover calls made from Server Actions.
 async function clientKey(prefix: string) {
   const h = await headers();
   const ip = h.get("x-forwarded-for")?.split(",")[0]?.trim() || h.get("x-real-ip") || "local";
   return `${prefix}:${ip}`;
 }
 
+function authErrorCode(e: unknown) {
+  return e instanceof APIError ? String((e.body as { code?: string } | undefined)?.code ?? "") : "";
+}
+
 const signUpSchema = z.object({
   name: z.string().trim().min(2, "Tell us what to call you.").max(60),
   email: z.string().trim().toLowerCase().email("Enter a valid email."),
-  password: z.string().min(10, "Use at least 10 characters.").max(200),
+  password: z.string().min(10, "Use at least 10 characters.").max(128),
   country: z.string().optional(),
   postal: z.string().optional(),
 });
@@ -48,18 +46,18 @@ export async function signUp(_prev: FormState, formData: FormData): Promise<Form
     home = { homeCountry: p.country.code, homePostal: p.postal };
   }
 
-  const existing = await db.user.findUnique({ where: { email } });
-  if (existing) return { fieldErrors: { email: ["An account with this email already exists."] } };
-
-  const user = await db.user.create({
-    data: { name, email, passwordHash: await hashPassword(password), ...home },
-  });
-  await createSession(user.id);
   try {
-    await sendVerificationEmail(user);
-  } catch (err) {
-    // Don't block sign-up on email trouble; they can resend from the banner.
-    console.error("Verification email failed", err);
+    const { user } = await auth.api.signUpEmail({
+      body: { name, email, password, callbackURL: "/me?verified=1" },
+      headers: await headers(),
+    });
+    if (home) await db.user.update({ where: { id: user.id }, data: home });
+  } catch (e) {
+    if (authErrorCode(e).startsWith("USER_ALREADY_EXISTS")) {
+      return { fieldErrors: { email: ["An account with this email already exists. Try signing in."] } };
+    }
+    console.error("Sign-up failed", e);
+    return { error: "We couldn't create your account. Please try again." };
   }
   redirect(safeNext(formData.get("next")));
 }
@@ -76,20 +74,28 @@ export async function signIn(_prev: FormState, formData: FormData): Promise<Form
   const parsed = signInSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return fromZodError(parsed.error);
 
-  const user = await db.user.findUnique({ where: { email: parsed.data.email } });
-  if (!user || !(await verifyPassword(parsed.data.password, user.passwordHash))) {
-    return { error: "That email and password don't match." };
+  try {
+    await auth.api.signInEmail({ body: parsed.data, headers: await headers() });
+  } catch (e) {
+    if (authErrorCode(e) === "INVALID_EMAIL_OR_PASSWORD" || (e instanceof APIError && e.statusCode === 401)) {
+      return {
+        error: "That email and password don't match. If you joined with Google or Apple, use that button instead.",
+      };
+    }
+    console.error("Sign-in failed", e);
+    return { error: "We couldn't sign you in. Please try again." };
   }
-  await createSession(user.id);
   redirect(safeNext(formData.get("next")));
 }
 
 export async function signOut() {
-  await destroySession();
+  await auth.api.signOut({ headers: await headers() });
   redirect("/");
 }
 
 // ---------- Email verification ----------
+// The emailed link goes to Better Auth (/api/auth/verify-email), which marks
+// the email verified and redirects to /me?verified=1.
 
 export async function resendVerification(): Promise<FormState> {
   const user = await getCurrentUser();
@@ -99,24 +105,20 @@ export async function resendVerification(): Promise<FormState> {
     return { error: "We've sent a few already — check your spam folder, or try again in an hour." };
   }
   try {
-    await sendVerificationEmail(user);
+    await auth.api.sendVerificationEmail({
+      body: { email: user.email, callbackURL: "/me?verified=1" },
+      headers: await headers(),
+    });
   } catch (e) {
-    return { error: (e as Error).message };
+    console.error("Resend verification failed", e);
+    return { error: "We couldn't send the email. Please try again shortly." };
   }
   return { ok: true };
 }
 
-export async function verifyEmail(_prev: FormState, formData: FormData): Promise<FormState> {
-  const token = String(formData.get("token") ?? "");
-  const userId = token && (await consumeToken(token, "verify_email"));
-  if (!userId) return { error: "This link is invalid or has expired. Sign in and request a new one." };
-  await db.user.update({ where: { id: userId }, data: { emailVerifiedAt: new Date() } });
-  // Re-render the shared layout too, so the "confirm your email" banner goes away.
-  refresh();
-  redirect("/me?verified=1");
-}
-
 // ---------- Password reset ----------
+// The emailed link goes to Better Auth, which checks the token and redirects
+// to /reset-password?token=… (or ?error=INVALID_TOKEN).
 
 export async function requestPasswordReset(_prev: FormState, formData: FormData): Promise<FormState> {
   const parsed = z.string().trim().toLowerCase().email().safeParse(formData.get("email"));
@@ -124,13 +126,13 @@ export async function requestPasswordReset(_prev: FormState, formData: FormData)
   if (!rateLimit(await clientKey("reset"), 5, 60 * 60 * 1000) || !rateLimit(`reset:${parsed.data}`, 3, 60 * 60 * 1000)) {
     return { error: "Too many reset requests. Try again later." };
   }
-  const user = await db.user.findUnique({ where: { email: parsed.data } });
-  if (user) {
-    try {
-      await sendPasswordResetEmail(user);
-    } catch (err) {
-      console.error("Reset email failed", err);
-    }
+  try {
+    await auth.api.requestPasswordReset({
+      body: { email: parsed.data, redirectTo: "/reset-password" },
+      headers: await headers(),
+    });
+  } catch (e) {
+    console.error("Reset request failed", e);
   }
   // Same response whether or not the account exists, so emails can't be probed.
   return { ok: true };
@@ -139,7 +141,7 @@ export async function requestPasswordReset(_prev: FormState, formData: FormData)
 const resetSchema = z
   .object({
     token: z.string().min(1),
-    password: z.string().min(10, "Use at least 10 characters.").max(200),
+    password: z.string().min(10, "Use at least 10 characters.").max(128),
     confirm: z.string(),
   })
   .refine((d) => d.password === d.confirm, { message: "Passwords don't match.", path: ["confirm"] });
@@ -147,16 +149,18 @@ const resetSchema = z
 export async function resetPassword(_prev: FormState, formData: FormData): Promise<FormState> {
   const parsed = resetSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return fromZodError(parsed.error);
-  const userId = await consumeToken(parsed.data.token, "reset_password");
-  if (!userId) return { error: "This reset link is invalid or has expired. Request a new one." };
-
-  await db.user.update({
-    where: { id: userId },
-    // Getting the email proves ownership of the address, too.
-    data: { passwordHash: await hashPassword(parsed.data.password), emailVerifiedAt: new Date() },
-  });
-  await destroyAllSessions(userId);
-  await createSession(userId);
-  refresh();
-  redirect("/me?reset=1");
+  try {
+    // Also signs the account out on every device (revokeSessionsOnPasswordReset).
+    await auth.api.resetPassword({
+      body: { newPassword: parsed.data.password, token: parsed.data.token },
+      headers: await headers(),
+    });
+  } catch (e) {
+    if (authErrorCode(e) === "INVALID_TOKEN") {
+      return { error: "This reset link is invalid or has expired. Request a new one." };
+    }
+    console.error("Password reset failed", e);
+    return { error: "We couldn't reset your password. Please try again." };
+  }
+  redirect("/signin?reset=1");
 }

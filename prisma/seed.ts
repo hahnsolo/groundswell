@@ -1,8 +1,10 @@
 // Demo data for local development: `npm run db:seed`.
 // Demo accounts (local only): alex@demo.test (admin), sam@demo.test, priya@demo.test
 // Password for all of them: groundswell-demo
+import { randomUUID } from "node:crypto";
 import { PrismaClient } from "@prisma/client";
-import { hashPassword } from "../src/lib/password";
+// Better Auth's own hasher, so seeded passwords work with its sign-in.
+import { hashPassword } from "better-auth/crypto";
 
 const db = new PrismaClient();
 const DEMO_PASSWORD = "groundswell-demo";
@@ -27,7 +29,8 @@ async function main() {
     db.issueSupport.deleteMany(),
     db.issue.deleteMany(),
     db.session.deleteMany(),
-    db.authToken.deleteMany(),
+    db.account.deleteMany(),
+    db.verification.deleteMany(),
     db.user.deleteMany(),
   ]);
   for (const p of PLACES) await db.place.upsert({ where: { id: p.id }, create: p, update: p });
@@ -38,9 +41,19 @@ async function main() {
       { name: "Alex", email: "alex@demo.test", homeCountry: "US", homePostal: "90210" },
       { name: "Sam", email: "sam@demo.test", homeCountry: "US", homePostal: "90046" },
       { name: "Priya", email: "priya@demo.test", homeCountry: "CA", homePostal: "M5V" },
-    ].map((u) =>
-      db.user.create({ data: { ...u, passwordHash, emailVerifiedAt: new Date(), isAdmin: u.email === "alex@demo.test" } }),
-    ),
+    ].map((u) => {
+      const id = randomUUID();
+      return db.user.create({
+        data: {
+          ...u,
+          id,
+          emailVerified: true,
+          isAdmin: u.email === "alex@demo.test",
+          // Better Auth keeps email/password logins as a "credential" account keyed by user id.
+          accounts: { create: { id: randomUUID(), accountId: id, providerId: "credential", password: passwordHash } },
+        },
+      });
+    }),
   );
 
   const at = (placeId: string) => {

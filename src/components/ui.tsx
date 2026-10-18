@@ -1,10 +1,30 @@
 "use client";
 
+import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import type { ComponentProps, ReactNode } from "react";
+import type { FormState } from "@/lib/forms";
 import { buttonStyles, inputStyles } from "./styles";
 
 export { buttonStyles, inputStyles };
+
+/**
+ * useActionState for our Server Actions, plus: when the action returns an
+ * error, the submitted values come back in `state.values`. React clears a form
+ * after every action, so inputs use `defaultValue={state?.values?.x}` to keep
+ * what the person typed. Passwords are never echoed.
+ */
+export function useFormAction(action: (prev: FormState, formData: FormData) => Promise<FormState>) {
+  return useActionState(async (prev: FormState, formData: FormData): Promise<FormState> => {
+    const result = await action(prev, formData);
+    if (!result || result.ok) return result;
+    const values: Record<string, string> = {};
+    formData.forEach((v, k) => {
+      if (typeof v === "string" && !/password|confirm/i.test(k)) values[k] = v;
+    });
+    return { ...result, values };
+  }, null);
+}
 
 export function SubmitButton({
   children,

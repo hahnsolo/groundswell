@@ -24,7 +24,11 @@ export default function MePage(props: PageProps<"/me">) {
 async function Me({ searchParams }: Pick<PageProps<"/me">, "searchParams">) {
   const user = await requireUser("/me");
   const sp = await searchParams;
-  const notice = sp.verified ? "Thanks — your email is confirmed." : sp.reset ? "Your password was changed and other devices were signed out." : null;
+  const notice = sp.verified
+    ? "Thanks — your email is confirmed."
+    : sp.welcome
+      ? "Welcome to Groundswell! Set your home area below so we can show you what's happening nearby."
+      : null;
   const openReports = user.isAdmin ? await db.report.count({ where: { resolved: false } }) : 0;
   const [issues, supported, rsvps] = await Promise.all([
     db.issue.findMany({ where: { authorId: user.id }, orderBy: { createdAt: "desc" }, take: 20 }),

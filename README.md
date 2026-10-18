@@ -10,14 +10,14 @@ Enter a postal code, see the issues your neighbours care about, meet up, and pus
 - **Connect.** "I care" support, threaded discussion, community reports (3 reports auto-hide content for review).
 - **Meetups.** Create in-person or online meetups with optional capacity; RSVP; times shown in each viewer's own timezone.
 - **Advocacy.** Campaigns with a concrete ask, a decision-maker target and a signature goal; a letter builder that drafts an email to that decision-maker; representative lookup (Canada via [Represent](https://represent.opennorth.ca), US links to usa.gov).
-- **Accounts.** Email + password (scrypt), DB-backed sessions in httpOnly cookies, rate-limited auth and posting.
-- **Email verification.** New accounts get a confirmation link; posting issues, comments, meetups and campaigns requires a confirmed email. (Supporting, RSVPing and signing don't.)
-- **Password reset.** Single-use, 1-hour emailed links; resetting signs out every other device.
+- **Accounts** via [Better Auth](https://better-auth.com): email + password, **Sign in with Google**, **Sign in with Apple** (each button appears once its credentials are set). Signing in with Google/Apple links to an existing account with the same email. Sessions are DB-backed; auth endpoints are rate-limited in the database so limits hold across serverless instances.
+- **Email verification.** New accounts get a confirmation link; posting issues, comments, meetups and campaigns requires a confirmed email. (Supporting, RSVPing and signing don't.) Google/Apple emails count as confirmed.
+- **Password reset.** 1-hour emailed links; resetting signs out every device.
 - **Moderation queue.** Admins review reported content at `/admin/reports` and keep or remove it; every decision is recorded on the report (who, when, what). Non-admins get a 404.
 
 ## Stack
 
-Next.js 16 (App Router, Cache Components, Server Actions) · React 19 · TypeScript · Tailwind CSS 4 · Prisma 6 · SQLite locally (Postgres in production) · Zod.
+Next.js 16 (App Router, Cache Components, Server Actions) · React 19 · TypeScript · Tailwind CSS 4 · Prisma 6 · SQLite locally (Postgres in production) · Better Auth · Zod. Installable as a PWA.
 
 ## Run it locally
 
@@ -44,13 +44,36 @@ prisma/schema.prisma        data model
 prisma/seed.ts              demo data
 src/lib/countries.ts        per-country postal rules (add a country here)
 src/lib/places.ts           postal code → place lookup + cache
-src/lib/auth.ts             sessions, current user
+src/lib/better-auth.ts      Better Auth config (providers, emails, rate limits)
+src/lib/auth.ts             current user / requireUser / requireAdmin helpers
+src/app/api/auth/[...all]   Better Auth's endpoints (OAuth callbacks, email links)
 src/lib/queries.ts          read queries (nearby issues, issue detail)
 src/app/actions/            all writes (Server Actions), validated with Zod
 src/app/area/[country]/[postal]   the community page
 src/app/issues/[id]         issue page: discussion, meetups, advocacy
 src/app/api/representatives Canadian representative lookup
 ```
+
+## Sign in with Google
+
+1. In [Google Cloud Console](https://console.cloud.google.com/apis/credentials), create a project, then **Configure consent screen** (External; app name, support email, logo).
+2. **Create credentials → OAuth client ID → Web application.**
+   - Authorized JavaScript origins: your `APP_URL` (and `http://localhost:3000` for dev).
+   - Authorized redirect URIs: `<APP_URL>/api/auth/callback/google` (and `http://localhost:3000/api/auth/callback/google`).
+3. Put the client ID and secret in `.env` as `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` and restart. The button appears.
+
+Free. Works on localhost.
+
+## Sign in with Apple
+
+Needs an [Apple Developer](https://developer.apple.com/programs/) membership ($99/year) and an **HTTPS domain** — Apple won't redirect to localhost. (For local testing, use a tunnel such as `cloudflared tunnel --url http://localhost:3000` and set `APP_URL` to the tunnel URL.)
+
+1. **Certificates, IDs & Profiles → Identifiers → App IDs:** create one (e.g. `org.groundswell.app`) with *Sign in with Apple* enabled.
+2. **Identifiers → Services IDs:** create one (e.g. `org.groundswell.web`) — this is `APPLE_CLIENT_ID`. Enable *Sign in with Apple*, configure it with your domain and return URL `<APP_URL>/api/auth/callback/apple`.
+3. **Keys:** create a key with *Sign in with Apple*, download the `.p8` file (once only). Note its **Key ID**.
+4. Set `APPLE_CLIENT_ID`, `APPLE_TEAM_ID` (top right of the developer portal), `APPLE_KEY_ID`, and `APPLE_PRIVATE_KEY` (the `.p8` contents, with newlines written as `\n`).
+
+Apple's "client secret" is a signed token that expires after 6 months; the app signs a fresh one from your key at startup, so there's nothing to renew by hand. Apple only shares a person's name the first time they sign in, and may give a private relay email (`…@privaterelay.appleid.com`) — both are handled.
 
 ## Adding a country
 
@@ -59,9 +82,10 @@ Add an entry to `COUNTRIES` in `src/lib/countries.ts` (code, label, regex, norma
 ## Going to production
 
 1. **Database:** create a Postgres database (Neon, Supabase, RDS…). In `prisma/schema.prisma` set `provider = "postgresql"`, delete `prisma/migrations`, and run `npx prisma migrate dev --name init` against it. Set `DATABASE_URL`.
-2. **Env:** set `APP_URL` to the public URL (used in share links, letters and emailed links). Create a [Resend](https://resend.com) account, verify your sending domain, and set `RESEND_API_KEY` and `MAIL_FROM`. The app refuses to send email in production without them.
+2. **Env:** set `APP_URL` to the public URL (used in share links, letters, emailed links and OAuth callbacks) and a fresh `BETTER_AUTH_SECRET` (see `.env.example`). Create a [Resend](https://resend.com) account, verify your sending domain, and set `RESEND_API_KEY` and `MAIL_FROM`. The app refuses to send email in production without them. Add your production URL to the Google and Apple consoles.
 3. **Deploy:** Vercel works out of the box; any Node host works with `npm run build && npm start`.
 4. **Before opening to the public:**
-   - Swap the in-memory rate limiter (`src/lib/rate-limit.ts`) for Redis/Upstash when running more than one instance.
+   - Auth endpoints are already rate-limited in the database. The extra per-action limits in `src/lib/rate-limit.ts` (posting, sign-up/sign-in forms) are in-memory — swap them for Redis/Upstash when running more than one instance.
+   - In `src/lib/better-auth.ts`, change the adapter's `provider: "sqlite"` to `"postgresql"` along with the schema.
    - Add terms of use / privacy policy and a code of conduct.
    - For global scale, move nearby-issue search to PostGIS (`ST_DWithin`); the current bounding-box query is fine for thousands of issues per area.

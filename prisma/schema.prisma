@@ -11,20 +11,26 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ---------- Auth (managed by Better Auth — see src/lib/better-auth.ts) ----------
+// User/Session/Account/Verification/RateLimit follow Better Auth's schema.
+// Passwords live on Account (providerId "credential"), not on User.
+
 model User {
-  id           String   @id @default(cuid())
-  email        String   @unique
-  name         String
-  passwordHash    String
-  emailVerifiedAt DateTime?
-  isAdmin         Boolean   @default(false)
+  id            String   @id @default(cuid())
+  name          String
+  email         String   @unique
+  emailVerified Boolean  @default(false)
+  image         String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  // App fields (Better Auth "additionalFields"; none are settable by sign-up).
+  isAdmin       Boolean  @default(false)
   // Home area, so the app can drop people straight into their community.
-  homeCountry  String?
-  homePostal   String?
-  createdAt    DateTime @default(now())
+  homeCountry   String?
+  homePostal    String?
 
   sessions   Session[]
-  tokens     AuthToken[]
+  accounts   Account[]
   issues     Issue[]
   supports   IssueSupport[]
   comments   Comment[]
@@ -36,29 +42,61 @@ model User {
 }
 
 model Session {
-  // sha256 of the cookie token — the raw token is never stored.
   id        String   @id
-  userId    String
   expiresAt DateTime
+  token     String   @unique
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  ipAddress String?
+  userAgent String?
+  userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
 }
 
-// One-time emailed tokens. purpose: verify_email | reset_password
-model AuthToken {
-  // sha256 of the emailed token.
-  id        String    @id
-  userId    String
-  purpose   String
-  expiresAt DateTime
-  usedAt    DateTime?
-  createdAt DateTime  @default(now())
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+// One row per way of signing in: "credential" (email + password), "google", "apple".
+model Account {
+  id                    String    @id
+  accountId             String
+  providerId            String
+  userId                String
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accessToken           String?
+  refreshToken          String?
+  idToken               String?
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
 
-  @@index([userId, purpose])
+  @@index([userId])
 }
+
+// Email verification and password reset tokens.
+model Verification {
+  id         String   @id
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([identifier])
+}
+
+// Better Auth's rate limiter state. Stored in the DB so limits hold across
+// serverless instances.
+model RateLimit {
+  id          String @id
+  key         String @unique
+  count       Int
+  lastRequest BigInt
+}
+
+// ---------- Community ----------
 
 // Cached result of a postal code lookup. id = "<COUNTRY>-<normalized code>".
 model Place {

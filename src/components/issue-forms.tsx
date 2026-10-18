@@ -1,17 +1,14 @@
 "use client";
 
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useState } from "react";
 import { addComment, createCampaign, createMeetup, signCampaign } from "@/app/actions/community";
-import { Field, FormError, SubmitButton, buttonStyles, inputStyles } from "./ui";
+import { Field, FormError, SubmitButton, buttonStyles, inputStyles, useFormAction } from "./ui";
 
 export function CommentForm({ issueId }: { issueId: string }) {
-  const [state, action] = useActionState(addComment, null);
-  const ref = useRef<HTMLFormElement>(null);
-  useEffect(() => {
-    if (state?.ok) ref.current?.reset();
-  }, [state]);
+  // On success React clears the box; on error the text comes back via state.values.
+  const [state, action] = useFormAction(addComment);
   return (
-    <form ref={ref} action={action} className="space-y-2">
+    <form action={action} className="space-y-2">
       <input type="hidden" name="issueId" value={issueId} />
       <FormError message={state?.error} />
       <textarea
@@ -20,6 +17,7 @@ export function CommentForm({ issueId }: { issueId: string }) {
         rows={3}
         maxLength={3000}
         placeholder="Share what you've seen, ask a question, or offer to help…"
+        defaultValue={state?.values?.body}
         className={inputStyles}
         aria-label="Your comment"
       />
@@ -35,12 +33,13 @@ function toLocalInputValue(d: Date) {
 }
 
 export function MeetupForm({ issueId }: { issueId: string }) {
-  const [state, action] = useActionState(createMeetup, null);
+  const [state, action] = useFormAction(createMeetup);
   const [local, setLocal] = useState("");
   const [online, setOnline] = useState(false);
   // Lazy init: computed once in the browser's timezone; the server re-validates.
   const [min] = useState(() => toLocalInputValue(new Date()));
   const e = state?.fieldErrors;
+  const v = state?.values;
   return (
     <form action={action} className="space-y-4">
       <input type="hidden" name="issueId" value={issueId} />
@@ -48,7 +47,7 @@ export function MeetupForm({ issueId }: { issueId: string }) {
       <input type="hidden" name="startsAt" value={local ? new Date(local).toISOString() : ""} />
       <FormError message={state?.error} />
       <Field label="Title" name="title" errors={e}>
-        <input name="title" required placeholder="Neighbourhood walk-through" className={inputStyles} />
+        <input name="title" required placeholder="Neighbourhood walk-through" defaultValue={v?.title} className={inputStyles} />
       </Field>
       <Field label="When" name="startsAt" errors={e}>
         <input type="datetime-local" required min={min} suppressHydrationWarning value={local} onChange={(ev) => setLocal(ev.target.value)} className={inputStyles} />
@@ -58,13 +57,19 @@ export function MeetupForm({ issueId }: { issueId: string }) {
         Online meetup
       </label>
       <Field label={online ? "Video link" : "Where"} name="location" errors={e} hint={online ? undefined : "A public place — library, café, park entrance."}>
-        <input name="location" required placeholder={online ? "https://meet…" : "Central Library, room 2"} className={inputStyles} />
+        <input
+          name="location"
+          required
+          placeholder={online ? "https://meet…" : "Central Library, room 2"}
+          defaultValue={v?.location}
+          className={inputStyles}
+        />
       </Field>
       <Field label="What's the plan? (optional)" name="description" errors={e}>
-        <textarea name="description" rows={3} className={inputStyles} />
+        <textarea name="description" rows={3} defaultValue={v?.description} className={inputStyles} />
       </Field>
       <Field label="Capacity (optional)" name="capacity" errors={e}>
-        <input name="capacity" type="number" min={2} className={`${inputStyles} w-32`} />
+        <input name="capacity" type="number" min={2} defaultValue={v?.capacity} className={`${inputStyles} w-32`} />
       </Field>
       <SubmitButton pendingText="Creating…">Create meetup</SubmitButton>
     </form>
@@ -72,21 +77,22 @@ export function MeetupForm({ issueId }: { issueId: string }) {
 }
 
 export function CampaignForm({ issueId }: { issueId: string }) {
-  const [state, action] = useActionState(createCampaign, null);
+  const [state, action] = useFormAction(createCampaign);
   const e = state?.fieldErrors;
+  const v = state?.values;
   if (state?.ok) return <p className="text-sm text-brand-strong dark:text-brand">Campaign started — share it with your neighbours!</p>;
   return (
     <form action={action} className="space-y-4">
       <input type="hidden" name="issueId" value={issueId} />
       <FormError message={state?.error} />
       <Field label="Who can fix this?" name="target" errors={e} hint="A specific decision-maker: city council, school board, landlord, transit agency…">
-        <input name="target" required placeholder="City Council — Ward 4" className={inputStyles} />
+        <input name="target" required placeholder="City Council — Ward 4" defaultValue={v?.target} className={inputStyles} />
       </Field>
       <Field label="What exactly are you asking for?" name="ask" errors={e} hint="Concrete asks win: “Install a signalized crosswalk at Elm & 5th before next school year.”">
-        <textarea name="ask" required rows={4} className={inputStyles} />
+        <textarea name="ask" required rows={4} defaultValue={v?.ask} className={inputStyles} />
       </Field>
       <Field label="Signature goal" name="goal" errors={e}>
-        <input name="goal" type="number" min={5} defaultValue={100} className={`${inputStyles} w-32`} />
+        <input name="goal" type="number" min={5} defaultValue={v?.goal ?? 100} className={`${inputStyles} w-32`} />
       </Field>
       <SubmitButton pendingText="Starting…">Start campaign</SubmitButton>
     </form>
@@ -94,7 +100,7 @@ export function CampaignForm({ issueId }: { issueId: string }) {
 }
 
 export function SignForm({ campaignId, signed }: { campaignId: string; signed: boolean }) {
-  const [state, action] = useActionState(signCampaign, null);
+  const [state, action] = useFormAction(signCampaign);
   if (signed || state?.ok) {
     return <p className="text-sm font-medium text-brand-strong dark:text-brand">✓ You&apos;ve signed this campaign</p>;
   }
@@ -102,7 +108,14 @@ export function SignForm({ campaignId, signed }: { campaignId: string; signed: b
     <form action={action} className="space-y-2">
       <input type="hidden" name="campaignId" value={campaignId} />
       <FormError message={state?.error} />
-      <input name="note" maxLength={500} placeholder="Why this matters to you (optional, shown publicly)" className={inputStyles} aria-label="Why this matters to you" />
+      <input
+        name="note"
+        maxLength={500}
+        placeholder="Why this matters to you (optional, shown publicly)"
+        defaultValue={state?.values?.note}
+        className={inputStyles}
+        aria-label="Why this matters to you"
+      />
       <SubmitButton pendingText="Signing…">Add my name</SubmitButton>
     </form>
   );
