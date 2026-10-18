@@ -17,11 +17,18 @@ export async function sendEmail(email: Email) {
     return;
   }
 
+  const from = (process.env.MAIL_FROM ?? "").trim();
+  // "Name <a@b.c>" or "a@b.c" — a typo here otherwise surfaces only as a vague 422 from Resend.
+  if (!/^([^<>]+<[^<>\s@]+@[^<>\s@]+>|[^<>\s@]+@[^<>\s@]+)$/.test(from)) {
+    console.error(`MAIL_FROM is missing or malformed: "${from}". Expected e.g. "Groundswell <no-reply@yourdomain.org>".`);
+    throw new Error("We couldn't send the email. Please try again shortly.");
+  }
+
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      from: process.env.MAIL_FROM ?? "Groundswell <no-reply@example.com>",
+      from,
       to: email.to,
       subject: email.subject,
       text: email.text,
