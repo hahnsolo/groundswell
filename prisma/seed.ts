@@ -6,6 +6,18 @@ import { PrismaClient } from "@prisma/client";
 // Better Auth's own hasher, so seeded passwords work with its sign-in.
 import { hashPassword } from "better-auth/crypto";
 
+// This script DELETES all data and creates an admin with a public password,
+// so it only ever runs against a local SQLite file, never a real database.
+try {
+  process.loadEnvFile(); // .env, like Prisma and Next.js read it
+} catch {
+  // No .env file — rely on the real environment.
+}
+if (process.env.NODE_ENV === "production" || !process.env.DATABASE_URL?.startsWith("file:")) {
+  console.error("Refusing to seed: this only runs against a local SQLite database (DATABASE_URL=\"file:...\").");
+  process.exit(1);
+}
+
 const db = new PrismaClient();
 const DEMO_PASSWORD = "groundswell-demo";
 
