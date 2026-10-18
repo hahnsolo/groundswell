@@ -4,6 +4,7 @@ import { createIssue } from "@/app/actions/community";
 import { CATEGORIES } from "@/lib/categories";
 import { COUNTRIES } from "@/lib/countries";
 import { Field, FormError, SubmitButton, inputStyles, useFormAction } from "./ui";
+import { Honeypot } from "./bot-check";
 
 export function IssueForm({ country, postal }: { country: string; postal: string }) {
   const [state, action] = useFormAction(createIssue);
@@ -49,6 +50,7 @@ export function IssueForm({ country, postal }: { country: string; postal: string
           <input name="postal" defaultValue={v?.postal ?? postal} required className={inputStyles} />
         </Field>
       </div>
+      <Honeypot />
       <SubmitButton pendingText="Posting…">Post issue</SubmitButton>
     </form>
   );

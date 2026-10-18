@@ -4,6 +4,7 @@ import Link from "next/link";
 import { signIn, signUp } from "@/app/actions/auth";
 import { COUNTRIES } from "@/lib/countries";
 import { Field, FormError, SubmitButton, inputStyles, useFormAction } from "./ui";
+import { Honeypot, Turnstile } from "./bot-check";
 
 export function SignInForm({ next }: { next?: string }) {
   const [state, action] = useFormAction(signIn);
@@ -23,6 +24,7 @@ export function SignInForm({ next }: { next?: string }) {
           Forgot password?
         </Link>
       </p>
+      <Turnstile resetKey={state} />
       <SubmitButton className="w-full" pendingText="Signing in…">
         Sign in
       </SubmitButton>
@@ -73,6 +75,8 @@ export function SignUpForm({ next }: { next?: string }) {
         </div>
         {state?.fieldErrors?.postal?.[0] && <p className="text-sm text-red-600 dark:text-red-400">{state.fieldErrors.postal[0]}</p>}
       </fieldset>
+      <Honeypot />
+      <Turnstile resetKey={state} />
       <SubmitButton className="w-full" pendingText="Creating account…">
         Create account
       </SubmitButton>

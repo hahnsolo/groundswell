@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { addComment, createCampaign, createMeetup, signCampaign } from "@/app/actions/community";
 import { Field, FormError, SubmitButton, buttonStyles, inputStyles, useFormAction } from "./ui";
+import { Honeypot } from "./bot-check";
 
 export function CommentForm({ issueId }: { issueId: string }) {
   // On success React clears the box; on error the text comes back via state.values.
@@ -22,6 +23,7 @@ export function CommentForm({ issueId }: { issueId: string }) {
         aria-label="Your comment"
       />
       {state?.fieldErrors?.body?.[0] && <p className="text-sm text-red-600">{state.fieldErrors.body[0]}</p>}
+      <Honeypot />
       <SubmitButton pendingText="Posting…">Post comment</SubmitButton>
     </form>
   );
@@ -71,6 +73,7 @@ export function MeetupForm({ issueId }: { issueId: string }) {
       <Field label="Capacity (optional)" name="capacity" errors={e}>
         <input name="capacity" type="number" min={2} defaultValue={v?.capacity} className={`${inputStyles} w-32`} />
       </Field>
+      <Honeypot />
       <SubmitButton pendingText="Creating…">Create meetup</SubmitButton>
     </form>
   );
@@ -94,6 +97,7 @@ export function CampaignForm({ issueId }: { issueId: string }) {
       <Field label="Signature goal" name="goal" errors={e}>
         <input name="goal" type="number" min={5} defaultValue={v?.goal ?? 100} className={`${inputStyles} w-32`} />
       </Field>
+      <Honeypot />
       <SubmitButton pendingText="Starting…">Start campaign</SubmitButton>
     </form>
   );

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useActionState } from "react";
 import { requestPasswordReset, resendVerification, resetPassword } from "@/app/actions/auth";
 import { Field, FormError, SubmitButton, inputStyles, useFormAction } from "./ui";
+import { Turnstile } from "./bot-check";
 
 export function ResendVerificationButton() {
   const [state, action] = useActionState(resendVerification, null);
@@ -31,6 +32,7 @@ export function ForgotPasswordForm() {
       <Field label="Email" name="email" errors={state?.fieldErrors}>
         <input name="email" type="email" autoComplete="email" required defaultValue={state?.values?.email} className={inputStyles} />
       </Field>
+      <Turnstile resetKey={state} />
       <SubmitButton className="w-full" pendingText="Sending…">
         Send reset link
       </SubmitButton>

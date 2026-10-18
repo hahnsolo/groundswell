@@ -7,17 +7,13 @@ import { APIError } from "better-auth/api";
 import { db } from "@/lib/db";
 import { auth } from "@/lib/better-auth";
 import { getCurrentUser, safeNext } from "@/lib/auth";
-import { rateLimit } from "@/lib/rate-limit";
+import { clientIp, HOUR, MINUTE, rateLimit } from "@/lib/rate-limit";
+import { BOT_CHECK_ERROR, honeypotTripped, verifyHuman } from "@/lib/spam";
 import { fromZodError, type FormState } from "@/lib/forms";
 import { parsePostal } from "@/lib/countries";
 
-// Better Auth also rate-limits its own HTTP endpoints; these app-level limits
-// cover calls made from Server Actions.
-async function clientKey(prefix: string) {
-  const h = await headers();
-  const ip = h.get("x-forwarded-for")?.split(",")[0]?.trim() || h.get("x-real-ip") || "local";
-  return `${prefix}:${ip}`;
-}
+// Better Auth guards its own HTTP endpoints (rate limits + Turnstile plugin).
+// These Server Actions call it directly, so they run the same checks here.
 
 function authErrorCode(e: unknown) {
   return e instanceof APIError ? String((e.body as { code?: string } | undefined)?.code ?? "") : "";
@@ -32,11 +28,13 @@ const signUpSchema = z.object({
 });
 
 export async function signUp(_prev: FormState, formData: FormData): Promise<FormState> {
-  if (!rateLimit(await clientKey("signup"), 10, 60 * 60 * 1000)) {
+  if (honeypotTripped(formData)) return { error: "Something went wrong. Please try again." };
+  if (!(await rateLimit(`signup:${await clientIp()}`, 10, HOUR))) {
     return { error: "Too many sign-up attempts. Try again later." };
   }
   const parsed = signUpSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return fromZodError(parsed.error);
+  if (!(await verifyHuman(formData))) return { error: BOT_CHECK_ERROR };
   const { name, email, password, country, postal } = parsed.data;
 
   let home: { homeCountry: string; homePostal: string } | undefined;
@@ -68,11 +66,16 @@ const signInSchema = z.object({
 });
 
 export async function signIn(_prev: FormState, formData: FormData): Promise<FormState> {
-  if (!rateLimit(await clientKey("signin"), 20, 15 * 60 * 1000)) {
+  if (!(await rateLimit(`signin:${await clientIp()}`, 20, 15 * MINUTE))) {
     return { error: "Too many attempts. Wait a few minutes and try again." };
   }
   const parsed = signInSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return fromZodError(parsed.error);
+  // Per-account limit too, so password guessing spread across many IPs still stalls.
+  if (!(await rateLimit(`signin-account:${parsed.data.email}`, 10, 15 * MINUTE))) {
+    return { error: "Too many attempts for this account. Wait 15 minutes, or reset your password." };
+  }
+  if (!(await verifyHuman(formData))) return { error: BOT_CHECK_ERROR };
 
   try {
     await auth.api.signInEmail({ body: parsed.data, headers: await headers() });
@@ -101,7 +104,7 @@ export async function resendVerification(): Promise<FormState> {
   const user = await getCurrentUser();
   if (!user) return { error: "Sign in first." };
   if (user.emailVerified) return { ok: true };
-  if (!rateLimit(`verify-resend:${user.id}`, 3, 60 * 60 * 1000)) {
+  if (!(await rateLimit(`verify-resend:${user.id}`, 3, HOUR))) {
     return { error: "We've sent a few already — check your spam folder, or try again in an hour." };
   }
   try {
@@ -123,9 +126,13 @@ export async function resendVerification(): Promise<FormState> {
 export async function requestPasswordReset(_prev: FormState, formData: FormData): Promise<FormState> {
   const parsed = z.string().trim().toLowerCase().email().safeParse(formData.get("email"));
   if (!parsed.success) return { fieldErrors: { email: ["Enter a valid email."] } };
-  if (!rateLimit(await clientKey("reset"), 5, 60 * 60 * 1000) || !rateLimit(`reset:${parsed.data}`, 3, 60 * 60 * 1000)) {
+  if (
+    !(await rateLimit(`reset:${await clientIp()}`, 5, HOUR)) ||
+    !(await rateLimit(`reset-account:${parsed.data}`, 3, HOUR))
+  ) {
     return { error: "Too many reset requests. Try again later." };
   }
+  if (!(await verifyHuman(formData))) return { error: BOT_CHECK_ERROR };
   try {
     await auth.api.requestPasswordReset({
       body: { email: parsed.data, redirectTo: "/reset-password" },

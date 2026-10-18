@@ -3,6 +3,7 @@ import { createPrivateKey, sign } from "node:crypto";
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { nextCookies } from "better-auth/next-js";
+import { captcha } from "better-auth/plugins";
 import { db } from "./db";
 import { sendEmail } from "./mail";
 
@@ -145,6 +146,19 @@ export const auth = betterAuth({
     },
   },
 
-  // Must be last: lets Server Actions set auth cookies.
-  plugins: [nextCookies()],
+  plugins: [
+    // Bots calling the public auth endpoints directly must pass Turnstile too.
+    // (Our Server Actions check it themselves; see src/lib/spam.ts.)
+    ...(process.env.TURNSTILE_SECRET_KEY
+      ? [
+          captcha({
+            provider: "cloudflare-turnstile",
+            secretKey: process.env.TURNSTILE_SECRET_KEY,
+            endpoints: ["/sign-up/email", "/sign-in/email", "/request-password-reset", "/send-verification-email"],
+          }),
+        ]
+      : []),
+    // Must be last: lets Server Actions set auth cookies.
+    nextCookies(),
+  ],
 });

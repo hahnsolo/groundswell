@@ -4,18 +4,35 @@ import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { getCurrentUser, requireUser, UNVERIFIED_ERROR } from "@/lib/auth";
+import { getCurrentUser, requireUser, UNVERIFIED_ERROR, type CurrentUser } from "@/lib/auth";
 import { CATEGORY_IDS } from "@/lib/categories";
 import { parsePostal } from "@/lib/countries";
 import { resolvePlace } from "@/lib/places";
-import { rateLimit } from "@/lib/rate-limit";
+import { honeypotTripped, linkError, withinPostingLimit } from "@/lib/spam";
+import { HOUR, rateLimit } from "@/lib/rate-limit";
 import { fromZodError, type FormState } from "@/lib/forms";
 
 const id = z.string().min(1).max(40);
 
-// Per-user write throttle, so one account can't flood an area.
-function throttle(userId: string, kind: string, limit = 30) {
-  return rateLimit(`${kind}:${userId}`, limit, 60 * 60 * 1000);
+const LIMIT_MESSAGES = {
+  issue: "You've posted a lot of issues this hour. Try again later.",
+  comment: "Slow down a little — try again shortly.",
+  meetup: "You've created several meetups this hour. Try again later.",
+  campaign: "You've started several campaigns this hour. Try again later.",
+} as const;
+
+/** Spam checks shared by everything people post. Returns an error state, or null if it's fine. */
+async function spamCheck(
+  user: CurrentUser,
+  formData: FormData,
+  kind: keyof typeof LIMIT_MESSAGES,
+  ...texts: (string | undefined)[]
+): Promise<FormState> {
+  if (honeypotTripped(formData)) return { error: "Something went wrong. Please try again." };
+  const links = linkError(user, ...texts);
+  if (links) return { error: links };
+  if (!(await withinPostingLimit(user, kind))) return { error: LIMIT_MESSAGES[kind] };
+  return null;
 }
 
 // ---------- Issues ----------
@@ -33,7 +50,8 @@ export async function createIssue(_prev: FormState, formData: FormData): Promise
   if (!user.emailVerified) return { error: UNVERIFIED_ERROR };
   const parsed = issueSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return fromZodError(parsed.error);
-  if (!throttle(user.id, "issue", 10)) return { error: "You've posted a lot of issues this hour. Try again later." };
+  const spam = await spamCheck(user, formData, "issue", parsed.data.title, parsed.data.description);
+  if (spam) return spam;
 
   const postal = parsePostal(parsed.data.country, parsed.data.postal);
   if (!postal.ok) return { fieldErrors: { postal: [postal.error] } };
@@ -100,7 +118,14 @@ export async function addComment(_prev: FormState, formData: FormData): Promise<
   if (!user.emailVerified) return { error: UNVERIFIED_ERROR };
   const parsed = commentSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return fromZodError(parsed.error);
-  if (!throttle(user.id, "comment", 60)) return { error: "Slow down a little — try again shortly." };
+  const spam = await spamCheck(user, formData, "comment", parsed.data.body);
+  if (spam) return spam;
+  // Same text posted again within 10 minutes is almost always a double-click or a bot.
+  const duplicate = await db.comment.findFirst({
+    where: { authorId: user.id, body: parsed.data.body, createdAt: { gt: new Date(Date.now() - 10 * 60 * 1000) } },
+    select: { id: true },
+  });
+  if (duplicate) return { error: "You just posted that." };
   await db.comment.create({ data: { ...parsed.data, authorId: user.id } });
   refresh();
   return { ok: true };
@@ -126,8 +151,10 @@ export async function createMeetup(_prev: FormState, formData: FormData): Promis
   if (parsed.data.startsAt.getTime() < Date.now()) {
     return { fieldErrors: { startsAt: ["Pick a time in the future."] } };
   }
-  if (!throttle(user.id, "meetup", 10)) return { error: "You've created several meetups this hour. Try again later." };
   const { isOnline, ...data } = parsed.data;
+  // The venue of an online meetup *is* a link, so it doesn't count against the limit.
+  const spam = await spamCheck(user, formData, "meetup", data.title, data.description, isOnline ? undefined : data.location);
+  if (spam) return spam;
   const meetup = await db.meetup.create({
     data: {
       ...data,
@@ -170,7 +197,8 @@ export async function createCampaign(_prev: FormState, formData: FormData): Prom
   if (!user.emailVerified) return { error: UNVERIFIED_ERROR };
   const parsed = campaignSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return fromZodError(parsed.error);
-  if (!throttle(user.id, "campaign", 5)) return { error: "Try again later." };
+  const spam = await spamCheck(user, formData, "campaign", parsed.data.target, parsed.data.ask);
+  if (spam) return spam;
   await db.campaign.create({
     data: { ...parsed.data, creatorId: user.id, signatures: { create: { userId: user.id } } },
   });
@@ -189,6 +217,10 @@ export async function signCampaign(_prev: FormState, formData: FormData): Promis
   const campaign = await db.campaign.findUnique({ where: { id: parsed.data.campaignId }, select: { issueId: true } });
   if (!campaign) return { error: "That campaign no longer exists." };
   const user = await requireUser(`/issues/${campaign.issueId}`);
+  // Signature counts go to decision-makers, so each one must be a confirmed person.
+  if (!user.emailVerified) return { error: UNVERIFIED_ERROR };
+  const links = linkError(user, parsed.data.note);
+  if (links) return { error: links };
   await db.signature.upsert({
     where: { campaignId_userId: { campaignId: parsed.data.campaignId, userId: user.id } },
     create: { campaignId: parsed.data.campaignId, userId: user.id, note: parsed.data.note || null },
@@ -204,7 +236,8 @@ const REPORTS_TO_HIDE = 3;
 
 export async function reportContent(formData: FormData) {
   const user = await getCurrentUser();
-  if (!user) return;
+  if (!user?.emailVerified) return;
+  if (!(await rateLimit(`report:${user.id}`, 20, HOUR))) return;
   const parsed = z
     .object({ targetType: z.enum(["issue", "comment"]), targetId: id, reason: z.string().trim().max(300).default("") })
     .safeParse(Object.fromEntries(formData));
@@ -217,8 +250,17 @@ export async function reportContent(formData: FormData) {
     update: {},
   });
 
-  // Auto-hide after several independent reports, pending human review.
-  const count = await db.report.count({ where: { targetType, targetId, resolved: false } });
+  // Auto-hide after several independent reports, pending human review. Only
+  // established accounts (older than a day) count, so a handful of throwaway
+  // accounts can't silence someone.
+  const count = await db.report.count({
+    where: {
+      targetType,
+      targetId,
+      resolved: false,
+      reporter: { createdAt: { lt: new Date(Date.now() - 24 * HOUR) } },
+    },
+  });
   if (count >= REPORTS_TO_HIDE) {
     if (targetType === "issue") await db.issue.update({ where: { id: targetId }, data: { hidden: true } });
     else await db.comment.update({ where: { id: targetId }, data: { hidden: true } });

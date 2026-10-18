@@ -118,7 +118,7 @@ async function IssueContent({ params }: Pick<PageProps<"/issues/[id]">, "params"
                   ))}
                 </form>
               ) : (
-                user && (
+                user?.emailVerified && (
                   <form action={reportContent}>
                     <input type="hidden" name="targetType" value="issue" />
                     <input type="hidden" name="targetId" value={issue.id} />
@@ -142,7 +142,7 @@ async function IssueContent({ params }: Pick<PageProps<"/issues/[id]">, "params"
                     <span className="text-muted">
                       <RelativeTime iso={c.createdAt.toISOString()} />
                     </span>
-                    {user && user.id !== c.author.id && (
+                    {user?.emailVerified && user.id !== c.author.id && (
                       <form action={reportContent} className="ml-auto opacity-0 transition group-hover:opacity-100 focus-within:opacity-100">
                         <input type="hidden" name="targetType" value="comment" />
                         <input type="hidden" name="targetId" value={c.id} />

@@ -12,6 +12,7 @@ export type CurrentUser = {
   homePostal: string | null;
   emailVerified: boolean;
   isAdmin: boolean;
+  createdAt: Date;
 };
 
 /** The signed-in user, or null. Deduplicated per request. */
@@ -27,6 +28,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
     homePostal: u.homePostal ?? null,
     emailVerified: u.emailVerified,
     isAdmin: !!u.isAdmin,
+    createdAt: new Date(u.createdAt),
   };
 });
 

@@ -1,5 +1,5 @@
 import type { NextRequest } from "next/server";
-import { rateLimit } from "@/lib/rate-limit";
+import { HOUR, rateLimit } from "@/lib/rate-limit";
 
 // Canadian representatives by full postal code, via Open North's Represent API.
 // The postal code is passed through and never stored.
@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
     return Response.json({ error: "Enter a full 6-character postal code, like M5V 2T6." }, { status: 400 });
   }
   const ip = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "local";
-  if (!rateLimit(`reps:${ip}`, 30, 60 * 60 * 1000)) {
+  if (!(await rateLimit(`reps:${ip}`, 30, HOUR))) {
     return Response.json({ error: "Too many lookups. Try again later." }, { status: 429 });
   }
 
