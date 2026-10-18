@@ -22,6 +22,7 @@ Enter a postal code, see the issues your neighbours care about, meet up, and pus
   - Only reports from accounts older than a day count toward auto-hiding, so throwaway accounts can't silence people.
 - **Password reset.** 1-hour emailed links; resetting signs out every device.
 - **Moderation queue.** Admins review reported content at `/admin/reports` and keep or remove it; every decision is recorded on the report (who, when, what). Non-admins get a 404.
+- **Undoable removals.** Removing hides content from everyone but its author (who sees the moderator's optional reason). Admins can restore it for 7 days; then a daily Vercel cron job (`/api/cron/purge-removed`, protected by `CRON_SECRET`) deletes it for good.
 
 ## Stack
 
@@ -45,7 +46,7 @@ In development, verification and reset emails aren't sent — they're printed in
 
 To make someone an admin: `npm run db:studio`, open the `User` table, and tick `isAdmin`.
 
-Useful scripts: `npm run typecheck`, `npm run lint`, `npm run db:studio` (browse the database).
+Useful scripts: `npm test` (Vitest unit tests in `tests/`), `npm run typecheck`, `npm run lint`, `npm run db:studio` (browse the database).
 
 ## Project layout
 
@@ -71,6 +72,7 @@ src/app/api/representatives Canadian representative lookup
 | `DATABASE_URL`, `DIRECT_URL` | Always | Neon → Connect (pooled + direct strings) | Free tier |
 | `APP_URL` | Always | Your site's public address | — |
 | `BETTER_AUTH_SECRET` | Always | Generate it yourself (command in `.env.example`) | Free |
+| `CRON_SECRET` | Production (daily purge of removed content) | Generate it yourself, like `BETTER_AUTH_SECRET` | Free |
 | `RESEND_API_KEY`, `MAIL_FROM` | Production (emails) | [resend.com](https://resend.com) → API Keys; verify your domain | Free tier |
 | `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY` | Production (bot protection) | Cloudflare dashboard → Turnstile → Add widget | Free |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Optional | Google Cloud Console (below) | Free |
@@ -115,7 +117,7 @@ Every push to `main` on GitHub redeploys automatically; the build runs `prisma m
 
 **2. Hosting — [Vercel](https://vercel.com)** (free Hobby plan)
 - **Add New → Project → Import** `hahnsolo/groundswell` from GitHub.
-- Under **Environment Variables** add: `DATABASE_URL` + `DIRECT_URL` (Neon **main** branch), `APP_URL` = `https://groundswell.hahnsolo.ca`, a **new** `BETTER_AUTH_SECRET`, and the email/Turnstile keys below. Do **not** add `ALLOW_DB_SEED`.
+- Under **Environment Variables** add: `DATABASE_URL` + `DIRECT_URL` (Neon **main** branch), `APP_URL` = `https://groundswell.hahnsolo.ca`, a **new** `BETTER_AUTH_SECRET`, a `CRON_SECRET`, and the email/Turnstile keys below. Do **not** add `ALLOW_DB_SEED`.
 - **Deploy.** It's live at `groundswell-….vercel.app` in a couple of minutes.
 
 **3. Your domain — GoDaddy DNS** (doesn't touch hahnsolo.ca or your Outlook email)

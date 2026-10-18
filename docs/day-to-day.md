@@ -29,6 +29,7 @@ Other handy commands:
 
 | Command | What it does |
 |---|---|
+| `npm test` | Runs the automated tests (spam rules, postal codes, moderation timing) in a few seconds |
 | `npm run typecheck` | Checks the code for type mistakes without running it |
 | `npm run lint` | Checks for common code problems |
 | `npm run db:studio` | Opens a spreadsheet-like view of the **dev** database in your browser |
@@ -37,7 +38,7 @@ Other handy commands:
 
 1. Edit the code (or ask Claude to).
 2. Check it on http://localhost:3000.
-3. Run `npm run typecheck` and `npm run lint`. If either complains, fix it first; Vercel would fail the build anyway.
+3. Run `npm test`, `npm run typecheck` and `npm run lint`. If any of them complains, fix it first. Vercel would fail the build anyway on type or lint errors, and a failing test means a rule stopped working the way it should.
 4. **Commit** the change (save a snapshot with a short description). Use GitHub Desktop: tick the files, write a summary, click **Commit to main**. (Git isn't on the command line on this PC. Claude uses GitHub Desktop's built-in copy.)
 5. **Push** (GitHub Desktop → **Push origin**). That's the moment it goes live, see below.
 
@@ -125,7 +126,15 @@ Any member with a confirmed email can **report** an issue or a comment. Reports 
 - An item marked **Hidden** got 3 or more reports from accounts older than a day, so it was hidden automatically until you decide.
 - For each item, choose:
   - **Keep & dismiss reports** (or **Restore** if hidden): the content stays or comes back, and the reports are closed.
-  - **Remove issue / Remove comment:** the content is **permanently deleted**. Removing an issue also deletes its comments, meetups and campaigns. There's no undo.
-- Every decision is recorded on the reports: who decided, when, and what.
+  - **Remove issue / Remove comment:** the content disappears for everyone except its author. You can type an optional reason first; the author sees it. Removing an issue also hides everything under it (comments, meetups, campaigns).
+- **Removed isn't gone yet.** For **7 days**, removed content is listed under **Recently removed** at the bottom of the page, with a **Restore** button in case it was a mistake. During that week the author sees a "A moderator removed this…" notice with your reason and the date it will be deleted.
+- **After 7 days it's deleted for good** by a daily clean-up job (see below). Deleting an issue also deletes its comments, meetups and campaigns. That part can't be undone.
+- Every decision is recorded on the reports: who decided, when, and what (kept, removed or restored).
+
+### The daily clean-up job
+
+Once a day (around 9:00 UTC), Vercel calls `/api/cron/purge-removed`, which permanently deletes anything removed more than 7 days ago. You can see each run in Vercel → project → **Settings → Cron Jobs** (and its log line, "Purged N removed issue(s)…", in **Logs**). It only runs on the live site, and only if `CRON_SECRET` is set in Vercel (see [Keys and secrets](keys-and-secrets.md)). Without it, the job refuses to run and logs a warning, and removed content piles up instead of being deleted.
+
+The 7 days is one number, `REMOVAL_RETENTION_DAYS` in `src/lib/moderation.ts`.
 
 Tips: read the whole thread before removing something. Disagreement isn't abuse. Keep a removal for spam, harassment, personal information about someone, or illegal content. The site needs published rules so people know where the line is (see [Security and spam](security-and-spam.md#still-to-do)).

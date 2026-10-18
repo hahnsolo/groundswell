@@ -3,9 +3,10 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { requireAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { moderate } from "@/app/actions/admin";
+import { moderate, restore } from "@/app/actions/admin";
 import { RelativeTime } from "@/components/local-time";
-import { buttonStyles } from "@/components/styles";
+import { buttonStyles, inputStyles } from "@/components/styles";
+import { MAX_REMOVAL_REASON, permanentDeletionDate, purgeCutoff, REMOVAL_RETENTION_DAYS } from "@/lib/moderation";
 
 // No title: the static shell shouldn't hint at what this page is.
 export const metadata: Metadata = { robots: { index: false } };
@@ -63,7 +64,64 @@ async function Queue() {
       ) : (
         <QueueList list={list} issueById={issueById} commentById={commentById} />
       )}
+      <RecentlyRemoved />
     </>
+  );
+}
+
+async function RecentlyRemoved() {
+  const where = { removedAt: { gt: purgeCutoff() } };
+  const author = { select: { name: true, email: true } };
+  const [issues, comments] = await Promise.all([
+    db.issue.findMany({ where, include: { author }, orderBy: { removedAt: "desc" }, take: 100 }),
+    db.comment.findMany({
+      where,
+      include: { author, issue: { select: { id: true, title: true } } },
+      orderBy: { removedAt: "desc" },
+      take: 100,
+    }),
+  ]);
+  const items = [
+    ...issues.map((i) => ({ ...i, type: "issue" as const, text: i.title, on: null })),
+    ...comments.map((c) => ({ ...c, type: "comment" as const, text: c.body, on: c.issue })),
+  ].sort((a, b) => b.removedAt!.getTime() - a.removedAt!.getTime());
+
+  return (
+    <section className="mt-12">
+      <h2 className="text-lg font-semibold tracking-tight">Recently removed</h2>
+      <p className="mb-4 mt-1 text-sm text-muted">
+        Removed content is only visible to its author, and is deleted for good {REMOVAL_RETENTION_DAYS} days after removal. Until
+        then you can restore it.
+      </p>
+      {items.length === 0 ? (
+        <p className="rounded-xl border border-dashed border-border bg-surface p-6 text-center text-sm text-muted">Nothing removed recently.</p>
+      ) : (
+        <ul className="space-y-3">
+          {items.map((item) => (
+            <li key={`${item.type}:${item.id}`} className="rounded-xl border border-border bg-surface p-4">
+              <div className="flex flex-wrap items-center gap-2 text-xs text-muted">
+                <span className="rounded bg-border px-1.5 py-0.5 uppercase text-foreground">{item.type}</span>
+                <span>
+                  removed <RelativeTime iso={item.removedAt!.toISOString()} />
+                </span>
+                <span>· deleted for good <RelativeTime iso={permanentDeletionDate(item.removedAt!).toISOString()} /></span>
+              </div>
+              {item.on && <p className="mt-2 text-xs text-muted">on {item.on.title}</p>}
+              <p className="mt-1 line-clamp-3 whitespace-pre-line text-sm">{item.text}</p>
+              <p className="mt-1 text-xs text-muted">
+                by {item.author.name} ({item.author.email})
+                {item.removalReason && <> · reason: “{item.removalReason}”</>}
+              </p>
+              <form action={restore} className="mt-3">
+                <input type="hidden" name="targetType" value={item.type} />
+                <input type="hidden" name="targetId" value={item.id} />
+                <button className={buttonStyles.secondary}>Restore {item.type}</button>
+              </form>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }
 
@@ -142,17 +200,28 @@ function QueueList({
               </ul>
             )}
 
-            <form action={moderate} className="mt-4 flex flex-wrap gap-2">
+            <form action={moderate} className="mt-4 space-y-2">
               <input type="hidden" name="targetType" value={t.type} />
               <input type="hidden" name="targetId" value={t.id} />
-              <button name="decision" value="kept" className={buttonStyles.secondary}>
-                {content?.hidden ? "Restore" : "Keep"} &amp; dismiss reports
-              </button>
               {content && (
-                <button name="decision" value="removed" className={`${buttonStyles.secondary} text-red-700 dark:text-red-400`}>
-                  Remove {t.type}
-                </button>
+                <input
+                  name="reason"
+                  maxLength={MAX_REMOVAL_REASON}
+                  placeholder="Reason for removing (optional, shown to the author)"
+                  aria-label="Reason for removing"
+                  className={inputStyles}
+                />
               )}
+              <div className="flex flex-wrap gap-2">
+                <button name="decision" value="kept" className={buttonStyles.secondary}>
+                  {content?.hidden ? "Restore" : "Keep"} &amp; dismiss reports
+                </button>
+                {content && (
+                  <button name="decision" value="removed" className={`${buttonStyles.secondary} text-red-700 dark:text-red-400`}>
+                    Remove {t.type}
+                  </button>
+                )}
+              </div>
             </form>
           </li>
         );

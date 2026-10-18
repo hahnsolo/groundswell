@@ -5,6 +5,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { getCategory, getStatus, STATUSES } from "@/lib/categories";
 import { areaHref } from "@/lib/countries";
 import { getIssueDetail } from "@/lib/queries";
+import { permanentDeletionDate } from "@/lib/moderation";
 import { reportContent, setIssueStatus, toggleRsvp, toggleSupport } from "@/app/actions/community";
 import { LocalTime, RelativeTime } from "@/components/local-time";
 import {
@@ -48,11 +49,39 @@ function SignInPrompt({ issueId, text }: { issueId: string; text: string }) {
   );
 }
 
+function RemovedNotice({ what, removedAt, reason }: { what: "issue" | "comment"; removedAt: Date; reason: string | null }) {
+  return (
+    <div role="status" className="rounded-lg bg-red-50 p-3 text-sm text-red-900 dark:bg-red-950/40 dark:text-red-200">
+      <p>
+        <strong>A moderator removed this {what}</strong> <RelativeTime iso={removedAt.toISOString()} />.
+        {reason && <> Reason: “{reason}”.</>}
+      </p>
+      <p className="mt-1">
+        Only you can see it, and it will be deleted for good on{" "}
+        <LocalTime iso={permanentDeletionDate(removedAt).toISOString()} options={{ month: "long", day: "numeric" }} />.
+      </p>
+    </div>
+  );
+}
+
 async function IssueContent({ params }: Pick<PageProps<"/issues/[id]">, "params">) {
   const { id } = await params;
   const user = await getCurrentUser();
   const issue = await getIssueDetail(id, user?.id ?? null);
   if (!issue || (issue.hidden && issue.authorId !== user?.id)) notFound();
+  if (issue.removedAt) {
+    // Only the author gets here. Show what was removed and why, nothing more.
+    return (
+      <article>
+        <RemovedNotice what="issue" removedAt={issue.removedAt} reason={issue.removalReason} />
+        <h1 className="mt-6 text-3xl font-semibold tracking-tight">{issue.title}</h1>
+        <p className="mt-4 whitespace-pre-line leading-relaxed text-muted">{issue.description}</p>
+        <Link href="/me" className="mt-6 inline-block text-sm text-brand-strong underline dark:text-brand">
+          ← Your activity
+        </Link>
+      </article>
+    );
+  }
 
   const cat = getCategory(issue.category);
   const status = getStatus(issue.status);
@@ -150,7 +179,18 @@ async function IssueContent({ params }: Pick<PageProps<"/issues/[id]">, "params"
                       </form>
                     )}
                   </div>
-                  <p className="mt-1.5 whitespace-pre-line pl-9 text-sm leading-relaxed">{c.body}</p>
+                  <p className={`mt-1.5 whitespace-pre-line pl-9 text-sm leading-relaxed ${c.hidden ? "text-muted" : ""}`}>{c.body}</p>
+                  {c.removedAt ? (
+                    <div className="mt-2 pl-9">
+                      <RemovedNotice what="comment" removedAt={c.removedAt} reason={c.removalReason} />
+                    </div>
+                  ) : (
+                    c.hidden && (
+                      <p className="mt-2 pl-9 text-xs text-amber-800 dark:text-amber-300">
+                        Hidden after community reports. Only you can see it while it&apos;s reviewed.
+                      </p>
+                    )
+                  )}
                 </li>
               ))}
               {issue.comments.length === 0 && <li className="text-sm text-muted">No comments yet. Start the conversation.</li>}

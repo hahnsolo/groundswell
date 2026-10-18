@@ -39,7 +39,7 @@ async function Me({ searchParams }: Pick<PageProps<"/me">, "searchParams">) {
       take: 20,
     }),
     db.rsvp.findMany({
-      where: { userId: user.id, meetup: { startsAt: { gte: new Date() } } },
+      where: { userId: user.id, meetup: { startsAt: { gte: new Date() }, issue: { hidden: false } } },
       include: { meetup: { include: { issue: { select: { title: true } } } } },
       orderBy: { meetup: { startsAt: "asc" } },
     }),
@@ -103,6 +103,13 @@ async function Me({ searchParams }: Pick<PageProps<"/me">, "searchParams">) {
         {issues.map((i) => (
           <Link key={i.id} href={`/issues/${i.id}`} className={linkRow}>
             {i.title} <span className="text-sm text-muted">· {i.placeName}</span>
+            {i.removedAt ? (
+              <span className="ml-2 rounded-full bg-red-100 px-2 py-0.5 text-xs text-red-900 dark:bg-red-900/40 dark:text-red-200">Removed</span>
+            ) : (
+              i.hidden && (
+                <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-900 dark:bg-amber-900/40 dark:text-amber-200">Under review</span>
+              )
+            )}
           </Link>
         ))}
       </section>

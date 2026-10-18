@@ -47,7 +47,8 @@ export async function getIssueDetail(id: string, viewerId: string | null) {
       author: { select: { id: true, name: true } },
       _count: { select: { supports: true } },
       comments: {
-        where: { hidden: false },
+        // Authors still see their own hidden or removed comments, with a note.
+        where: viewerId ? { OR: [{ hidden: false }, { authorId: viewerId }] } : { hidden: false },
         orderBy: { createdAt: "asc" },
         include: { author: { select: { id: true, name: true } } },
       },

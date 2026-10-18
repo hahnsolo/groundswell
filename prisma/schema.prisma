@@ -137,6 +137,11 @@ model Issue {
   lng         Float
   authorId    String
   hidden      Boolean  @default(false)
+  // Set when a moderator removes it (hidden is set too). Only the author can
+  // still see it, and it's deleted for good after a week (src/lib/moderation.ts).
+  removedAt     DateTime?
+  removedById   String?
+  removalReason String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -148,6 +153,7 @@ model Issue {
 
   @@index([country, lat, lng])
   @@index([authorId])
+  @@index([removedAt])
 }
 
 model IssueSupport {
@@ -167,11 +173,16 @@ model Comment {
   authorId  String
   body      String
   hidden    Boolean  @default(false)
+  // Same as on Issue.
+  removedAt     DateTime?
+  removedById   String?
+  removalReason String?
   createdAt DateTime @default(now())
   issue     Issue    @relation(fields: [issueId], references: [id], onDelete: Cascade)
   author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
 
   @@index([issueId, createdAt])
+  @@index([removedAt])
 }
 
 model Meetup {
@@ -240,7 +251,7 @@ model Report {
   reason       String
   reporterId   String
   resolved     Boolean   @default(false)
-  // kept | removed — what a moderator decided, and who/when, for the audit trail.
+  // kept | removed | restored — what a moderator decided, and who/when, for the audit trail.
   resolution   String?
   resolvedById String?
   resolvedAt   DateTime?

@@ -10,6 +10,7 @@ import { parsePostal } from "@/lib/countries";
 import { resolvePlace } from "@/lib/places";
 import { honeypotTripped, linkError, withinPostingLimit } from "@/lib/spam";
 import { HOUR, rateLimit } from "@/lib/rate-limit";
+import { ESTABLISHED_ACCOUNT_MS, shouldAutoHide } from "@/lib/moderation";
 import { fromZodError, type FormState } from "@/lib/forms";
 
 const id = z.string().min(1).max(40);
@@ -33,6 +34,14 @@ async function spamCheck(
   if (links) return { error: links };
   if (!(await withinPostingLimit(user, kind))) return { error: LIMIT_MESSAGES[kind] };
   return null;
+}
+
+const ISSUE_GONE: FormState = { error: "This issue is no longer available." };
+
+/** Comments, meetups and campaigns can only be added to issues a moderator hasn't removed. */
+async function issueOpen(issueId: string) {
+  const issue = await db.issue.findUnique({ where: { id: issueId }, select: { removedAt: true } });
+  return !!issue && !issue.removedAt;
 }
 
 // ---------- Issues ----------
@@ -118,6 +127,7 @@ export async function addComment(_prev: FormState, formData: FormData): Promise<
   if (!user.emailVerified) return { error: UNVERIFIED_ERROR };
   const parsed = commentSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return fromZodError(parsed.error);
+  if (!(await issueOpen(parsed.data.issueId))) return ISSUE_GONE;
   const spam = await spamCheck(user, formData, "comment", parsed.data.body);
   if (spam) return spam;
   // Same text posted again within 10 minutes is almost always a double-click or a bot.
@@ -148,6 +158,7 @@ export async function createMeetup(_prev: FormState, formData: FormData): Promis
   if (!user.emailVerified) return { error: UNVERIFIED_ERROR };
   const parsed = meetupSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return fromZodError(parsed.error);
+  if (!(await issueOpen(parsed.data.issueId))) return ISSUE_GONE;
   if (parsed.data.startsAt.getTime() < Date.now()) {
     return { fieldErrors: { startsAt: ["Pick a time in the future."] } };
   }
@@ -197,6 +208,7 @@ export async function createCampaign(_prev: FormState, formData: FormData): Prom
   if (!user.emailVerified) return { error: UNVERIFIED_ERROR };
   const parsed = campaignSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return fromZodError(parsed.error);
+  if (!(await issueOpen(parsed.data.issueId))) return ISSUE_GONE;
   const spam = await spamCheck(user, formData, "campaign", parsed.data.target, parsed.data.ask);
   if (spam) return spam;
   await db.campaign.create({
@@ -232,8 +244,6 @@ export async function signCampaign(_prev: FormState, formData: FormData): Promis
 
 // ---------- Moderation ----------
 
-const REPORTS_TO_HIDE = 3;
-
 export async function reportContent(formData: FormData) {
   const user = await getCurrentUser();
   if (!user?.emailVerified) return;
@@ -243,6 +253,13 @@ export async function reportContent(formData: FormData) {
     .safeParse(Object.fromEntries(formData));
   if (!parsed.success) return;
   const { targetType, targetId, reason } = parsed.data;
+
+  // Nothing to report if it doesn't exist or a moderator already removed it.
+  const target =
+    targetType === "issue"
+      ? await db.issue.findUnique({ where: { id: targetId }, select: { removedAt: true } })
+      : await db.comment.findUnique({ where: { id: targetId }, select: { removedAt: true } });
+  if (!target || target.removedAt) return;
 
   await db.report.upsert({
     where: { targetType_targetId_reporterId: { targetType, targetId, reporterId: user.id } },
@@ -258,10 +275,10 @@ export async function reportContent(formData: FormData) {
       targetType,
       targetId,
       resolved: false,
-      reporter: { createdAt: { lt: new Date(Date.now() - 24 * HOUR) } },
+      reporter: { createdAt: { lt: new Date(Date.now() - ESTABLISHED_ACCOUNT_MS) } },
     },
   });
-  if (count >= REPORTS_TO_HIDE) {
+  if (shouldAutoHide(count)) {
     if (targetType === "issue") await db.issue.update({ where: { id: targetId }, data: { hidden: true } });
     else await db.comment.update({ where: { id: targetId }, data: { hidden: true } });
   }

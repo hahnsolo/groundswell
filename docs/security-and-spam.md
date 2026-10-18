@@ -52,6 +52,8 @@ Almost all spam comes from brand-new accounts posting links, so new accounts are
 - Members with a confirmed email can report issues and comments.
 - **3 reports** from accounts **older than a day** hide the content automatically until an admin decides. Only older accounts count, so someone can't make three throwaway accounts to silence a person they disagree with.
 - Admins review everything at `/admin/reports` (see [Day to day](day-to-day.md#using-the-moderation-queue)). Each decision is recorded.
+- **Removing is undoable for a week.** Removed content is hidden from everyone but its author, who sees a notice with the moderator's reason. After 7 days a daily job deletes it for good, so people's words aren't kept longer than needed.
+- Removed content can't be reported again, and nothing new (comments, meetups, campaigns) can be added to a removed issue.
 
 ### Privacy
 - Only the coarse area is stored (Canadian FSA like `M5V`, or a US ZIP), never a street address.
@@ -70,7 +72,8 @@ In rough order of importance:
 
 1. **Turn on 2-step verification (2FA) on every account:** GitHub, Vercel, Neon, Resend, GoDaddy, Cloudflare, and Google/Apple if used. Whoever gets into GitHub or Vercel controls the site; GoDaddy controls your domain *and* your email. Use an authenticator app rather than text messages where offered, and save the backup codes somewhere safe.
 2. **Add the Turnstile keys:** Cloudflare → Turnstile → **Add widget**, hostname `groundswell.hahnsolo.ca`, mode *Managed*. Put `NEXT_PUBLIC_TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY` in Vercel, then redeploy. Afterwards, sign up with a test account to check that the widget appears.
-3. **Make your own account an admin** on the live site (see [Day to day](day-to-day.md#making-someone-an-admin)), so someone is watching the moderation queue.
-4. **Legal pages:** terms of use, a privacy policy (what's stored, why, and how to get it deleted; Canada's PIPEDA applies), and a code of conduct that says what gets removed. Link them from the sign-up page and footer.
-5. **A way to delete your account.** There's no self-service button yet. Until there is, deletion requests are handled by hand in the database.
-6. **Later, if spam gets through anyway:** a "report user" feature, admin tools to suspend an account, and tightening DMARC from `p=none` to `p=quarantine` once you've seen that all legitimate email passes.
+3. **Add `CRON_SECRET` in Vercel** (before or with the next deploy), so the daily job that deletes removed content can run. See [Keys and secrets](keys-and-secrets.md).
+4. **Make your own account an admin** on the live site (see [Day to day](day-to-day.md#making-someone-an-admin)), so someone is watching the moderation queue.
+5. **Legal pages:** terms of use, a privacy policy (what's stored, why, and how to get it deleted; Canada's PIPEDA applies), and a code of conduct that says what gets removed. Link them from the sign-up page and footer.
+6. **A way to delete your account.** There's no self-service button yet. Until there is, deletion requests are handled by hand in the database.
+7. **Later, if spam gets through anyway:** a "report user" feature, admin tools to suspend an account, and tightening DMARC from `p=none` to `p=quarantine` once you've seen that all legitimate email passes.

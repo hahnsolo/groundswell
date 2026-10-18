@@ -29,7 +29,7 @@ Free-plan limits change from time to time. The numbers below are approximate as 
 ## Vercel: the web server
 
 - **What it does:** builds the site every time code is pushed to `main`, runs it, and gives it HTTPS (the padlock) automatically. Project: `hahnsolo/groundswell`. Server region: Cleveland (`cle1`), next to the database.
-- **Plan:** Hobby (free). It includes plenty of bandwidth and server time for a community site.
+- **Plan:** Hobby (free). It includes plenty of bandwidth and server time for a community site, and scheduled jobs that run once a day (we use one to delete removed content after a week).
 - **Would cost money:** Vercel's Hobby plan is for **non-commercial use only**. If Groundswell ever takes donations, runs ads or sells anything, you'd need Pro (about $20 USD/month per team member). Very heavy traffic would also push you toward Pro. On Hobby, Vercel pauses the site when you hit a limit; it doesn't send a surprise bill.
 
 ## Neon: the database

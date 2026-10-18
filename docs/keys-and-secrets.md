@@ -22,6 +22,7 @@ After changing a variable in Vercel, you must **redeploy** for it to take effect
 | `ALLOW_DB_SEED` | Lets `npm run db:seed` wipe and refill the database with demo data | Config | `yes` | **Never set** |
 | `APP_URL` | The site's public address, used in emailed links, share links and sign-in callbacks | Config | `http://localhost:3000` | `https://groundswell.hahnsolo.ca` |
 | `BETTER_AUTH_SECRET` | Signs login sessions so they can't be forged | **Secret** | Its own random value | A **different** random value |
+| `CRON_SECRET` | Lets only Vercel run the daily job that permanently deletes removed content | **Secret** | Optional (only for testing the job) | **Set** (needed for the job to run) |
 | `RESEND_API_KEY` | Lets the app send email through Resend | **Secret** | Leave unset (emails print in the terminal instead) | Set |
 | `MAIL_FROM` | Who emails come from: `Groundswell <no-reply@groundswell.hahnsolo.ca>` | Config | Not needed | Set |
 | `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | Turnstile's public key, shown to browsers | Config (public) | Optional; Cloudflare's test key | *To do* |
@@ -40,6 +41,7 @@ Why some settings have safety nets built into the code:
 - **`ALLOW_DB_SEED`:** the seed script deletes everything and creates a demo admin with a public password. It refuses to run unless this says `yes`, and it also refuses if it detects it's running on Vercel or in production. That's two locks, so it can't hit the live database by accident.
 - **`RESEND_API_KEY`:** on the live site, missing it is an error (people would never get their emails). On your PC, emails are printed in the terminal instead.
 - **`MAIL_FROM`:** checked for the right shape before sending, because a typo here once caused confusing failures (see [Troubleshooting](troubleshooting.md#emails-fail-to-send)).
+- **`CRON_SECRET`:** without it, the clean-up job refuses to run (rather than running unprotected, where anyone could trigger it), and logs "CRON_SECRET is not set".
 - **Turnstile, Google, Apple:** each feature switches itself on only when its keys are present, so nothing breaks before you've set them up.
 
 ## How to rotate (replace) each one
@@ -59,6 +61,11 @@ General pattern: **make the new one → put it in Vercel → redeploy → check 
    `node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"`
 2. Paste it into Vercel (or `.env`) and redeploy.
 3. Side effect: **everyone is signed out** and has to sign in again. Their accounts and passwords are unaffected.
+
+### `CRON_SECRET`
+1. Generate a new value with the same command as `BETTER_AUTH_SECRET` above.
+2. Paste it into Vercel and redeploy. Vercel automatically sends it when it runs the daily job, so there's nothing else to update.
+3. No side effects for visitors.
 
 ### `RESEND_API_KEY`
 1. Resend → **API Keys → Create API Key**. "Sending access" for just the `groundswell.hahnsolo.ca` domain is enough.
