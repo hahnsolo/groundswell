@@ -6,7 +6,9 @@ import { z } from "zod";
 import { APIError } from "better-auth/api";
 import { db } from "@/lib/db";
 import { auth } from "@/lib/better-auth";
-import { getCurrentUser, safeNext } from "@/lib/auth";
+import { verifyPassword } from "better-auth/crypto";
+import { getCurrentUser, requireUser, safeNext } from "@/lib/auth";
+import { deactivateAccount } from "@/lib/leaving";
 import { clientIp, HOUR, MINUTE, rateLimit } from "@/lib/rate-limit";
 import { BOT_CHECK_ERROR, honeypotTripped, verifyHuman } from "@/lib/spam";
 import { fromZodError, type FormState } from "@/lib/forms";
@@ -76,6 +78,12 @@ export async function signIn(_prev: FormState, formData: FormData): Promise<Form
     return { error: "Too many attempts for this account. Wait 15 minutes, or reset your password." };
   }
   if (!(await verifyHuman(formData))) return { error: BOT_CHECK_ERROR };
+  // Signing in during the grace period restores a deleted account (see the
+  // session hook in better-auth.ts); remember so we can say so.
+  const returning = await db.user.findFirst({
+    where: { email: parsed.data.email, deactivatedAt: { not: null }, anonymizedAt: null },
+    select: { id: true },
+  });
 
   try {
     await auth.api.signInEmail({ body: parsed.data, headers: await headers() });
@@ -88,12 +96,41 @@ export async function signIn(_prev: FormState, formData: FormData): Promise<Form
     console.error("Sign-in failed", e);
     return { error: "We couldn't sign you in. Please try again." };
   }
-  redirect(safeNext(formData.get("next")));
+  redirect(returning ? "/me?restored=1" : safeNext(formData.get("next")));
 }
 
 export async function signOut() {
   await auth.api.signOut({ headers: await headers() });
   redirect("/");
+}
+
+// ---------- Delete my account ----------
+// Deactivates now; signing back in within the grace period restores it, and
+// after that the daily job anonymizes it (src/lib/leaving.ts).
+
+export async function deleteAccount(_prev: FormState, formData: FormData): Promise<FormState> {
+  const user = await requireUser("/me");
+  if (!(await rateLimit(`delete-account:${user.id}`, 5, HOUR))) {
+    return { error: "Too many attempts. Try again in an hour." };
+  }
+  // Prove it's really them: their password, or for Google/Apple-only accounts, typing DELETE.
+  const credential = await db.account.findFirst({
+    where: { userId: user.id, providerId: "credential" },
+    select: { password: true },
+  });
+  if (credential?.password) {
+    const password = formData.get("password");
+    if (typeof password !== "string" || !(await verifyPassword({ hash: credential.password, password }))) {
+      return { fieldErrors: { password: ["That password isn't right."] } };
+    }
+  } else if (String(formData.get("confirm") ?? "").trim().toUpperCase() !== "DELETE") {
+    return { fieldErrors: { confirm: ["Type DELETE to confirm."] } };
+  }
+
+  // Sign this browser out first (clears the cookie), then everything else.
+  await auth.api.signOut({ headers: await headers() }).catch(() => {});
+  await deactivateAccount(user.id);
+  redirect("/goodbye");
 }
 
 // ---------- Email verification ----------

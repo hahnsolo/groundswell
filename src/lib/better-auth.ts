@@ -129,6 +129,18 @@ export const auth = betterAuth({
         },
       },
     },
+    session: {
+      create: {
+        // Signing in (any way) during the grace period after "Delete my account"
+        // restores the account. Anonymized accounts can't sign in at all.
+        after: async (session) => {
+          await db.user.updateMany({
+            where: { id: session.userId, deactivatedAt: { not: null }, anonymizedAt: null },
+            data: { deactivatedAt: null },
+          });
+        },
+      },
+    },
   },
 
   session: { expiresIn: 30 * 24 * 60 * 60 },

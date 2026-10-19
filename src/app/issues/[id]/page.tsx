@@ -6,7 +6,8 @@ import { getCategory, getStatus, STATUSES } from "@/lib/categories";
 import { areaHref } from "@/lib/countries";
 import { getIssueDetail } from "@/lib/queries";
 import { permanentDeletionDate } from "@/lib/moderation";
-import { reportContent, setIssueStatus, toggleRsvp, toggleSupport } from "@/app/actions/community";
+import { leaveIssueAction, reportContent, setIssueStatus, stepDownAsHost, toggleRsvp, toggleSupport } from "@/app/actions/community";
+import { displayName } from "@/lib/accounts";
 import { LocalTime, RelativeTime } from "@/components/local-time";
 import {
   CampaignForm,
@@ -89,6 +90,12 @@ async function IssueContent({ params }: Pick<PageProps<"/issues/[id]">, "params"
   const issueUrl = `${appUrl}/issues/${issue.id}`;
   const place = `${issue.placeName}, ${issue.region}`;
   const isAuthor = user?.id === issue.authorId;
+  // Anything "Leave this issue" would undo.
+  const involved =
+    !!user &&
+    (issue.viewerSupports ||
+      issue.viewerSigned.size > 0 ||
+      issue.meetups.some((m) => m.organizerId === user.id || (Array.isArray(m.rsvps) && m.rsvps.length > 0)));
 
   return (
     <article>
@@ -112,15 +119,23 @@ async function IssueContent({ params }: Pick<PageProps<"/issues/[id]">, "params"
           </div>
           <h1 className="mt-2 text-3xl font-semibold tracking-tight">{issue.title}</h1>
           <p className="mt-2 text-sm text-muted">
-            Raised by {issue.author.name} · {place} · <RelativeTime iso={issue.createdAt.toISOString()} />
+            Raised by {displayName(issue.author)} · {place} · <RelativeTime iso={issue.createdAt.toISOString()} />
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <form action={toggleSupport}>
             <input type="hidden" name="issueId" value={issue.id} />
-            <button className={issue.viewerSupports ? buttonStyles.primary : buttonStyles.secondary} aria-pressed={issue.viewerSupports}>
-              {issue.viewerSupports ? "✓ I care" : "I care about this"} · {issue._count.supports}
-            </button>
+            {issue.viewerSupports ? (
+              // Hovering (or focusing) says what clicking will do: take your support back.
+              <button className={`${buttonStyles.primary} group min-w-40`} aria-pressed title="Click to remove your support">
+                <span className="group-hover:hidden group-focus-visible:hidden">✓ I care · {issue._count.supports}</span>
+                <span className="hidden group-hover:inline group-focus-visible:inline">Remove my support</span>
+              </button>
+            ) : (
+              <button className={buttonStyles.secondary} aria-pressed={false}>
+                I care about this · {issue._count.supports}
+              </button>
+            )}
           </form>
           <ShareButton url={issueUrl} title={issue.title} />
         </div>
@@ -155,6 +170,19 @@ async function IssueContent({ params }: Pick<PageProps<"/issues/[id]">, "params"
                   </form>
                 )
               )}
+              {involved && (
+                <details className="ml-auto text-xs">
+                  <summary className="cursor-pointer text-muted hover:text-foreground">Leave this issue</summary>
+                  <form action={leaveIssueAction} className="mt-2 max-w-xs space-y-2">
+                    <input type="hidden" name="issueId" value={issue.id} />
+                    <p className="text-muted">
+                      Removes your support, your RSVPs to its upcoming meetups and your campaign signatures. Your comments stay. Meetups
+                      you host pass to the next person going.
+                    </p>
+                    <button className={`${buttonStyles.secondary} !px-3 !py-1 text-xs`}>Leave this issue</button>
+                  </form>
+                </details>
+              )}
             </div>
           </Card>
 
@@ -164,9 +192,9 @@ async function IssueContent({ params }: Pick<PageProps<"/issues/[id]">, "params"
                 <li key={c.id} className="group">
                   <div className="flex items-center gap-2 text-sm">
                     <span className="grid h-7 w-7 place-items-center rounded-full bg-brand-soft text-xs font-semibold text-brand-strong dark:text-brand">
-                      {c.author.name[0]?.toUpperCase()}
+                      {c.author.deactivatedAt ? "–" : c.author.name[0]?.toUpperCase()}
                     </span>
-                    <span className="font-medium">{c.author.name}</span>
+                    <span className={`font-medium ${c.author.deactivatedAt ? "text-muted" : ""}`}>{displayName(c.author)}</span>
                     {c.author.id === issue.authorId && <span className="rounded bg-border px-1.5 text-[10px] uppercase">author</span>}
                     <span className="text-muted">
                       <RelativeTime iso={c.createdAt.toISOString()} />
@@ -214,7 +242,8 @@ async function IssueContent({ params }: Pick<PageProps<"/issues/[id]">, "params"
                     </p>
                     <p className="mt-1 font-medium">{m.title}</p>
                     <p className="mt-0.5 text-sm text-muted">
-                      {m.isOnline ? "🖥️ Online" : `📍 ${m.location}`} · hosted by {m.organizer.name}
+                      {m.isOnline ? "🖥️ Online" : `📍 ${m.location}`} · hosted by {displayName(m.organizer)}
+                      {m.hostChangedAt && " (took over)"}
                     </p>
                     {m.description && <p className="mt-2 whitespace-pre-line text-sm">{m.description}</p>}
                     {m.isOnline && going && /^https?:\/\//.test(m.location) && (
@@ -226,7 +255,9 @@ async function IssueContent({ params }: Pick<PageProps<"/issues/[id]">, "params"
                       <span className="text-muted">
                         {m._count.rsvps} going{m.capacity ? ` of ${m.capacity}` : ""}
                       </span>
-                      {user ? (
+                      {user?.id === m.organizerId ? (
+                        <span className={`${buttonStyles.primary} !px-3 !py-1`}>✓ Hosting</span>
+                      ) : user ? (
                         <form action={toggleRsvp}>
                           <input type="hidden" name="meetupId" value={m.id} />
                           <button
@@ -240,6 +271,19 @@ async function IssueContent({ params }: Pick<PageProps<"/issues/[id]">, "params"
                         <SignInPrompt issueId={issue.id} text="RSVP" />
                       )}
                     </div>
+                    {user?.id === m.organizerId && m.upcoming && (
+                      <details className="mt-3 border-t border-border pt-2 text-xs">
+                        <summary className="cursor-pointer text-muted hover:text-foreground">Can&apos;t host it?</summary>
+                        <form action={stepDownAsHost} className="mt-2 space-y-2">
+                          <input type="hidden" name="meetupId" value={m.id} />
+                          <p className="text-muted">
+                            The first person who RSVP&apos;d becomes the host and gets an email. If nobody else is going, the meetup is
+                            cancelled.
+                          </p>
+                          <button className={`${buttonStyles.secondary} !px-3 !py-1 text-xs`}>Step down as host</button>
+                        </form>
+                      </details>
+                    )}
                   </li>
                 );
               })}
@@ -272,15 +316,20 @@ async function IssueContent({ params }: Pick<PageProps<"/issues/[id]">, "params"
                         <div className="h-full rounded-full bg-brand" style={{ width: `${pct}%` }} />
                       </div>
                       <p className="mt-1 text-xs text-muted">
-                        <strong className="text-foreground">{c._count.signatures}</strong> of {c.goal} signatures · started by {c.creator.name}
+                        <strong className="text-foreground">{c._count.signatures}</strong> of {c.goal} signatures · started by {displayName(c.creator)}
                       </p>
                     </div>
-                    {user ? <SignForm campaignId={c.id} signed={issue.viewerSigned.has(c.id)} /> : <SignInPrompt issueId={issue.id} text="sign" />}
+                    {user ? (
+                      // Keyed on signed so the form resets after signing or removing a signature.
+                      <SignForm key={String(issue.viewerSigned.has(c.id))} campaignId={c.id} signed={issue.viewerSigned.has(c.id)} />
+                    ) : (
+                      <SignInPrompt issueId={issue.id} text="sign" />
+                    )}
                     {c.signatures.length > 0 && (
                       <ul className="space-y-1.5 border-l-2 border-brand-soft pl-3">
                         {c.signatures.map((s) => (
                           <li key={s.userId} className="text-xs text-muted">
-                            “{s.note}” — {s.user.name}
+                            “{s.note}” — {displayName(s.user)}
                           </li>
                         ))}
                       </ul>

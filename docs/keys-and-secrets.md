@@ -22,7 +22,7 @@ After changing a variable in Vercel, you must **redeploy** for it to take effect
 | `ALLOW_DB_SEED` | Lets `npm run db:seed` wipe and refill the database with demo data | Config | `yes` | **Never set** |
 | `APP_URL` | The site's public address, used in emailed links, share links and sign-in callbacks | Config | `http://localhost:3000` | `https://groundswell.hahnsolo.ca` |
 | `BETTER_AUTH_SECRET` | Signs login sessions so they can't be forged | **Secret** | Its own random value | A **different** random value |
-| `CRON_SECRET` | Lets only Vercel run the daily job that permanently deletes removed content | **Secret** | Optional (only for testing the job) | **Set** (needed for the job to run) |
+| `CRON_SECRET` | Lets only Vercel run the daily clean-up job (deletes removed content after 7 days, anonymizes deleted accounts after 30) | **Secret** | Optional (only for testing the job) | **Set** (needed for the job to run) |
 | `RESEND_API_KEY` | Lets the app send email through Resend | **Secret** | Leave unset (emails print in the terminal instead) | Set |
 | `MAIL_FROM` | Who emails come from: `Groundswell <no-reply@groundswell.hahnsolo.ca>` | Config | Not needed | Set |
 | `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | Turnstile's public key, shown to browsers | Config (public) | Optional; Cloudflare's test key | *To do* |

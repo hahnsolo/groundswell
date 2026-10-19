@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { moderate, restore } from "@/app/actions/admin";
 import { RelativeTime } from "@/components/local-time";
 import { buttonStyles, inputStyles } from "@/components/styles";
+import { displayName } from "@/lib/accounts";
 import { MAX_REMOVAL_REASON, permanentDeletionDate, purgeCutoff, REMOVAL_RETENTION_DAYS } from "@/lib/moderation";
 
 // No title: the static shell shouldn't hint at what this page is.
@@ -60,7 +61,7 @@ async function Queue() {
         Content reported by the community. Items with 3+ reports are already hidden until you decide.
       </p>
       {list.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-border bg-surface p-10 text-center text-muted">All clear — nothing to review.</p>
+        <p className="rounded-xl border border-dashed border-border bg-surface p-10 text-center text-muted">All clear â€” nothing to review.</p>
       ) : (
         <QueueList list={list} issueById={issueById} commentById={commentById} />
       )}
@@ -71,7 +72,7 @@ async function Queue() {
 
 async function RecentlyRemoved() {
   const where = { removedAt: { gt: purgeCutoff() } };
-  const author = { select: { name: true, email: true } };
+  const author = { select: { name: true, email: true, deactivatedAt: true } };
   const [issues, comments] = await Promise.all([
     db.issue.findMany({ where, include: { author }, orderBy: { removedAt: "desc" }, take: 100 }),
     db.comment.findMany({
@@ -104,13 +105,13 @@ async function RecentlyRemoved() {
                 <span>
                   removed <RelativeTime iso={item.removedAt!.toISOString()} />
                 </span>
-                <span>· deleted for good <RelativeTime iso={permanentDeletionDate(item.removedAt!).toISOString()} /></span>
+                <span>Â· deleted for good <RelativeTime iso={permanentDeletionDate(item.removedAt!).toISOString()} /></span>
               </div>
               {item.on && <p className="mt-2 text-xs text-muted">on {item.on.title}</p>}
               <p className="mt-1 line-clamp-3 whitespace-pre-line text-sm">{item.text}</p>
               <p className="mt-1 text-xs text-muted">
-                by {item.author.name} ({item.author.email})
-                {item.removalReason && <> · reason: “{item.removalReason}”</>}
+                by {displayName(item.author)} ({item.author.email})
+                {item.removalReason && <> Â· reason: â€œ{item.removalReason}â€</>}
               </p>
               <form action={restore} className="mt-3">
                 <input type="hidden" name="targetType" value={item.type} />
@@ -129,13 +130,13 @@ type IssueRow = Awaited<ReturnType<typeof loadIssues>>[number];
 type CommentRow = Awaited<ReturnType<typeof loadComments>>[number];
 
 function loadIssues(ids: string[]) {
-  return db.issue.findMany({ where: { id: { in: ids } }, include: { author: { select: { name: true, email: true } } } });
+  return db.issue.findMany({ where: { id: { in: ids } }, include: { author: { select: { name: true, email: true, deactivatedAt: true } } } });
 }
 
 function loadComments(ids: string[]) {
   return db.comment.findMany({
     where: { id: { in: ids } },
-    include: { author: { select: { name: true, email: true } }, issue: { select: { id: true, title: true } } },
+    include: { author: { select: { name: true, email: true, deactivatedAt: true } }, issue: { select: { id: true, title: true } } },
   });
 }
 
@@ -187,7 +188,7 @@ function QueueList({
                 )}
                 <p className="line-clamp-4 whitespace-pre-line text-sm">{issue?.description ?? comment?.body}</p>
                 <p className="text-xs text-muted">
-                  by {content.author.name} ({content.author.email})
+                  by {displayName(content.author)} ({content.author.email})
                 </p>
               </div>
             )}
@@ -195,7 +196,7 @@ function QueueList({
             {reasons.length > 0 && (
               <ul className="mt-3 space-y-1 border-l-2 border-border pl-3 text-xs text-muted">
                 {reasons.map((r, i) => (
-                  <li key={i}>“{r}”</li>
+                  <li key={i}>â€œ{r}â€</li>
                 ))}
               </ul>
             )}

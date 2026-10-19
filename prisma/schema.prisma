@@ -29,6 +29,11 @@ model User {
   // Home area, so the app can drop people straight into their community.
   homeCountry   String?
   homePostal    String?
+  // "Delete my account": set when they leave. Signing back in within the grace
+  // period clears it; after that the daily job anonymizes the account (personal
+  // details wiped, posts kept as "Former member") and sets anonymizedAt.
+  deactivatedAt DateTime?
+  anonymizedAt  DateTime?
 
   sessions   Session[]
   accounts   Account[]
@@ -196,6 +201,8 @@ model Meetup {
   location    String
   isOnline    Boolean  @default(false)
   capacity    Int?
+  // Set when hosting passed to someone else (the host stepped down or left).
+  hostChangedAt DateTime?
   createdAt   DateTime @default(now())
   issue       Issue    @relation(fields: [issueId], references: [id], onDelete: Cascade)
   organizer   User     @relation(fields: [organizerId], references: [id], onDelete: Cascade)

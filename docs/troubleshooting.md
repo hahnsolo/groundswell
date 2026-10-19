@@ -76,7 +76,7 @@ You only need to look at the `ep-…` part. Don't copy or paste the whole string
 | `groundswell.hahnsolo.ca` doesn't load at all, or certificate warning | The `groundswell` CNAME in GoDaddy (see [DNS](dns.md)) and Vercel → Settings → Domains, which should say *Valid Configuration*. |
 | "We couldn't reach the postal code service" | zippopotam.us is down. It's temporary; codes already looked up still work. |
 | Representative lookup unavailable | Open North's Represent service is down. Temporary. |
-| Removed content still listed after 7+ days | The daily clean-up job isn't running. Check `CRON_SECRET` is set in Vercel, and Vercel → Settings → Cron Jobs / Logs for "CRON_SECRET is not set". |
+| Removed content still listed after 7+ days, or a deleted account still has its name after 30+ days | The daily clean-up job isn't running. Check `CRON_SECRET` is set in Vercel, and Vercel → Settings → Cron Jobs / Logs for "CRON_SECRET is not set". |
 | Everyone got signed out | Someone changed `BETTER_AUTH_SECRET`. That's expected after rotating it. |
 | `npm run db:seed` says "Refusing to seed" | Working as intended: it only runs against dev with `ALLOW_DB_SEED="yes"` in `.env`. |
 | Locally: confirmation email never arrives | On your PC, emails aren't sent. Look in the terminal running `npm run dev` for the link. |

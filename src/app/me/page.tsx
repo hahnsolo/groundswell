@@ -4,7 +4,9 @@ import { Suspense } from "react";
 import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { COUNTRIES, areaHref } from "@/lib/countries";
-import { setHomeArea } from "@/app/actions/community";
+import { setHomeArea, toggleRsvp, toggleSupport } from "@/app/actions/community";
+import { DeleteAccountForm } from "@/components/account-forms";
+import { ACCOUNT_GRACE_DAYS } from "@/lib/accounts";
 import { LocalTime } from "@/components/local-time";
 import { SubmitButton } from "@/components/ui";
 import { inputStyles } from "@/components/styles";
@@ -26,11 +28,13 @@ async function Me({ searchParams }: Pick<PageProps<"/me">, "searchParams">) {
   const sp = await searchParams;
   const notice = sp.verified
     ? "Thanks — your email is confirmed."
-    : sp.welcome
-      ? "Welcome to Groundswell! Set your home area below so we can show you what's happening nearby."
-      : null;
+    : sp.restored
+      ? "Welcome back — your account is restored. Signatures and RSVPs removed when you left weren't brought back, so add them again if you like."
+      : sp.welcome
+        ? "Welcome to Groundswell! Set your home area below so we can show you what's happening nearby."
+        : null;
   const openReports = user.isAdmin ? await db.report.count({ where: { resolved: false } }) : 0;
-  const [issues, supported, rsvps] = await Promise.all([
+  const [issues, supported, rsvps, credential] = await Promise.all([
     db.issue.findMany({ where: { authorId: user.id }, orderBy: { createdAt: "desc" }, take: 20 }),
     db.issueSupport.findMany({
       where: { userId: user.id, issue: { authorId: { not: user.id }, hidden: false } },
@@ -43,10 +47,14 @@ async function Me({ searchParams }: Pick<PageProps<"/me">, "searchParams">) {
       include: { meetup: { include: { issue: { select: { title: true } } } } },
       orderBy: { meetup: { startsAt: "asc" } },
     }),
+    db.account.findFirst({ where: { userId: user.id, providerId: "credential" }, select: { id: true } }),
   ]);
 
   const section = "rounded-xl border border-border bg-surface p-5";
   const linkRow = "block rounded-lg px-2 py-1.5 -mx-2 hover:bg-brand-soft";
+  const row = "flex items-center gap-2";
+  const xButton = "shrink-0 rounded-lg px-2 py-1 text-xs text-muted hover:bg-brand-soft hover:text-foreground";
+  const tag = "rounded-full bg-brand-soft px-2 py-0.5 text-xs text-brand-strong dark:text-brand";
 
   return (
     <div className="space-y-6">
@@ -88,12 +96,28 @@ async function Me({ searchParams }: Pick<PageProps<"/me">, "searchParams">) {
         <h2 className="mb-3 font-semibold">Upcoming meetups</h2>
         {rsvps.length === 0 && <p className="text-sm text-muted">You haven&apos;t RSVP&apos;d to any upcoming meetups.</p>}
         {rsvps.map((r) => (
-          <Link key={r.meetupId} href={`/issues/${r.meetup.issueId}#meetup-${r.meetupId}`} className={linkRow}>
-            <span className="font-medium">{r.meetup.title}</span>
-            <span className="block text-sm text-muted">
-              <LocalTime iso={r.meetup.startsAt.toISOString()} /> · {r.meetup.issue.title}
-            </span>
-          </Link>
+          <div key={r.meetupId} className={row}>
+            <Link href={`/issues/${r.meetup.issueId}#meetup-${r.meetupId}`} className={`${linkRow} flex-1`}>
+              <span className="font-medium">{r.meetup.title}</span>
+              {r.meetup.organizerId === user.id && <span className={`${tag} ml-2`}>Hosting</span>}
+              <span className="block text-sm text-muted">
+                <LocalTime iso={r.meetup.startsAt.toISOString()} /> · {r.meetup.issue.title}
+              </span>
+            </Link>
+            {r.meetup.organizerId === user.id ? (
+              // Stepping down hands the meetup to someone, so it's confirmed on the meetup itself.
+              <Link href={`/issues/${r.meetup.issueId}#meetup-${r.meetupId}`} className={xButton}>
+                Manage
+              </Link>
+            ) : (
+              <form action={toggleRsvp}>
+                <input type="hidden" name="meetupId" value={r.meetupId} />
+                <button className={xButton} aria-label={`Not going to ${r.meetup.title}`}>
+                  ✕ Not going
+                </button>
+              </form>
+            )}
+          </div>
         ))}
       </section>
 
@@ -118,10 +142,24 @@ async function Me({ searchParams }: Pick<PageProps<"/me">, "searchParams">) {
         <h2 className="mb-3 font-semibold">Issues you support</h2>
         {supported.length === 0 && <p className="text-sm text-muted">Nothing yet.</p>}
         {supported.map((s) => (
-          <Link key={s.issueId} href={`/issues/${s.issueId}`} className={linkRow}>
-            {s.issue.title} <span className="text-sm text-muted">· {s.issue.placeName}</span>
-          </Link>
+          <div key={s.issueId} className={row}>
+            <Link href={`/issues/${s.issueId}`} className={`${linkRow} flex-1`}>
+              {s.issue.title} <span className="text-sm text-muted">· {s.issue.placeName}</span>
+            </Link>
+            <form action={toggleSupport}>
+              <input type="hidden" name="issueId" value={s.issueId} />
+              <button className={xButton} aria-label={`Stop supporting ${s.issue.title}`}>
+                ✕ Stop supporting
+              </button>
+            </form>
+          </div>
         ))}
+      </section>
+
+      <section className={section}>
+        <h2 className="mb-3 font-semibold">Your account</h2>
+        <p className="mb-4 text-sm text-muted">Signed in as {user.email}.</p>
+        <DeleteAccountForm hasPassword={!!credential} graceDays={ACCOUNT_GRACE_DAYS} />
       </section>
     </div>
   );

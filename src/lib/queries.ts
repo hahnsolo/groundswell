@@ -44,19 +44,19 @@ export async function getIssueDetail(id: string, viewerId: string | null) {
   const issue = await db.issue.findUnique({
     where: { id },
     include: {
-      author: { select: { id: true, name: true } },
+      author: { select: { id: true, name: true, deactivatedAt: true } },
       _count: { select: { supports: true } },
       comments: {
         // Authors still see their own hidden or removed comments, with a note.
         where: viewerId ? { OR: [{ hidden: false }, { authorId: viewerId }] } : { hidden: false },
         orderBy: { createdAt: "asc" },
-        include: { author: { select: { id: true, name: true } } },
+        include: { author: { select: { id: true, name: true, deactivatedAt: true } } },
       },
       meetups: {
         where: { startsAt: { gte: new Date(Date.now() - 6 * 60 * 60 * 1000) } },
         orderBy: { startsAt: "asc" },
         include: {
-          organizer: { select: { id: true, name: true } },
+          organizer: { select: { id: true, name: true, deactivatedAt: true } },
           _count: { select: { rsvps: true } },
           rsvps: viewerId ? { where: { userId: viewerId }, select: { userId: true } } : false,
         },
@@ -64,13 +64,13 @@ export async function getIssueDetail(id: string, viewerId: string | null) {
       campaigns: {
         orderBy: { createdAt: "desc" },
         include: {
-          creator: { select: { id: true, name: true } },
+          creator: { select: { id: true, name: true, deactivatedAt: true } },
           _count: { select: { signatures: true } },
           signatures: {
             orderBy: { createdAt: "desc" },
             take: 5,
             where: { note: { not: null } },
-            include: { user: { select: { name: true } } },
+            include: { user: { select: { name: true, deactivatedAt: true } } },
           },
         },
       },
@@ -88,8 +88,11 @@ export async function getIssueDetail(id: string, viewerId: string | null) {
       ])
     : [null, []];
 
+  const now = Date.now();
   return {
     ...issue,
+    // The list includes meetups that started in the last few hours; only ones still to come can change host.
+    meetups: issue.meetups.map((m) => ({ ...m, upcoming: m.startsAt.getTime() > now })),
     viewerSupports: !!supported,
     viewerSigned: new Set(signedIds.map((s) => s.campaignId)),
   };

@@ -22,7 +22,8 @@ Enter a postal code, see the issues your neighbours care about, meet up, and pus
   - Only reports from accounts older than a day count toward auto-hiding, so throwaway accounts can't silence people.
 - **Password reset.** 1-hour emailed links; resetting signs out every device.
 - **Moderation queue.** Admins review reported content at `/admin/reports` and keep or remove it; every decision is recorded on the report (who, when, what). Non-admins get a 404.
-- **Undoable removals.** Removing hides content from everyone but its author (who sees the moderator's optional reason). Admins can restore it for 7 days; then a daily Vercel cron job (`/api/cron/purge-removed`, protected by `CRON_SECRET`) deletes it for good.
+- **Undoable removals.** Removing hides content from everyone but its author (who sees the moderator's optional reason). Admins can restore it for 7 days; then a daily Vercel cron job (`/api/cron/daily`, protected by `CRON_SECRET`) deletes it for good.
+- **Leaving.** "Delete my account" on `/me` (password required) deactivates the account and signs out everywhere; signing back in within 30 days restores it, after which the daily job anonymizes it (posts stay as "Former member"; signatures and upcoming RSVPs are removed). Members can also remove their support or signature, "Leave this issue" in one go, and hosts can step down — meetups pass to the earliest RSVP (who's emailed) or are cancelled. Logic in `src/lib/accounts.ts` and `src/lib/leaving.ts`.
 
 ## Stack
 

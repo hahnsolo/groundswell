@@ -11,6 +11,7 @@ import { resolvePlace } from "@/lib/places";
 import { honeypotTripped, linkError, withinPostingLimit } from "@/lib/spam";
 import { HOUR, rateLimit } from "@/lib/rate-limit";
 import { ESTABLISHED_ACCOUNT_MS, shouldAutoHide } from "@/lib/moderation";
+import { handOverMeetup, leaveIssue } from "@/lib/leaving";
 import { fromZodError, type FormState } from "@/lib/forms";
 
 const id = z.string().min(1).max(40);
@@ -181,16 +182,39 @@ export async function toggleRsvp(formData: FormData) {
   const meetupId = id.parse(formData.get("meetupId"));
   const meetup = await db.meetup.findUnique({
     where: { id: meetupId },
-    select: { issueId: true, capacity: true, _count: { select: { rsvps: true } } },
+    select: { issueId: true, organizerId: true, capacity: true, _count: { select: { rsvps: true } } },
   });
   if (!meetup) return;
   const user = await requireUser(`/issues/${meetup.issueId}`);
+  // Hosts don't un-RSVP from their own meetup; they step down (below) so it passes to someone.
+  if (meetup.organizerId === user.id) return;
   const key = { meetupId_userId: { meetupId, userId: user.id } };
   const existing = await db.rsvp.findUnique({ where: key });
   if (existing) await db.rsvp.delete({ where: key });
   else if (!meetup.capacity || meetup._count.rsvps < meetup.capacity) {
     await db.rsvp.create({ data: { meetupId, userId: user.id } });
   }
+  refresh();
+}
+
+/** The host can't make it (or doesn't want to): pass the meetup to the earliest RSVP, or cancel it. */
+export async function stepDownAsHost(formData: FormData) {
+  const meetupId = id.parse(formData.get("meetupId"));
+  const meetup = await db.meetup.findUnique({ where: { id: meetupId }, select: { issueId: true, startsAt: true } });
+  if (!meetup) return;
+  const user = await requireUser(`/issues/${meetup.issueId}`);
+  if (meetup.startsAt.getTime() <= Date.now()) return;
+  await handOverMeetup(meetupId, user.id); // does nothing unless they're the host
+  refresh();
+}
+
+// ---------- Leaving an issue ----------
+
+/** Take back support, RSVPs and signatures on an issue in one go. Comments stay. */
+export async function leaveIssueAction(formData: FormData) {
+  const issueId = id.parse(formData.get("issueId"));
+  const user = await requireUser(`/issues/${issueId}`);
+  await leaveIssue(user.id, issueId);
   refresh();
 }
 
@@ -240,6 +264,13 @@ export async function signCampaign(_prev: FormState, formData: FormData): Promis
   });
   refresh();
   return { ok: true };
+}
+
+export async function unsignCampaign(formData: FormData) {
+  const campaignId = id.parse(formData.get("campaignId"));
+  const user = await requireUser();
+  await db.signature.deleteMany({ where: { campaignId, userId: user.id } });
+  refresh();
 }
 
 // ---------- Moderation ----------

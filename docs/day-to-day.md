@@ -133,8 +133,29 @@ Any member with a confirmed email can **report** an issue or a comment. Reports 
 
 ### The daily clean-up job
 
-Once a day (around 9:00 UTC), Vercel calls `/api/cron/purge-removed`, which permanently deletes anything removed more than 7 days ago. You can see each run in Vercel → project → **Settings → Cron Jobs** (and its log line, "Purged N removed issue(s)…", in **Logs**). It only runs on the live site, and only if `CRON_SECRET` is set in Vercel (see [Keys and secrets](keys-and-secrets.md)). Without it, the job refuses to run and logs a warning, and removed content piles up instead of being deleted.
+Once a day (around 9:00 UTC), Vercel calls `/api/cron/daily`, which:
 
-The 7 days is one number, `REMOVAL_RETENTION_DAYS` in `src/lib/moderation.ts`.
+1. permanently deletes anything a moderator removed more than **7 days** ago, and
+2. anonymizes accounts that were deleted more than **30 days** ago (see [Deleted accounts](#deleted-accounts) below).
+
+You can see each run in Vercel → project → **Settings → Cron Jobs**, and its log line ("Daily clean-up: purged N removed issue(s)… anonymized N deleted account(s)") in **Logs**. It only runs on the live site, and only if `CRON_SECRET` is set in Vercel (see [Keys and secrets](keys-and-secrets.md)). Without it, the job refuses to run and logs a warning.
+
+The two numbers live in the code: `REMOVAL_RETENTION_DAYS` in `src/lib/moderation.ts` and `ACCOUNT_GRACE_DAYS` in `src/lib/accounts.ts`.
+
+## Deleted accounts
+
+Members delete their own account from `/me` → **Delete my account…** (they confirm with their password). What happens:
+
+- **Straight away:** they're signed out everywhere. Their name shows as **"Former member"** on everything they posted. Their campaign signatures and RSVPs to upcoming meetups are removed. Meetups they were hosting pass to the next person going, or are cancelled if nobody else is. Their "I care" supports stay as anonymous counts.
+- **For 30 days:** signing back in restores the account (they see a "Welcome back" note). Removed signatures and RSVPs don't come back.
+- **After 30 days:** the daily job erases their name, email, password, home area and sign-in links. Their posts stay, credited to "Former member", and their email becomes free to sign up again.
+
+**If someone emails asking to be deleted** and can't do it themselves, look them up in Neon's SQL Editor (main branch) and set the date. The daily job does the rest after 30 days:
+
+```sql
+UPDATE "User" SET "deactivatedAt" = now() WHERE email = 'person@example.com';
+```
+
+That doesn't sign them out or hand over their meetups the way the button does, so prefer the button where possible.
 
 Tips: read the whole thread before removing something. Disagreement isn't abuse. Keep a removal for spam, harassment, personal information about someone, or illegal content. The site needs published rules so people know where the line is (see [Security and spam](security-and-spam.md#still-to-do)).

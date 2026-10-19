@@ -59,6 +59,8 @@ Almost all spam comes from brand-new accounts posting links, so new accounts are
 - Only the coarse area is stored (Canadian FSA like `M5V`, or a US ZIP), never a street address.
 - The full postal code used for the representative lookup is passed to Open North and **not stored**.
 - The search-engine tag on the admin page says "don't index."
+- **People can delete their account** from `/me` (password required). They're signed out everywhere and shown as "Former member"; after a 30-day grace period (signing in undoes it) their name, email, password and home area are erased for good. Their posts stay so discussions still make sense. See [Day to day](day-to-day.md#deleted-accounts).
+- **People can take things back:** remove their support or campaign signature, or "Leave this issue" to undo all three (support, upcoming RSVPs, signatures) in one go.
 
 ### Browser-level protections
 Every page is sent with standard security headers that stop other sites from embedding Groundswell in a hidden frame (a "clickjacking" trick), stop browsers from guessing file types, and turn off camera, microphone and location access. HTTPS is automatic through Vercel.
@@ -75,5 +77,4 @@ In rough order of importance:
 3. **Add `CRON_SECRET` in Vercel** (before or with the next deploy), so the daily job that deletes removed content can run. See [Keys and secrets](keys-and-secrets.md).
 4. **Make your own account an admin** on the live site (see [Day to day](day-to-day.md#making-someone-an-admin)), so someone is watching the moderation queue.
 5. **Legal pages:** terms of use, a privacy policy (what's stored, why, and how to get it deleted; Canada's PIPEDA applies), and a code of conduct that says what gets removed. Link them from the sign-up page and footer.
-6. **A way to delete your account.** There's no self-service button yet. Until there is, deletion requests are handled by hand in the database.
-7. **Later, if spam gets through anyway:** a "report user" feature, admin tools to suspend an account, and tightening DMARC from `p=none` to `p=quarantine` once you've seen that all legitimate email passes.
+6. **Later, if spam gets through anyway:** a "report user" feature, admin tools to suspend an account, and tightening DMARC from `p=none` to `p=quarantine` once you've seen that all legitimate email passes.

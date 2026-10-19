@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { addComment, createCampaign, createMeetup, signCampaign } from "@/app/actions/community";
+import { addComment, createCampaign, createMeetup, signCampaign, unsignCampaign } from "@/app/actions/community";
 import { Field, FormError, SubmitButton, buttonStyles, inputStyles, useFormAction } from "./ui";
 import { Honeypot } from "./bot-check";
 
@@ -106,7 +106,15 @@ export function CampaignForm({ issueId }: { issueId: string }) {
 export function SignForm({ campaignId, signed }: { campaignId: string; signed: boolean }) {
   const [state, action] = useFormAction(signCampaign);
   if (signed || state?.ok) {
-    return <p className="text-sm font-medium text-brand-strong dark:text-brand">✓ You&apos;ve signed this campaign</p>;
+    return (
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+        <p className="font-medium text-brand-strong dark:text-brand">✓ You&apos;ve signed this campaign</p>
+        <form action={unsignCampaign}>
+          <input type="hidden" name="campaignId" value={campaignId} />
+          <button className="text-xs text-muted underline hover:text-foreground">Remove my signature</button>
+        </form>
+      </div>
+    );
   }
   return (
     <form action={action} className="space-y-2">

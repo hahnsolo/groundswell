@@ -16,7 +16,7 @@ The screenshots come from the **dev site with demo data** (Alex, Sam and Priya a
    - [Find your representatives](#find-your-representatives)
 4. [Raise an issue](#4-raise-an-issue)
 5. [Join, sign in, forgot password](#5-join-sign-in-and-forgot-password)
-6. [Your activity (`/me`)](#6-your-activity-me)
+6. [Your activity (`/me`)](#6-your-activity-me), including [deleting your account](#deleting-your-account)
 7. [Reporting and the moderation queue (admins)](#7-reporting-and-the-moderation-queue-admins)
 8. [On a phone, and installing the app](#8-on-a-phone-and-installing-the-app)
 9. [Small pages: not found, offline](#9-small-pages)
@@ -90,9 +90,12 @@ This is where neighbours actually work together. Everyone can read it; you need 
 
 ### Support, share and status
 
-- **I care about this** adds your support (the number goes up). Click again to take it back. It becomes **✓ I care** once you've clicked it. This one doesn't need a confirmed email.
+- **I care about this** adds your support (the number goes up). It becomes **✓ I care** once you've clicked it; hovering over it then says **Remove my support**, and clicking takes it back. This one doesn't need a confirmed email.
 - **Share** opens your phone's share sheet, or copies the link on a computer.
 - **Status:** only the person who raised the issue sees buttons to change it between *Open*, *Being worked on* and *Resolved*. Everyone else sees **Report this issue** there instead (see [section 7](#7-reporting-and-the-moderation-queue-admins)).
+- **Leave this issue:** once you've supported, RSVP'd or signed something here, a small **Leave this issue** link appears. It undoes all of that in one go: your support, your RSVPs to its upcoming meetups, and your campaign signatures. Your comments stay, since they're part of the conversation. If you were hosting one of its meetups, it's handed on (see below).
+
+![Leave this issue, opened](images/walkthrough/20-leave-issue.webp)
 
 ### Discussion
 
@@ -112,8 +115,17 @@ Click **+ Organize a meetup** to open the form:
 
 - **Title, when, where** (a public place is suggested), an optional plan, and an optional **capacity**.
 - Tick **Online meetup** and *Where* becomes *Video link*. **The link is only shown to people who've RSVP'd**, so random visitors can't drop into the call.
-- The organizer is automatically marked as going.
+- The organizer is automatically marked as going, and sees **✓ Hosting** instead of an RSVP button.
 - Only upcoming meetups are listed (and ones that started in the last 6 hours).
+
+**Can't host it?** The host can open **Can't host it?** → **Step down as host**:
+
+![Step down as host](images/walkthrough/21-step-down.webp)
+
+- The meetup passes to **the first person who RSVP'd** (who still has an account). They get an email saying they're now hosting, with a link to step down themselves, which passes it to the next person.
+- The meetup then shows *"hosted by Sam (took over)"*.
+- If nobody else is going, the meetup is **cancelled**.
+- The same handover happens when a host uses "Leave this issue" or deletes their account.
 
 **Rules:** confirmed email needed; 10 meetups an hour (2 for new accounts); the time must be in the future.
 
@@ -123,7 +135,7 @@ A campaign turns concern into a specific request to a specific decision-maker.
 
 - **+ Start a campaign** asks three things: **who can fix this** (e.g. "City Council, Ward 4"), **what exactly you're asking for**, and a **signature goal** (default 100).
 - Each campaign shows a progress bar (*2 of 150 signatures*), who started it, and up to 5 recent public notes from signers.
-- **Add my name** signs it, with an optional public note on why it matters. You see **✓ You've signed this campaign** afterwards.
+- **Add my name** signs it, with an optional public note on why it matters. You see **✓ You've signed this campaign** afterwards, with a **Remove my signature** link if you change your mind.
 - **✉️ Write to …** opens the **letter builder**:
 
 ![Letter builder](images/walkthrough/09-letter-builder.webp)
@@ -187,10 +199,25 @@ Click your name in the top bar.
 ![Your activity page](images/walkthrough/11-me.webp)
 
 - **Home area:** set or change your postal code. This makes **My area** appear in the top bar.
-- **Upcoming meetups** you've RSVP'd to, with times in your time zone.
+- **Upcoming meetups** you've RSVP'd to, with times in your time zone. **✕ Not going** cancels your RSVP. Meetups you host are tagged **Hosting**, with a **Manage** link to the meetup (stepping down is confirmed there).
 - **Issues you raised.** If a moderator hid or removed one, it shows an **Under review** or **Removed** tag here.
-- **Issues you support.**
+- **Issues you support**, each with **✕ Stop supporting**.
+- **Your account:** your sign-in email, and **Delete my account…** (below).
 - **Admins also see** a **Moderation queue** box at the top with the number of open reports.
+
+### Deleting your account
+
+**Delete my account…** opens a plain explanation of what will happen, and asks for your password:
+
+![Delete my account, opened](images/walkthrough/19-delete-account.webp)
+
+After confirming, you're signed out everywhere and land on this page:
+
+![Account deleted page](images/walkthrough/22-goodbye.webp)
+
+- **Right away:** everything you posted shows **"Former member"** instead of your name. Your campaign signatures and upcoming RSVPs are removed, and meetups you were hosting are handed on or cancelled. Your "I care" clicks stay as anonymous numbers.
+- **Changed your mind?** Sign in within **30 days** and the account comes back, with a "Welcome back" note. (Removed signatures and RSVPs aren't restored.)
+- **After 30 days:** your name, email, password and home area are erased for good by the daily clean-up job. Your posts stay, so the conversations still make sense, and your email is free to sign up again.
 
 ---
 
@@ -223,7 +250,7 @@ Meanwhile, the **author** sees this under their removed comment (or at the top o
 
 ![What the author sees after a removal](images/walkthrough/15-author-removal-notice.webp)
 
-After **7 days**, a daily job on Vercel deletes it permanently. Deleting an issue also deletes its comments, meetups and campaigns. Every decision (kept, removed, restored) is recorded with who did it and when.
+After **7 days**, the daily clean-up job on Vercel deletes it permanently. Deleting an issue also deletes its comments, meetups and campaigns. Every decision (kept, removed, restored) is recorded with who did it and when.
 
 ---
 
@@ -267,6 +294,9 @@ Installed, it opens full-screen with its own icon. It only stores the app's desi
 | "I care" support, RSVP | | ✓ | ✓ | ✓ | ✓ |
 | Raise issues, comment, organize meetups, start campaigns | | | ✓ | ✓ | ✓ |
 | Sign campaigns, report content | | | ✓ | ✓ | ✓ |
+| Remove own support, signature, RSVP; "Leave this issue" | | ✓ | ✓ | ✓ | ✓ |
+| Step down as a meetup's host | | ✓ (host) | ✓ (host) | ✓ (host) | ✓ (host) |
+| Delete own account | | ✓ | ✓ | ✓ | ✓ |
 | Change an issue's status | | | | ✓ | |
 | See their own hidden/removed posts (with a notice) | | | | ✓ | |
 | Moderation queue: keep, remove, restore | | | | | ✓ |
