@@ -93,7 +93,8 @@ export function NeighbourhoodPicker({ initial }: { initial: Area | null }) {
         </svg>
       </button>
       {open && (
-        <div className="absolute left-0 top-full z-30 mt-2 w-[min(22rem,calc(100vw-2rem))] rounded-md border-[1.5px] border-ink bg-surface p-3 shadow-lg">
+        // Phones: span the screen under the header. Wider screens: drop down from the button.
+        <div className="fixed inset-x-4 top-16 z-30 rounded-md border-[1.5px] border-ink bg-surface p-3 shadow-lg sm:absolute sm:inset-x-auto sm:left-0 sm:top-full sm:mt-2 sm:w-[22rem]">
           {area && (
             <Link
               href={`/area/${area.country.toLowerCase()}/${encodeURIComponent(area.postal)}`}
@@ -104,7 +105,7 @@ export function NeighbourhoodPicker({ initial }: { initial: Area | null }) {
             </Link>
           )}
           <p className="mb-2 text-xs text-muted">Look somewhere else</p>
-          <PostalSearch compact defaultCountry={area?.country ?? "CA"} />
+          <PostalSearch stacked defaultCountry={area?.country ?? "CA"} />
         </div>
       )}
     </div>
