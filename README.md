@@ -7,7 +7,7 @@ Enter a postal code, see the issues your neighbours care about, meet up, and pus
 **Live features**
 
 - **Postal code → community.** US ZIP codes and Canadian postal codes resolve to a place and coordinates (via [zippopotam.us](https://zippopotam.us), cached in the DB). Only the coarse area is stored (ZIP / Canadian FSA), never a street address.
-- **Local issue feed.** Issues within 2–50 km, filter by category, sort by support or newest.
+- **Local issue feed.** Issues within 2–50 km, filter by category, sort by support or newest. Each card shows who cares ("Priya, Sam and 12 neighbours") and its momentum (won / meeting soon / asking / joined this week / new — `src/lib/momentum.ts`); recent wins (30 days, from `Issue.resolvedAt`) get their own strip. The home page opens on "your neighbourhood": the last area viewed (an area-only cookie) or your home area.
 - **Raise an issue.** Title, category, details, location.
 - **Connect.** "I care" support, threaded discussion, community reports (3 reports from established accounts auto-hide content for review).
 - **Meetups.** Create in-person or online meetups with optional capacity; RSVP; times shown in each viewer's own timezone.

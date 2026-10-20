@@ -48,6 +48,9 @@ async function main() {
     db.account.deleteMany(),
     db.verification.deleteMany(),
     db.user.deleteMany(),
+    // Rate-limit counters too, so testing again right after a reseed isn't blocked.
+    db.throttle.deleteMany(),
+    db.rateLimit.deleteMany(),
   ]);
   for (const p of PLACES) await db.place.upsert({ where: { id: p.id }, create: p, update: p });
 
@@ -166,6 +169,22 @@ async function main() {
       authorId: priya.id,
       createdAt: new Date(Date.now() - 12 * day),
       supports: { create: [{ userId: priya.id }] },
+    },
+  });
+
+  // A recent win, so neighbourhood pages have something to celebrate.
+  await db.issue.create({
+    data: {
+      ...at("CA-M5V"),
+      title: "Broken streetlights on Portland St fixed",
+      description:
+        "Four streetlights between King and Adelaide were out for over a month. After neighbours reported them together and wrote to the councillor, the city repaired all four.",
+      category: "safety",
+      status: "resolved",
+      resolvedAt: new Date(Date.now() - 4 * day),
+      authorId: sam.id,
+      createdAt: new Date(Date.now() - 40 * day),
+      supports: { create: [{ userId: sam.id }, { userId: priya.id }, { userId: alex.id }] },
     },
   });
 

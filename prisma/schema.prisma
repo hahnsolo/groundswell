@@ -134,6 +134,8 @@ model Issue {
   category    String
   // open | in_progress | resolved
   status      String   @default("open")
+  // When it was marked resolved: a win, shown off on the neighbourhood pages.
+  resolvedAt  DateTime?
   country     String
   postalCode  String
   placeName   String

@@ -99,10 +99,14 @@ export async function setIssueStatus(formData: FormData) {
     .object({ issueId: id, status: z.enum(["open", "in_progress", "resolved"]) })
     .safeParse(Object.fromEntries(formData));
   if (!parsed.success) return;
-  await db.issue.updateMany({
-    where: { id: parsed.data.issueId, authorId: user.id },
-    data: { status: parsed.data.status },
-  });
+  const { issueId, status } = parsed.data;
+  const where = { id: issueId, authorId: user.id };
+  // Remember when it was won (first time only); clear it if reopened.
+  if (status === "resolved") {
+    await db.issue.updateMany({ where: { ...where, status: { not: "resolved" } }, data: { status, resolvedAt: new Date() } });
+  } else {
+    await db.issue.updateMany({ where, data: { status, resolvedAt: null } });
+  }
   refresh();
 }
 

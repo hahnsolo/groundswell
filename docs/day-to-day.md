@@ -88,7 +88,7 @@ Reseeding wipes the **dev** database and fills it with fresh demo data. It's use
 npm run db:seed
 ```
 
-It only works when your `.env` has `ALLOW_DB_SEED="yes"`, and it refuses to run on Vercel or in production. The live database can't be seeded by accident. If you just created the dev database, or a new migration came in, run `npm run db:deploy` first so the tables exist.
+It also resets the sign-in and posting rate limits, which is handy if testing has made the dev site tell you to slow down. It only works when your `.env` has `ALLOW_DB_SEED="yes"`, and it refuses to run on Vercel or in production. The live database can't be seeded by accident. If you just created the dev database, or a new migration came in, run `npm run db:deploy` first so the tables exist.
 
 ## Making someone an admin
 

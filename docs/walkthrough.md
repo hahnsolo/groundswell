@@ -39,45 +39,65 @@ The screenshots come from the **dev site with demo data** (Alex, Sam and Priya a
 
 `/`
 
-![Home page](images/walkthrough/01-home.webp)
+**First visit:** a short welcome and a postal code box.
 
-**What it's for:** the front door. One question ("What matters where you live?") and one box.
+![Home page on a first visit](images/walkthrough/01-home.webp)
+
+**Coming back:** once you've looked at a neighbourhood (or set a home area), the home page opens straight onto it: what's going on around there right now, recent wins, and the top causes.
+
+![Home page for a returning visitor](images/walkthrough/01b-home-returning.webp)
 
 **What you can do:**
-- Pick **United States** or **Canada**, type a ZIP or postal code, and press **Find my community**. That takes you to the area page.
-- The three steps underneath explain the idea: see what's happening, connect and meet up, push for change.
+- **First visit:** pick **United States** or **Canada**, type a ZIP or postal code, and press **Find my community**. That takes you to the area page.
+- **Coming back:** open any cause, see a recent win, use **See everything around …** for the full list, or look up **somewhere else** at the bottom.
 
 **Behind the scenes:**
-- Only the first part of a code is kept: the first 3 characters of a Canadian code (`M5V 2T6` → `M5V`) or the 5-digit ZIP. That's enough to find "nearby" without pinpointing anyone's home. The page says so under the box.
+- Only the first part of a code is kept: the first 3 characters of a Canadian code (`M5V 2T6` → `M5V`) or the 5-digit ZIP. That's enough to find "nearby" without pinpointing anyone's home.
+- "Your neighbourhood" is the last area you looked at, remembered in a small cookie holding only the area code and name. If you're signed in and haven't looked anywhere yet, it's your home area.
 - Invalid codes get a friendly error rather than an empty page.
 
 ---
 
-## 2. Area page: issues near you
+## 2. Area page: what's going on around a neighbourhood
 
-`/area/us/90210`, `/area/ca/m5v`, …
+`/area/ca/m5v`, `/area/us/90210`, …
 
-![Area page for Beverly Hills](images/walkthrough/02-area.webp)
+![Area page for Downtown Toronto](images/walkthrough/02-area.webp)
 
-**What it's for:** the list of local issues around a postal code.
+**What it's for:** the neighbourhood's noticeboard: every cause nearby, with who's involved and what's happening.
+
+**At the top:** *"What's going on around Downtown Toronto,"* then the neighbourhood's pulse: how many neighbours are involved, events in the next 7 days, and wins in the last 30 days.
+
+**Recent wins:** causes marked resolved in the last 30 days get their own green cards up front. Wins are the proof that working together works, so they're celebrated, not buried.
 
 **What you can do:**
-- **Filter by category** with the chips: Safety, Roads & transit, Housing, Environment, Parks & recreation, Schools & youth, Health, Local business, Utilities & services, Other.
+- **Filter by topic** with the tabs: Everything, Safety, Roads & transit, Housing, Environment, Parks & recreation, Schools & youth, Health, Local business, Utilities & services, Other.
 - **Change the distance:** 2, 5, 10 (default), 25 or 50 km.
-- **Sort:** *Most support* (resolved issues sink to the bottom) or *Newest*.
+- **Show:** *Most support* (resolved causes sink to the bottom) or *Newest*.
 - **+ Raise an issue here** (or **Start something** in the top bar) starts a new one for this area.
-- Visiting an area makes it "your neighbourhood" in the top bar.
-- Click any card to open the issue.
+- Visiting an area makes it "your neighbourhood" in the top bar and on the home page.
+- Click any card to open the cause.
 
-**Reading a card:** the green box is the number of people who "care." Under the title you see the category, a status badge (*Open*, *Being worked on*, *Resolved*), the place and distance, the number of comments 💬, upcoming meetups 📅, and when it was raised.
+**Reading a card:** the small line on top gives the topic, place and distance. On the right is what's happening **now**, picked in this order:
+
+| Label | When |
+|---|---|
+| **✓ Won** | The person who raised it marked it resolved |
+| **Meeting Wed, Oct 28** | A meetup is coming up in the next two weeks (shown in your time zone) |
+| **Asking · 48 of 150 signed** | It has a campaign |
+| **3 joined this week** | New people cared in the last 7 days |
+| **New** | Raised in the last week |
+| **Being worked on** | Its author set that status and none of the above applies |
+
+Under the title: the first few people's initials and a line like *"Priya, Sam and 12 neighbours care,"* plus how many messages it has. People who've deleted their account are counted but never named.
 
 **Behind the scenes:**
 - The first time anyone looks up a code, the app asks a free service (zippopotam.us) where it is, then remembers the answer, so each code is only looked up once.
-- If nothing is nearby, the page suggests widening to 50 km or being the first to raise something.
+- If nothing is nearby, the page suggests looking further out or being the first to raise something.
 - Issues hidden by reports or removed by a moderator never appear here.
+- The moment a cause is marked resolved is recorded, so wins can be shown for 30 days (and, later, on a progress tracker).
 
 ---
-
 ## 3. Issue page
 
 `/issues/…`

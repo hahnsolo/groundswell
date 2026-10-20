@@ -1,9 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { cookies } from "next/headers";
-import { db } from "@/lib/db";
-import { getCurrentUser } from "@/lib/auth";
-import { AREA_COOKIE, decodeArea, type Area } from "@/lib/area-cookie";
+import { currentArea } from "@/lib/current-area";
 import { LogoMark } from "./logo";
 import { NeighbourhoodPicker, StartSomething } from "./neighbourhood";
 import { UserNav } from "./user-nav";
@@ -16,16 +13,12 @@ export function SiteHeader() {
           <LogoMark className="h-[22px] w-[30px]" />
           <span className="hidden font-display text-xl font-semibold tracking-tight min-[420px]:inline">Groundswell</span>
         </Link>
-        <Suspense fallback={<HeaderPlaceholder />}>
+        <Suspense fallback={<div className="ml-auto h-8 w-40" />}>
           <HeaderActions />
         </Suspense>
       </div>
     </header>
   );
-}
-
-function HeaderPlaceholder() {
-  return <div className="ml-auto h-8 w-40" />;
 }
 
 async function HeaderActions() {
@@ -39,17 +32,4 @@ async function HeaderActions() {
       </div>
     </>
   );
-}
-
-/** The neighbourhood you last looked at, or else your home area. */
-async function currentArea(): Promise<Area | null> {
-  const fromCookie = decodeArea((await cookies()).get(AREA_COOKIE)?.value);
-  if (fromCookie) return fromCookie;
-  const user = await getCurrentUser();
-  if (!user?.homeCountry || !user.homePostal) return null;
-  const place = await db.place.findUnique({
-    where: { id: `${user.homeCountry}-${user.homePostal}` },
-    select: { placeName: true },
-  });
-  return place ? { country: user.homeCountry, postal: user.homePostal, name: place.placeName } : null;
 }

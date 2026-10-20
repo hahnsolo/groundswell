@@ -5,7 +5,8 @@ import { CATEGORIES } from "@/lib/categories";
 import { getCountry, parsePostal } from "@/lib/countries";
 import { DEFAULT_RADIUS, RADIUS_OPTIONS } from "@/lib/geo";
 import { resolvePlace } from "@/lib/places";
-import { getNearbyIssues, type IssueSort } from "@/lib/queries";
+import { getAreaPulse, getNearbyIssues, type IssueSort } from "@/lib/queries";
+import { WinsStrip } from "@/components/wins-strip";
 import { IssueCard } from "@/components/issue-card";
 import { PostalSearch } from "@/components/postal-search";
 import { buttonStyles } from "@/components/styles";
@@ -81,10 +82,21 @@ async function AreaContent({
     return s ? `${base}?${s}` : base;
   };
 
-  const chip = (active: boolean) =>
-    `rounded-full border px-3 py-1 text-sm whitespace-nowrap ${
-      active ? "border-ink bg-ink text-background" : "border-border bg-surface hover:border-ink"
-    }`;
+  const pulse = await getAreaPulse(issues);
+  const winIds = new Set(pulse.wins.map((w) => w.id));
+  const board = issues.filter((i) => !winIds.has(i.id));
+  const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
+  const pulseLine = [
+    plural(pulse.people, "neighbour") + " involved",
+    pulse.eventsThisWeek > 0 && plural(pulse.eventsThisWeek, "event") + " this week",
+    pulse.wins.length > 0 && plural(pulse.wins.length, "win") + " this month",
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
+  const tab = (active: boolean) =>
+    `whitespace-nowrap border-b-2 pb-1 text-sm ${active ? "border-brand font-medium text-foreground" : "border-transparent text-muted hover:text-foreground"}`;
+  const option = (active: boolean) => (active ? "font-medium text-foreground underline underline-offset-4" : "text-muted hover:text-foreground");
 
   return (
     <>
@@ -92,72 +104,64 @@ async function AreaContent({
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-sm text-muted">
-            {getCountry(place.country)?.name} · {country.format(place.postalCode)}
+            {getCountry(place.country)?.name} · {country.format(place.postalCode)} · {place.regionCode}
           </p>
-          <h1 className="text-3xl font-semibold tracking-tight">
-            {place.placeName}, {place.regionCode}
-          </h1>
-          <p className="mt-1 text-muted">
-            {issues.length === 0
-              ? "No issues raised nearby yet."
-              : `${issues.length} issue${issues.length === 1 ? "" : "s"} within ${radius} km`}
-          </p>
+          <h1 className="mt-1 text-3xl font-semibold leading-tight sm:text-4xl">What&apos;s going on around {place.placeName}</h1>
+          <p className="mt-2 text-muted">{issues.length === 0 ? "Nothing raised nearby yet." : pulseLine}</p>
         </div>
         <Link
           href={`/issues/new?country=${place.country}&postal=${encodeURIComponent(place.postalCode)}`}
-          className={buttonStyles.secondary}
+          className={`${buttonStyles.secondary} shrink-0`}
         >
           + Raise an issue here
         </Link>
       </div>
 
-      <div className="mt-6 space-y-3">
-        <div className="flex gap-2 overflow-x-auto pb-1">
-          <Link href={href({ category: undefined })} className={chip(!category)}>
-            All
+      <WinsStrip wins={pulse.wins} />
+
+      <div className="mt-8 space-y-3">
+        <nav aria-label="Filter by topic" className="flex gap-5 overflow-x-auto border-b border-border">
+          <Link href={href({ category: undefined })} className={tab(!category)}>
+            Everything
           </Link>
           {CATEGORIES.map((c) => (
-            <Link key={c.id} href={href({ category: c.id })} className={chip(category === c.id)}>
-              {c.emoji} {c.label}
+            <Link key={c.id} href={href({ category: c.id })} className={tab(category === c.id)}>
+              {c.label}
             </Link>
           ))}
-        </div>
+        </nav>
         <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
             <span className="text-muted">Within</span>
             {RADIUS_OPTIONS.map((r) => (
-              <Link
-                key={r}
-                href={href({ radius: r })}
-                className={r === radius ? "font-semibold text-link underline" : "text-muted hover:text-foreground"}
-              >
+              <Link key={r} href={href({ radius: r })} className={option(r === radius)}>
                 {r} km
               </Link>
             ))}
           </div>
-          <div className="flex items-center gap-2">
-            <span className="text-muted">Sort</span>
-            <Link href={href({ sort: "top" })} className={sort === "top" ? "font-semibold underline" : "text-muted hover:text-foreground"}>
+          <div className="flex items-center gap-2.5">
+            <span className="text-muted">Show</span>
+            <Link href={href({ sort: "top" })} className={option(sort === "top")}>
               Most support
             </Link>
-            <Link href={href({ sort: "new" })} className={sort === "new" ? "font-semibold underline" : "text-muted hover:text-foreground"}>
+            <Link href={href({ sort: "new" })} className={option(sort === "new")}>
               Newest
             </Link>
           </div>
         </div>
       </div>
 
-      <div className="mt-6 space-y-3">
-        {issues.map((issue) => (
+      <div className="mt-5 space-y-3">
+        {board.map((issue) => (
           <IssueCard key={issue.id} issue={issue} />
         ))}
         {issues.length === 0 && (
-          <div className="rounded-xl border border-dashed border-border bg-surface p-10 text-center">
-            <p className="font-medium">Be the first to put something on the map here.</p>
-            <p className="mt-1 text-sm text-muted">
+          <div className="rounded-md border-[1.5px] border-dashed border-ink bg-surface p-10 text-center">
+            <p className="font-display text-xl font-semibold">Be the first to put something on the board here.</p>
+            <p className="mt-2 text-sm text-muted">
               {radius < 50 ? (
                 <>
-                  Or try <Link href={href({ radius: 50 })} className="underline">widening the search to 50 km</Link>.
+                  Or try <Link href={href({ radius: 50 })} className="underline">looking further out, up to 50 km</Link>.
                 </>
               ) : (
                 "Raising an issue is how a community starts."

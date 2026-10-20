@@ -1,6 +1,8 @@
 import "server-only";
 import { db } from "./db";
+import { connection } from "next/server";
 import { boundingBox, distanceKm } from "./geo";
+import { isRecentWin } from "./momentum";
 
 export type IssueSort = "top" | "new";
 
@@ -12,6 +14,8 @@ export async function getNearbyIssues(opts: {
   category?: string;
   sort: IssueSort;
 }) {
+  await connection(); // uses the current time, so it's always worked out per request
+  const now = new Date();
   const box = boundingBox(opts.lat, opts.lng, opts.radiusKm);
   const rows = await db.issue.findMany({
     where: {
@@ -21,12 +25,37 @@ export async function getNearbyIssues(opts: {
       lng: { gte: box.minLng, lte: box.maxLng },
       ...(opts.category ? { category: opts.category } : {}),
     },
-    include: { _count: { select: { supports: true, comments: true, meetups: true } } },
+    include: {
+      _count: { select: { supports: true, comments: true, meetups: true } },
+      // The first few people to care, for "Priya, Sam and 12 neighbours care".
+      supports: {
+        orderBy: { createdAt: "asc" },
+        take: 4,
+        select: { user: { select: { name: true, deactivatedAt: true } } },
+      },
+      meetups: { where: { startsAt: { gte: now } }, orderBy: { startsAt: "asc" }, take: 1, select: { startsAt: true, title: true } },
+      campaigns: { orderBy: { createdAt: "desc" }, take: 1, select: { goal: true, _count: { select: { signatures: true } } } },
+    },
     take: 500,
   });
 
+  // New supporters this week, per cause, in one query.
+  const weekly = await db.issueSupport.groupBy({
+    by: ["issueId"],
+    where: { issueId: { in: rows.map((r) => r.id) }, createdAt: { gte: new Date(now.getTime() - 7 * DAY_MS) } },
+    _count: { _all: true },
+  });
+  const joinedThisWeek = new Map(weekly.map((w) => [w.issueId, w._count._all]));
+
   return rows
-    .map((issue) => ({ ...issue, distanceKm: distanceKm(opts.lat, opts.lng, issue.lat, issue.lng) }))
+    .map(({ supports, meetups, campaigns, ...issue }) => ({
+      ...issue,
+      distanceKm: distanceKm(opts.lat, opts.lng, issue.lat, issue.lng),
+      supporterNames: supports.filter((s) => !s.user.deactivatedAt).map((s) => s.user.name),
+      nextMeetup: meetups[0] ?? null,
+      campaign: campaigns[0] ? { signed: campaigns[0]._count.signatures, goal: campaigns[0].goal } : null,
+      joinedThisWeek: joinedThisWeek.get(issue.id) ?? 0,
+    }))
     .filter((issue) => issue.distanceKm <= opts.radiusKm)
     .sort((a, b) =>
       opts.sort === "new"
@@ -40,7 +69,29 @@ export async function getNearbyIssues(opts: {
 
 export type NearbyIssue = Awaited<ReturnType<typeof getNearbyIssues>>[number];
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** The headline numbers for a neighbourhood: people involved, events this week, recent wins. */
+export async function getAreaPulse(issues: NearbyIssue[]) {
+  await connection();
+  const now = new Date();
+  const ids = issues.map((i) => i.id);
+  const [people, eventsThisWeek] = await Promise.all([
+    db.issueSupport.findMany({
+      where: { issueId: { in: ids }, user: { deactivatedAt: null } },
+      distinct: ["userId"],
+      select: { userId: true },
+    }),
+    db.meetup.count({ where: { issueId: { in: ids }, startsAt: { gte: now, lt: new Date(now.getTime() + 7 * DAY_MS) } } }),
+  ]);
+  const wins = issues
+    .filter((i) => isRecentWin(i.resolvedAt, now))
+    .sort((a, b) => b.resolvedAt!.getTime() - a.resolvedAt!.getTime());
+  return { people: people.length, eventsThisWeek, wins };
+}
+
 export async function getIssueDetail(id: string, viewerId: string | null) {
+  await connection(); // uses the current time, so it's always worked out per request
   const issue = await db.issue.findUnique({
     where: { id },
     include: {
