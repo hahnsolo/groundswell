@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Suspense } from "react";
 import { getCurrentUser } from "@/lib/auth";
 import { getIssueDetail } from "@/lib/queries";
@@ -38,7 +39,11 @@ async function Events({ params }: Pick<PageProps<"/issues/[id]/events">, "params
                   <LocalTime iso={m.startsAt.toISOString()} />
                   {!m.upcoming && " · happening now"}
                 </p>
-                <h2 className="mt-1 text-xl font-semibold">{m.title}</h2>
+                <h2 className="mt-1 text-xl font-semibold">
+                  <Link href={`/events/${m.id}`} className="hover:underline">
+                    {m.title}
+                  </Link>
+                </h2>
                 <p className="mt-1 text-sm text-muted">
                   {m.isOnline ? "🖥️ Online" : `📍 ${m.location}`} · hosted by {displayName(m.organizer)}
                   {m.hostChangedAt && " (took over)"}

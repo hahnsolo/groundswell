@@ -108,6 +108,9 @@ async function AreaContent({
           </p>
           <h1 className="mt-1 text-3xl font-semibold leading-tight sm:text-4xl">What&apos;s going on around {place.placeName}</h1>
           <p className="mt-2 text-muted">{issues.length === 0 ? "Nothing raised nearby yet." : pulseLine}</p>
+          <Link href="/events" className="mt-1 inline-block text-sm font-medium text-link underline underline-offset-4">
+            Events around here →
+          </Link>
         </div>
         <Link
           href={`/issues/new?country=${place.country}&postal=${encodeURIComponent(place.postalCode)}`}

@@ -46,10 +46,15 @@ export function isRecentWin(resolvedAt: Date | null | undefined, now = new Date(
  * `names` are the first few supporters (people who've left are already
  * filtered out); `total` counts everyone, including them.
  */
-export function peopleLine(names: string[], total: number, verb: "care" | "joined" = "care") {
-  if (total <= 0) return verb === "care" ? "Be the first to care" : "Be the first to join";
-  const one = verb === "care" ? "cares" : "has joined";
-  const many = verb === "care" ? "care" : "have joined";
+const VERBS = {
+  care: { none: "Be the first to care", one: "cares", many: "care" },
+  joined: { none: "Be the first to join", one: "has joined", many: "have joined" },
+  going: { none: "Nobody's said they're going yet", one: "is going", many: "are going" },
+};
+
+export function peopleLine(names: string[], total: number, verb: keyof typeof VERBS = "care") {
+  if (total <= 0) return VERBS[verb].none;
+  const { one, many } = VERBS[verb];
   const shown = names.slice(0, 2).slice(0, total);
   const others = total - shown.length;
   const neighbours = (n: number) => `${n} neighbour${n === 1 ? "" : "s"}`;

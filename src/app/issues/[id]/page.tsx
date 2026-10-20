@@ -38,7 +38,7 @@ async function About({ params }: Pick<PageProps<"/issues/[id]">, "params">) {
 
       {next && (
         <Link
-          href={`/issues/${issue.id}/events#meetup-${next.id}`}
+          href={`/events/${next.id}`}
           className="flex flex-wrap items-center justify-between gap-3 rounded-md bg-ink p-4 text-background hover:opacity-95"
         >
           <span>

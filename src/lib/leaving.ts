@@ -43,7 +43,7 @@ export async function handOverMeetup(meetupId: string, leavingUserId: string) {
     await sendEmail({
       to: host.email,
       subject: `You're now hosting "${meetup.title}"`,
-      text: `Hi ${host.name},\n\nThe host of "${meetup.title}" (about "${meetup.issue.title}") had to step back. You were the first to RSVP, so you're now the host.\n\nIf you can't host it, open the meetup and choose "Step down as host" — it'll pass to the next person who's going:\n${appUrl(`/issues/${meetup.issue.id}/events#meetup-${meetup.id}`)}\n\nThanks for keeping it going!`,
+      text: `Hi ${host.name},\n\nThe host of "${meetup.title}" (about "${meetup.issue.title}") had to step back. You were the first to RSVP, so you're now the host.\n\nIf you can't host it, open the meetup and choose "Step down as host" — it'll pass to the next person who's going:\n${appUrl(`/events/${meetup.id}`)}\n\nThanks for keeping it going!`,
     });
   } catch (err) {
     // The handover stands even if the email doesn't go out.

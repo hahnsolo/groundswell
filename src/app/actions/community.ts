@@ -194,7 +194,7 @@ export async function createMeetup(_prev: FormState, formData: FormData): Promis
       rsvps: { create: { userId: user.id } },
     },
   });
-  redirect(`/issues/${data.issueId}/events#meetup-${meetup.id}`);
+  redirect(`/events/${meetup.id}`);
 }
 
 export async function toggleRsvp(formData: FormData) {

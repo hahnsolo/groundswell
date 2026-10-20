@@ -12,7 +12,7 @@ The screenshots come from the **dev site with demo data** (Alex, Sam and Priya a
    - [The header: what it is, who's in, and Join](#the-header-what-it-is-whos-in-and-join)
    - [About: the holding page](#about-the-holding-page)
    - [Chat: members only, with a day to settle in](#chat-members-only-with-a-day-to-settle-in)
-   - [Events](#events)
+   - [Events](#events), [an event's own page](#an-events-own-page) and [events nearby](#events-nearby)
 4. [Raise an issue](#4-raise-an-issue)
 5. [Join, sign in, forgot password](#5-join-sign-in-and-forgot-password)
 6. [Your activity (`/me`)](#6-your-activity-me), including [deleting your account](#deleting-your-account)
@@ -174,6 +174,27 @@ Every event belongs to a cause. The Events tab lists them, each with the date an
 ![Step down as host](images/walkthrough/21-step-down.webp)
 
 **Rules:** confirmed email needed to organize; 10 events an hour (2 for new accounts); the time must be in the future. Only events still to come (and ones that started in the last 6 hours) are listed.
+
+### An event's own page
+
+`/events/…`. Click any event's title (or **See event** on About) to open it.
+
+![An event page](images/walkthrough/26-event-page.webp)
+
+- **Up top:** *"← Part of …"*, a link back to the cause it belongs to.
+- **When, where, who's hosting.** Times are always shown in **your own** time zone. For online events, the video link only appears once you've said you're going.
+- **I'll be there** (or **✓ You're going**; click again if you can't make it). Signed-out visitors are sent to sign in and then straight back.
+- **Add to calendar** downloads the event for Google Calendar, Apple Calendar or Outlook. It assumes two hours, since events don't have an end time yet. For online events the file says "Online (link on the event page)" rather than including the link.
+- **Who's going:** *"Alex and Sam are going,"* and places left if there's a capacity.
+- **Hosts** get **Can't host it?** here too.
+
+### Events nearby
+
+`/events`, also **Events nearby** in the top bar (on wider screens) and **Events around here →** on every area page.
+
+![Events nearby](images/walkthrough/27-events-nearby.webp)
+
+Every upcoming event for causes around your neighbourhood, split into **This week** and **Later** (up to 60 days ahead), each with its date, time, place, distance, cause and how many are going. **✓ Going** marks the ones you've said yes to. Use **Look further** to widen from 10 km up to 50 km. If we don't know your neighbourhood yet, it asks for a postal code first.
 
 ---
 ## 4. Raise an issue
