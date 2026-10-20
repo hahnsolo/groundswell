@@ -9,6 +9,7 @@ import { getNearbyIssues, type IssueSort } from "@/lib/queries";
 import { IssueCard } from "@/components/issue-card";
 import { PostalSearch } from "@/components/postal-search";
 import { buttonStyles } from "@/components/styles";
+import { RememberArea } from "@/components/neighbourhood";
 
 export default function AreaPage(props: PageProps<"/area/[country]/[postal]">) {
   return (
@@ -82,11 +83,12 @@ async function AreaContent({
 
   const chip = (active: boolean) =>
     `rounded-full border px-3 py-1 text-sm whitespace-nowrap ${
-      active ? "border-brand bg-brand text-white" : "border-border bg-surface hover:border-brand/50"
+      active ? "border-ink bg-ink text-background" : "border-border bg-surface hover:border-ink"
     }`;
 
   return (
     <>
+      <RememberArea country={place.country} postal={place.postalCode} name={place.placeName} />
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <p className="text-sm text-muted">
@@ -103,9 +105,9 @@ async function AreaContent({
         </div>
         <Link
           href={`/issues/new?country=${place.country}&postal=${encodeURIComponent(place.postalCode)}`}
-          className={buttonStyles.primary}
+          className={buttonStyles.secondary}
         >
-          + Raise an issue
+          + Raise an issue here
         </Link>
       </div>
 
@@ -127,7 +129,7 @@ async function AreaContent({
               <Link
                 key={r}
                 href={href({ radius: r })}
-                className={r === radius ? "font-semibold text-brand-strong underline dark:text-brand" : "text-muted hover:text-foreground"}
+                className={r === radius ? "font-semibold text-link underline" : "text-muted hover:text-foreground"}
               >
                 {r} km
               </Link>

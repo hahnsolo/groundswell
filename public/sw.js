@@ -3,7 +3,7 @@
 // shows an offline page instead of the browser's error. It never caches page
 // HTML or data, so nobody sees stale (or someone else's) signed-in content.
 
-const CACHE = "groundswell-v1";
+const CACHE = "groundswell-v2";
 const OFFLINE_URL = "/offline";
 const PRECACHE = [OFFLINE_URL, "/icons/icon-192.png", "/icon.svg"];
 

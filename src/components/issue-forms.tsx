@@ -83,7 +83,7 @@ export function CampaignForm({ issueId }: { issueId: string }) {
   const [state, action] = useFormAction(createCampaign);
   const e = state?.fieldErrors;
   const v = state?.values;
-  if (state?.ok) return <p className="text-sm text-brand-strong dark:text-brand">Campaign started — share it with your neighbours!</p>;
+  if (state?.ok) return <p className="text-sm text-link">Campaign started — share it with your neighbours!</p>;
   return (
     <form action={action} className="space-y-4">
       <input type="hidden" name="issueId" value={issueId} />
@@ -108,7 +108,7 @@ export function SignForm({ campaignId, signed }: { campaignId: string; signed: b
   if (signed || state?.ok) {
     return (
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
-        <p className="font-medium text-brand-strong dark:text-brand">✓ You&apos;ve signed this campaign</p>
+        <p className="font-medium text-link">✓ You&apos;ve signed this campaign</p>
         <form action={unsignCampaign}>
           <input type="hidden" name="campaignId" value={campaignId} />
           <button className="text-xs text-muted underline hover:text-foreground">Remove my signature</button>
@@ -232,7 +232,7 @@ export function RepLookup({ country }: { country: string }) {
     return (
       <p className="text-sm text-muted">
         Look up your federal, state and local officials at{" "}
-        <a href="https://www.usa.gov/elected-officials" target="_blank" rel="noopener noreferrer" className="font-medium text-brand-strong underline dark:text-brand">
+        <a href="https://www.usa.gov/elected-officials" target="_blank" rel="noopener noreferrer" className="font-medium text-link underline">
           usa.gov/elected-officials
         </a>
         , then paste their email into the letter above.
@@ -278,7 +278,7 @@ export function RepLookup({ country }: { country: string }) {
                 {r.party_name ? ` · ${r.party_name}` : ""}
               </p>
               {r.email && (
-                <button type="button" className="mt-1 text-brand-strong underline dark:text-brand" onClick={() => navigator.clipboard.writeText(r.email!)}>
+                <button type="button" className="mt-1 text-link underline" onClick={() => navigator.clipboard.writeText(r.email!)}>
                   Copy email ({r.email})
                 </button>
               )}

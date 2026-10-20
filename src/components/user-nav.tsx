@@ -1,35 +1,29 @@
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
-import { signOut } from "@/app/actions/auth";
-import { areaHref } from "@/lib/countries";
 
+/** Signed in: your initial, linking to your activity (sign out lives there). Signed out: sign in / join. */
 export async function UserNav() {
   const user = await getCurrentUser();
   if (!user) {
     return (
-      <nav className="flex items-center gap-2 text-sm">
-        <Link href="/signin" className="rounded-lg px-3 py-1.5 hover:bg-brand-soft">
+      <nav className="flex items-center gap-1 text-sm">
+        <Link href="/signin" className="rounded-md px-2.5 py-1.5 hover:bg-surface">
           Sign in
         </Link>
-        <Link href="/signup" className="rounded-lg bg-brand px-3 py-1.5 font-medium text-white hover:bg-brand-strong">
+        <Link href="/signup" className="hidden rounded-md border-[1.5px] border-ink px-2.5 py-1 font-medium hover:bg-surface sm:inline-block">
           Join
         </Link>
       </nav>
     );
   }
   return (
-    <nav className="flex items-center gap-1 text-sm">
-      {user.homeCountry && user.homePostal && (
-        <Link href={areaHref(user.homeCountry, user.homePostal)} className="rounded-lg px-3 py-1.5 hover:bg-brand-soft">
-          My area
-        </Link>
-      )}
-      <Link href="/me" className="rounded-lg px-3 py-1.5 hover:bg-brand-soft">
-        {user.name.split(" ")[0]}
-      </Link>
-      <form action={signOut}>
-        <button className="rounded-lg px-3 py-1.5 text-muted hover:bg-brand-soft">Sign out</button>
-      </form>
-    </nav>
+    <Link
+      href="/me"
+      title={`${user.name} · your activity`}
+      aria-label={`${user.name}: your activity`}
+      className="grid h-8 w-8 place-items-center rounded-full border-[1.5px] border-ink bg-mustard text-sm font-semibold text-[#1f2a44] hover:opacity-90"
+    >
+      {user.name[0]?.toUpperCase()}
+    </Link>
   );
 }

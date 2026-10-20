@@ -30,7 +30,7 @@ export function SignInForm({ next }: { next?: string }) {
       </SubmitButton>
       <p className="text-center text-sm text-muted">
         New here?{" "}
-        <Link href={next ? `/signup?next=${encodeURIComponent(next)}` : "/signup"} className="font-medium text-brand-strong underline dark:text-brand">
+        <Link href={next ? `/signup?next=${encodeURIComponent(next)}` : "/signup"} className="font-medium text-link underline">
           Create an account
         </Link>
       </p>
@@ -82,7 +82,7 @@ export function SignUpForm({ next }: { next?: string }) {
       </SubmitButton>
       <p className="text-center text-sm text-muted">
         Already have an account?{" "}
-        <Link href={next ? `/signin?next=${encodeURIComponent(next)}` : "/signin"} className="font-medium text-brand-strong underline dark:text-brand">
+        <Link href={next ? `/signin?next=${encodeURIComponent(next)}` : "/signin"} className="font-medium text-link underline">
           Sign in
         </Link>
       </p>

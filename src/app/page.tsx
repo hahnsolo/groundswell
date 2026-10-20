@@ -19,7 +19,7 @@ export default function Home() {
   return (
     <div>
       <section className="mx-auto max-w-3xl px-4 pb-16 pt-20 text-center sm:pt-28">
-        <p className="mb-4 inline-block rounded-full bg-brand-soft px-3 py-1 text-sm font-medium text-brand-strong dark:text-brand">
+        <p className="mb-4 inline-block rounded-full bg-brand-soft px-3 py-1 text-sm font-medium text-link">
           Now in the United States &amp; Canada
         </p>
         <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">
@@ -41,7 +41,7 @@ export default function Home() {
         <div className="mx-auto grid max-w-5xl gap-8 px-4 py-14 sm:grid-cols-3">
           {STEPS.map((s, i) => (
             <div key={s.title}>
-              <div className="mb-3 grid h-8 w-8 place-items-center rounded-full bg-brand-soft text-sm font-semibold text-brand-strong dark:text-brand">
+              <div className="mb-3 grid h-8 w-8 place-items-center rounded-full bg-brand-soft text-sm font-semibold text-link">
                 {i + 1}
               </div>
               <h2 className="font-semibold">{s.title}</h2>

@@ -26,8 +26,11 @@ The screenshots come from the **dev site with demo data** (Alex, Sam and Priya a
 
 ## The top bar (on every page)
 
+- **The wave logo and "Groundswell"** go back to the home page.
+- **Your neighbourhood** (e.g. "Downtown Toronto ▾"): the last area you looked at, or your home area. Click it to jump back there or look up another postal code. It's remembered in a small cookie that holds only the area code and its name.
+- **+ Start something** (red, the one loud button) raises a new issue in the neighbourhood you're looking at. On a phone it's just a **+**.
 - **Signed out:** **Sign in** and **Join**.
-- **Signed in:** **My area** (if you've set a home area), **your first name** (goes to your activity page), and **Sign out**.
+- **Signed in:** a circle with **your initial**, which goes to your activity page. **Sign out** is at the top of that page.
 - **Email not confirmed yet:** a yellow bar under the top bar says *"Confirm your email (…) to post issues, comments and meetups"*, with a button to resend the link (at most 3 times an hour).
 
 ---
@@ -62,7 +65,8 @@ The screenshots come from the **dev site with demo data** (Alex, Sam and Priya a
 - **Filter by category** with the chips: Safety, Roads & transit, Housing, Environment, Parks & recreation, Schools & youth, Health, Local business, Utilities & services, Other.
 - **Change the distance:** 2, 5, 10 (default), 25 or 50 km.
 - **Sort:** *Most support* (resolved issues sink to the bottom) or *Newest*.
-- **+ Raise an issue** starts a new one for this area.
+- **+ Raise an issue here** (or **Start something** in the top bar) starts a new one for this area.
+- Visiting an area makes it "your neighbourhood" in the top bar.
 - Click any card to open the issue.
 
 **Reading a card:** the green box is the number of people who "care." Under the title you see the category, a status badge (*Open*, *Being worked on*, *Resolved*), the place and distance, the number of comments 💬, upcoming meetups 📅, and when it was raised.
@@ -156,7 +160,7 @@ Type your name (and the recipient's email if you have it). The app writes a poli
 
 ## 4. Raise an issue
 
-`/issues/new` (from **+ Raise an issue** on an area page)
+`/issues/new` (from **Start something** in the top bar, or **+ Raise an issue here** on an area page)
 
 ![Raise an issue form](images/walkthrough/10-new-issue.webp)
 
@@ -198,7 +202,8 @@ Click your name in the top bar.
 
 ![Your activity page](images/walkthrough/11-me.webp)
 
-- **Home area:** set or change your postal code. This makes **My area** appear in the top bar.
+- **Sign out** at the top right.
+- **Home area:** set or change your postal code. The top bar falls back to it when you haven't looked at another area.
 - **Upcoming meetups** you've RSVP'd to, with times in your time zone. **✕ Not going** cancels your RSVP. Meetups you host are tagged **Hosting**, with a **Manage** link to the meetup (stepping down is confirmed there).
 - **Issues you raised.** If a moderator hid or removed one, it shows an **Under review** or **Removed** tag here.
 - **Issues you support**, each with **✕ Stop supporting**.

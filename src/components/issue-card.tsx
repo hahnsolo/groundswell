@@ -11,7 +11,7 @@ export function IssueCard({ issue }: { issue: NearbyIssue }) {
       href={`/issues/${issue.id}`}
       className="group flex gap-4 rounded-xl border border-border bg-surface p-4 transition hover:border-brand/50 hover:shadow-sm"
     >
-      <div className="flex w-14 shrink-0 flex-col items-center justify-center rounded-lg bg-brand-soft py-2 text-brand-strong dark:text-brand">
+      <div className="flex w-14 shrink-0 flex-col items-center justify-center rounded-lg bg-brand-soft py-2 text-link">
         <span className="text-lg font-semibold leading-none">{issue._count.supports}</span>
         <span className="mt-1 text-[10px] uppercase tracking-wide">care</span>
       </div>
@@ -22,7 +22,7 @@ export function IssueCard({ issue }: { issue: NearbyIssue }) {
           </span>
           <span className={`rounded-full px-2 py-0.5 font-medium ${status.className}`}>{status.label}</span>
         </div>
-        <h3 className="mt-1 font-semibold group-hover:text-brand-strong dark:group-hover:text-brand">{issue.title}</h3>
+        <h3 className="mt-1 font-semibold group-hover:text-link">{issue.title}</h3>
         <p className="mt-1 line-clamp-2 text-sm text-muted">{issue.description}</p>
         <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted">
           <span>

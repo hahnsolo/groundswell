@@ -9,8 +9,9 @@ const svg = await readFile(new URL("../public/icon.svg", import.meta.url));
 // Maskable icons get cropped to a circle/squircle by Android, so the mark has
 // to sit inside the central 80% "safe zone" on a full-bleed background.
 const maskableSvg = Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" fill="#1f7a5a"/>
-  <path d="M256 166 L358 356 H154 Z" fill="#ffffff" stroke="#ffffff" stroke-width="22" stroke-linejoin="round"/>
+  <rect width="512" height="512" fill="#1f2a44"/>
+  <path d="M146 340 H366" stroke="#f4efe6" stroke-width="24" stroke-linecap="round"/>
+  <path d="M164 304 C220 304 228 182 271 182 C314 182 320 260 350 260" fill="none" stroke="#e8593b" stroke-width="32" stroke-linecap="round"/>
 </svg>`);
 
 const outputs = [

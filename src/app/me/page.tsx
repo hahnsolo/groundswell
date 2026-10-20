@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { COUNTRIES, areaHref } from "@/lib/countries";
 import { setHomeArea, toggleRsvp, toggleSupport } from "@/app/actions/community";
 import { DeleteAccountForm } from "@/components/account-forms";
+import { signOut } from "@/app/actions/auth";
 import { ACCOUNT_GRACE_DAYS } from "@/lib/accounts";
 import { LocalTime } from "@/components/local-time";
 import { SubmitButton } from "@/components/ui";
@@ -54,7 +55,7 @@ async function Me({ searchParams }: Pick<PageProps<"/me">, "searchParams">) {
   const linkRow = "block rounded-lg px-2 py-1.5 -mx-2 hover:bg-brand-soft";
   const row = "flex items-center gap-2";
   const xButton = "shrink-0 rounded-lg px-2 py-1 text-xs text-muted hover:bg-brand-soft hover:text-foreground";
-  const tag = "rounded-full bg-brand-soft px-2 py-0.5 text-xs text-brand-strong dark:text-brand";
+  const tag = "rounded-full bg-brand-soft px-2 py-0.5 text-xs text-link";
 
   return (
     <div className="space-y-6">
@@ -63,7 +64,12 @@ async function Me({ searchParams }: Pick<PageProps<"/me">, "searchParams">) {
           {notice}
         </p>
       )}
-      <h1 className="text-2xl font-semibold tracking-tight">Hi, {user.name}</h1>
+      <div className="flex items-center justify-between gap-4">
+        <h1 className="text-2xl font-semibold tracking-tight">Hi, {user.name}</h1>
+        <form action={signOut}>
+          <button className="rounded-md border-[1.5px] border-ink px-3 py-1 text-sm hover:bg-surface">Sign out</button>
+        </form>
+      </div>
 
       {user.isAdmin && (
         <Link href="/admin/reports" className={`${section} flex items-center justify-between hover:border-brand/50`}>
@@ -86,7 +92,7 @@ async function Me({ searchParams }: Pick<PageProps<"/me">, "searchParams">) {
           <SubmitButton variant="secondary">Save</SubmitButton>
         </form>
         {user.homeCountry && user.homePostal && (
-          <Link href={areaHref(user.homeCountry, user.homePostal)} className="mt-3 inline-block text-sm text-brand-strong underline dark:text-brand">
+          <Link href={areaHref(user.homeCountry, user.homePostal)} className="mt-3 inline-block text-sm text-link underline">
             Go to my area →
           </Link>
         )}

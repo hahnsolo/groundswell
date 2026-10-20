@@ -61,7 +61,7 @@ async function Queue() {
         Content reported by the community. Items with 3+ reports are already hidden until you decide.
       </p>
       {list.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-border bg-surface p-10 text-center text-muted">All clear â€” nothing to review.</p>
+        <p className="rounded-xl border border-dashed border-border bg-surface p-10 text-center text-muted">All clear — nothing to review.</p>
       ) : (
         <QueueList list={list} issueById={issueById} commentById={commentById} />
       )}
@@ -105,13 +105,13 @@ async function RecentlyRemoved() {
                 <span>
                   removed <RelativeTime iso={item.removedAt!.toISOString()} />
                 </span>
-                <span>Â· deleted for good <RelativeTime iso={permanentDeletionDate(item.removedAt!).toISOString()} /></span>
+                <span>· deleted for good <RelativeTime iso={permanentDeletionDate(item.removedAt!).toISOString()} /></span>
               </div>
               {item.on && <p className="mt-2 text-xs text-muted">on {item.on.title}</p>}
               <p className="mt-1 line-clamp-3 whitespace-pre-line text-sm">{item.text}</p>
               <p className="mt-1 text-xs text-muted">
                 by {displayName(item.author)} ({item.author.email})
-                {item.removalReason && <> Â· reason: â€œ{item.removalReason}â€</>}
+                {item.removalReason && <> · reason: “{item.removalReason}”</>}
               </p>
               <form action={restore} className="mt-3">
                 <input type="hidden" name="targetType" value={item.type} />
@@ -196,7 +196,7 @@ function QueueList({
             {reasons.length > 0 && (
               <ul className="mt-3 space-y-1 border-l-2 border-border pl-3 text-xs text-muted">
                 {reasons.map((r, i) => (
-                  <li key={i}>â€œ{r}â€</li>
+                  <li key={i}>“{r}”</li>
                 ))}
               </ul>
             )}

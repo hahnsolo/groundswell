@@ -1,20 +1,21 @@
 import type { Metadata, Viewport } from "next";
-import Link from "next/link";
 import { Suspense } from "react";
-import { Geist, Geist_Mono } from "next/font/google";
-import { UserNav } from "@/components/user-nav";
+import { Fraunces, Inter } from "next/font/google";
+import { SiteHeader } from "@/components/site-header";
 import { VerifyBanner } from "@/components/verify-banner";
 import { InstallPrompt, ServiceWorkerRegister } from "@/components/pwa";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+// Inter for reading, Fraunces (a warm, slightly old-style serif) for headings.
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const fraunces = Fraunces({
+  variable: "--font-fraunces",
   subsets: ["latin"],
+  axes: ["opsz"],
 });
 
 export const metadata: Metadata = {
@@ -29,35 +30,24 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#ffffff" },
-    { media: "(prefers-color-scheme: dark)", color: "#191d1b" },
+    { media: "(prefers-color-scheme: light)", color: "#f4efe6" },
+    { media: "(prefers-color-scheme: dark)", color: "#151a24" },
   ],
   viewportFit: "cover",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
+    <html lang="en" className={`${inter.variable} ${fraunces.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col font-sans">
-        <header className="sticky top-0 z-10 border-b border-border bg-surface/85 backdrop-blur">
-          <div className="mx-auto flex h-14 max-w-5xl items-center justify-between gap-4 px-4">
-            <Link href="/" className="flex items-center gap-2 font-semibold tracking-tight">
-              <span aria-hidden className="grid h-7 w-7 place-items-center rounded-lg bg-brand text-xs text-white">
-                ▲
-              </span>
-              Groundswell
-            </Link>
-            <Suspense fallback={<div className="h-8 w-24" />}>
-              <UserNav />
-            </Suspense>
-          </div>
-        </header>
+        <SiteHeader />
         <Suspense>
           <VerifyBanner />
         </Suspense>
         <main className="flex-1">{children}</main>
-        <footer className="border-t border-border py-6 text-center text-sm text-muted">
-          Built for neighbours. Be kind, be specific, assume good faith.
+        <footer className="border-t-[1.5px] border-ink py-8 text-center text-sm text-muted">
+          <p className="font-display text-base italic text-foreground">Built for neighbours.</p>
+          <p className="mt-1">Be kind, be specific, assume good faith.</p>
         </footer>
         <InstallPrompt />
         <ServiceWorkerRegister />

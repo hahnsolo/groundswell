@@ -1,26 +1,35 @@
 @import "tailwindcss";
 
+/* "Neighbourhood noticeboard": warm paper, navy ink, one red for action. */
 :root {
-  --background: #f7f7f4;
-  --surface: #ffffff;
-  --foreground: #1c1f1d;
-  --muted: #5d645f;
-  --border: #e3e5df;
-  --brand: #1f7a5a;
-  --brand-strong: #145c43;
-  --brand-soft: #e3f2ea;
+  --background: #f4efe6; /* paper */
+  --surface: #fbf8f2; /* a note pinned on the paper */
+  --foreground: #1f2a44; /* ink */
+  --muted: #5b6478;
+  --border: #ddd4c5; /* soft pencil line */
+  --ink: #1f2a44; /* strong rules: header, pinned notes */
+  --brand: #c63d22; /* action red: white text on it passes AA */
+  --brand-strong: #a8321b;
+  --brand-soft: #f3e2d6;
+  --link: #1f2a44; /* links are ink; red is kept for the one action to take */
+  --mustard: #e9b44c;
+  --sage: #7fa38b;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #111412;
-    --surface: #191d1b;
-    --foreground: #e9ece8;
-    --muted: #9aa39d;
-    --border: #2a302c;
-    --brand: #3fae84;
-    --brand-strong: #2f9a72;
-    --brand-soft: #173326;
+    --background: #151a24;
+    --surface: #1d2330;
+    --foreground: #f1ebdf;
+    --muted: #a6adbb;
+    --border: #303849;
+    --ink: #f1ebdf;
+    --brand: #c63d22;
+    --brand-strong: #a8321b;
+    --brand-soft: #3b2621;
+    --link: #f1ebdf;
+    --mustard: #e9b44c;
+    --sage: #8fb39b;
   }
 }
 
@@ -30,11 +39,25 @@
   --color-foreground: var(--foreground);
   --color-muted: var(--muted);
   --color-border: var(--border);
+  --color-ink: var(--ink);
   --color-brand: var(--brand);
   --color-brand-strong: var(--brand-strong);
   --color-brand-soft: var(--brand-soft);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-link: var(--link);
+  --color-mustard: var(--mustard);
+  --color-sage: var(--sage);
+  --font-sans: var(--font-inter);
+  --font-display: var(--font-fraunces);
+}
+
+@layer base {
+  /* Headings are set in Fraunces, a warm serif; everything else in Inter. */
+  h1,
+  h2,
+  h3 {
+    font-family: var(--font-display);
+    letter-spacing: -0.01em;
+  }
 }
 
 body {

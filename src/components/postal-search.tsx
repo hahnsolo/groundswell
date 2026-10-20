@@ -30,7 +30,7 @@ export function PostalSearch({
 
   return (
     <form onSubmit={onSubmit} className="w-full">
-      <div className={`flex flex-col gap-2 sm:flex-row ${compact ? "" : "rounded-2xl bg-surface p-2 shadow-sm ring-1 ring-border"}`}>
+      <div className={`flex flex-col gap-2 sm:flex-row ${compact ? "" : "rounded-md border-[1.5px] border-ink bg-surface p-2"}`}>
         <select
           aria-label="Country"
           value={country}
