@@ -41,8 +41,8 @@ async function About({ params }: Pick<PageProps<"/issues/[id]">, "params">) {
           href={`/events/${next.id}`}
           className="flex flex-wrap items-center justify-between gap-3 rounded-md bg-ink p-4 text-background hover:opacity-95"
         >
-          <span>
-            <span className="block text-[11px] uppercase tracking-wide text-mustard">Next event</span>
+          <span className="min-w-0">
+            <span className="block text-[11px] uppercase tracking-wide text-mustard dark:text-brand-strong">Next event</span>
             <span className="font-display text-lg font-semibold">{next.title}</span>
             <span className="block text-sm opacity-80">
               <LocalTime iso={next.startsAt.toISOString()} /> · {next.isOnline ? "Online" : next.location} · {next._count.rsvps} going

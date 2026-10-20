@@ -27,7 +27,7 @@ async function HeaderActions() {
     <>
       <NeighbourhoodPicker initial={area} />
       <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-2">
-        <Link href="/events" className="hidden rounded-md px-2.5 py-1.5 text-sm hover:bg-surface md:inline-block">
+        <Link href="/events" className="hidden rounded-md px-2.5 py-1.5 text-sm hover:bg-surface lg:inline-block">
           Events nearby
         </Link>
         <StartSomething initial={area} />

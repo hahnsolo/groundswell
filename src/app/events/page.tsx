@@ -51,7 +51,7 @@ async function EventsNearby({ searchParams }: Pick<PageProps<"/events">, "search
       <h1 className="text-3xl font-semibold leading-tight sm:text-4xl">Events around {place.placeName}</h1>
       <p className="mt-2 text-muted">
         Meetups for causes within {radius} km.{" "}
-        <span className="whitespace-nowrap">
+        <span className="inline-flex flex-wrap items-baseline">
           Look further:{" "}
           {RADIUS_OPTIONS.map((r) => (
             <Link

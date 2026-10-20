@@ -27,7 +27,8 @@ export default function CauseLayout({ children, params }: LayoutProps<"/issues/[
   );
 }
 
-const AVATAR_COLOURS = ["bg-mustard", "bg-sage", "bg-brand-soft"];
+// Fixed light fills (not theme colours), so the dark initials stay readable in dark mode too.
+const AVATAR_COLOURS = ["bg-[#e9b44c]", "bg-[#a9c4b2]", "bg-[#f0c9b8]"];
 
 async function CauseHeader({ params, children }: { params: LayoutProps<"/issues/[id]">["params"]; children: React.ReactNode }) {
   const { id } = await params;
@@ -111,7 +112,7 @@ async function CauseHeader({ params, children }: { params: LayoutProps<"/issues/
                   <summary className="cursor-pointer px-1 text-muted hover:text-foreground">Leave</summary>
                   <form
                     action={leaveIssueAction}
-                    className="absolute right-0 z-10 mt-2 w-72 space-y-2 rounded-md border-[1.5px] border-ink bg-surface p-3 shadow-lg"
+                    className="fixed inset-x-4 top-28 z-30 mx-auto max-w-sm space-y-2 rounded-md border-[1.5px] border-ink bg-surface p-3 shadow-lg lg:absolute lg:inset-x-auto lg:right-0 lg:top-full lg:mt-2 lg:w-72"
                   >
                     <input type="hidden" name="issueId" value={issue.id} />
                     <p className="text-muted">

@@ -14,7 +14,8 @@ import { buttonStyles } from "@/components/styles";
 
 export const metadata: Metadata = { title: "Event" };
 
-const AVATAR_COLOURS = ["bg-mustard", "bg-sage", "bg-brand-soft"];
+// Fixed light fills (not theme colours), so the dark initials stay readable in dark mode too.
+const AVATAR_COLOURS = ["bg-[#e9b44c]", "bg-[#a9c4b2]", "bg-[#f0c9b8]"];
 
 // An event always belongs to a cause; this page says so up top and links back.
 export default function EventPage(props: PageProps<"/events/[id]">) {

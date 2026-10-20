@@ -79,13 +79,13 @@ export function NeighbourhoodPicker({ initial }: { initial: Area | null }) {
   }, [open]);
 
   return (
-    <div ref={box} className="relative min-w-0">
+    <div ref={box} className="relative min-w-0 max-w-[10rem] sm:max-w-[16rem]">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
         aria-expanded={open}
         aria-label={area ? `Your neighbourhood: ${area.name}. Change` : "Find your neighbourhood"}
-        className="flex max-w-[10rem] items-center gap-1 rounded-full border-[1.5px] border-ink px-2.5 py-0.5 text-xs font-medium hover:bg-surface sm:max-w-[16rem] sm:text-sm"
+        className="flex max-w-full items-center gap-1 rounded-full border-[1.5px] border-ink px-2.5 py-0.5 text-xs font-medium hover:bg-surface sm:text-sm"
       >
         <span className="truncate">{area?.name ?? "Find your neighbourhood"}</span>
         <svg viewBox="0 0 12 12" className="h-3 w-3 shrink-0" aria-hidden="true">

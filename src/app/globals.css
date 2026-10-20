@@ -63,6 +63,8 @@
 body {
   background: var(--background);
   color: var(--foreground);
+  /* Long words and links (people paste URLs) wrap instead of pushing the page sideways. */
+  overflow-wrap: anywhere;
 }
 
 :focus-visible {

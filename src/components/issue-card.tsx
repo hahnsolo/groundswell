@@ -4,7 +4,8 @@ import { momentum, peopleLine, type Momentum } from "@/lib/momentum";
 import type { NearbyIssue } from "@/lib/queries";
 import { LocalTime } from "./local-time";
 
-const AVATAR_COLOURS = ["bg-mustard", "bg-sage", "bg-brand-soft"];
+// Fixed light fills (not theme colours), so the dark initials stay readable in dark mode too.
+const AVATAR_COLOURS = ["bg-[#e9b44c]", "bg-[#a9c4b2]", "bg-[#f0c9b8]"];
 
 /** A cause, pinned to the neighbourhood board: who cares, and what's happening now. */
 export function IssueCard({ issue }: { issue: NearbyIssue }) {

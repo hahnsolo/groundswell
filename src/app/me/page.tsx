@@ -103,7 +103,7 @@ async function Me({ searchParams }: Pick<PageProps<"/me">, "searchParams">) {
         {rsvps.length === 0 && <p className="text-sm text-muted">You haven&apos;t RSVP&apos;d to any upcoming meetups.</p>}
         {rsvps.map((r) => (
           <div key={r.meetupId} className={row}>
-            <Link href={`/events/${r.meetupId}`} className={`${linkRow} flex-1`}>
+            <Link href={`/events/${r.meetupId}`} className={`${linkRow} min-w-0 flex-1`}>
               <span className="font-medium">{r.meetup.title}</span>
               {r.meetup.organizerId === user.id && <span className={`${tag} ml-2`}>Hosting</span>}
               <span className="block text-sm text-muted">
@@ -149,7 +149,7 @@ async function Me({ searchParams }: Pick<PageProps<"/me">, "searchParams">) {
         {supported.length === 0 && <p className="text-sm text-muted">Nothing yet.</p>}
         {supported.map((s) => (
           <div key={s.issueId} className={row}>
-            <Link href={`/issues/${s.issueId}`} className={`${linkRow} flex-1`}>
+            <Link href={`/issues/${s.issueId}`} className={`${linkRow} min-w-0 flex-1`}>
               {s.issue.title} <span className="text-sm text-muted">· {s.issue.placeName}</span>
             </Link>
             <form action={toggleSupport}>
