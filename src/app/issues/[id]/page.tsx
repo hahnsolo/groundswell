@@ -1,383 +1,159 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { getCurrentUser } from "@/lib/auth";
-import { getCategory, getStatus, STATUSES } from "@/lib/categories";
-import { areaHref } from "@/lib/countries";
+import { STATUSES } from "@/lib/categories";
 import { getIssueDetail } from "@/lib/queries";
-import { permanentDeletionDate } from "@/lib/moderation";
-import { leaveIssueAction, reportContent, setIssueStatus, stepDownAsHost, toggleRsvp, toggleSupport } from "@/app/actions/community";
 import { displayName } from "@/lib/accounts";
-import { LocalTime, RelativeTime } from "@/components/local-time";
-import {
-  CampaignForm,
-  CommentForm,
-  LetterBuilder,
-  MeetupForm,
-  RepLookup,
-  ShareButton,
-  SignForm,
-} from "@/components/issue-forms";
-import { buttonStyles } from "@/components/styles";
+import { reportContent, setIssueStatus } from "@/app/actions/community";
+import { LocalTime } from "@/components/local-time";
+import { CampaignForm, LetterBuilder, RepLookup, SignForm } from "@/components/issue-forms";
+import { Panel, SignInPrompt } from "@/components/cause-parts";
 
-export default function IssuePage(props: PageProps<"/issues/[id]">) {
+// The cause's holding page: what it's about, the ask, and what's coming up.
+export default function AboutTab(props: PageProps<"/issues/[id]">) {
   return (
-    <div className="mx-auto max-w-5xl px-4 py-8">
-      <Suspense fallback={<div className="h-96 animate-pulse rounded-xl bg-border/60" />}>
-        <IssueContent params={props.params} />
-      </Suspense>
-    </div>
+    <Suspense fallback={<div className="h-64 animate-pulse rounded-md bg-border/60" />}>
+      <About params={props.params} />
+    </Suspense>
   );
 }
 
-function Card({ title, id, children, action }: { title: string; id?: string; children: React.ReactNode; action?: React.ReactNode }) {
-  return (
-    <section id={id} className="rounded-xl border border-border bg-surface p-5">
-      <div className="mb-4 flex items-center justify-between gap-2">
-        <h2 className="font-semibold">{title}</h2>
-        {action}
-      </div>
-      {children}
-    </section>
-  );
-}
-
-function SignInPrompt({ issueId, text }: { issueId: string; text: string }) {
-  return (
-    <Link href={`/signin?next=/issues/${issueId}`} className="text-sm font-medium text-link underline">
-      Sign in to {text}
-    </Link>
-  );
-}
-
-function RemovedNotice({ what, removedAt, reason }: { what: "issue" | "comment"; removedAt: Date; reason: string | null }) {
-  return (
-    <div role="status" className="rounded-lg bg-red-50 p-3 text-sm text-red-900 dark:bg-red-950/40 dark:text-red-200">
-      <p>
-        <strong>A moderator removed this {what}</strong> <RelativeTime iso={removedAt.toISOString()} />.
-        {reason && <> Reason: “{reason}”.</>}
-      </p>
-      <p className="mt-1">
-        Only you can see it, and it will be deleted for good on{" "}
-        <LocalTime iso={permanentDeletionDate(removedAt).toISOString()} options={{ month: "long", day: "numeric" }} />.
-      </p>
-    </div>
-  );
-}
-
-async function IssueContent({ params }: Pick<PageProps<"/issues/[id]">, "params">) {
+async function About({ params }: Pick<PageProps<"/issues/[id]">, "params">) {
   const { id } = await params;
   const user = await getCurrentUser();
   const issue = await getIssueDetail(id, user?.id ?? null);
-  if (!issue || (issue.hidden && issue.authorId !== user?.id)) notFound();
-  if (issue.removedAt) {
-    // Only the author gets here. Show what was removed and why, nothing more.
-    return (
-      <article>
-        <RemovedNotice what="issue" removedAt={issue.removedAt} reason={issue.removalReason} />
-        <h1 className="mt-6 text-3xl font-semibold tracking-tight">{issue.title}</h1>
-        <p className="mt-4 whitespace-pre-line leading-relaxed text-muted">{issue.description}</p>
-        <Link href="/me" className="mt-6 inline-block text-sm text-link underline">
-          ← Your activity
-        </Link>
-      </article>
-    );
-  }
+  if (!issue || issue.removedAt || (issue.hidden && issue.authorId !== user?.id)) return null; // the layout explains
 
-  const cat = getCategory(issue.category);
-  const status = getStatus(issue.status);
   const appUrl = process.env.APP_URL ?? "http://localhost:3000";
   const issueUrl = `${appUrl}/issues/${issue.id}`;
   const place = `${issue.placeName}, ${issue.region}`;
   const isAuthor = user?.id === issue.authorId;
-  // Anything "Leave this issue" would undo.
-  const involved =
-    !!user &&
-    (issue.viewerSupports ||
-      issue.viewerSigned.size > 0 ||
-      issue.meetups.some((m) => m.organizerId === user.id || (Array.isArray(m.rsvps) && m.rsvps.length > 0)));
+  const next = issue.meetups.find((m) => m.upcoming);
 
   return (
-    <article>
-      <Link href={areaHref(issue.country, issue.postalCode)} className="text-sm text-muted hover:text-foreground">
-        ← Issues near {place}
-      </Link>
+    <div className="space-y-6">
+      <Panel>
+        <p className="whitespace-pre-line text-[17px] leading-relaxed">{issue.description}</p>
+      </Panel>
 
-      {issue.hidden && (
-        <p className="mt-4 rounded-lg bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
-          This issue was hidden after community reports and is only visible to you while it&apos;s reviewed.
-        </p>
+      {next && (
+        <Link
+          href={`/issues/${issue.id}/events#meetup-${next.id}`}
+          className="flex flex-wrap items-center justify-between gap-3 rounded-md bg-ink p-4 text-background hover:opacity-95"
+        >
+          <span>
+            <span className="block text-[11px] uppercase tracking-wide text-mustard">Next event</span>
+            <span className="font-display text-lg font-semibold">{next.title}</span>
+            <span className="block text-sm opacity-80">
+              <LocalTime iso={next.startsAt.toISOString()} /> · {next.isOnline ? "Online" : next.location} · {next._count.rsvps} going
+            </span>
+          </span>
+          <span className="rounded-md bg-brand px-3 py-1.5 text-sm font-medium text-white">See event</span>
+        </Link>
       )}
 
-      <header className="mt-4 flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2 text-sm text-muted">
-            <span>
-              {cat.emoji} {cat.label}
-            </span>
-            <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${status.className}`}>{status.label}</span>
-          </div>
-          <h1 className="mt-2 text-3xl font-semibold tracking-tight">{issue.title}</h1>
-          <p className="mt-2 text-sm text-muted">
-            Raised by {displayName(issue.author)} · {place} · <RelativeTime iso={issue.createdAt.toISOString()} />
-          </p>
-        </div>
-        <div className="flex shrink-0 items-center gap-2">
-          <form action={toggleSupport}>
-            <input type="hidden" name="issueId" value={issue.id} />
-            {issue.viewerSupports ? (
-              // Hovering (or focusing) says what clicking will do: take your support back.
-              <button className={`${buttonStyles.selected} group min-w-40`} aria-pressed title="Click to remove your support">
-                <span className="group-hover:hidden group-focus-visible:hidden">✓ I care · {issue._count.supports}</span>
-                <span className="hidden group-hover:inline group-focus-visible:inline">Remove my support</span>
-              </button>
-            ) : (
-              <button className={buttonStyles.secondary} aria-pressed={false}>
-                I care about this · {issue._count.supports}
-              </button>
-            )}
-          </form>
-          <ShareButton url={issueUrl} title={issue.title} />
-        </div>
-      </header>
-
-      <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_380px]">
-        <div className="space-y-6">
-          <Card title="The issue">
-            <p className="whitespace-pre-line leading-relaxed">{issue.description}</p>
-            <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-border pt-4 text-sm">
-              {isAuthor ? (
-                <form action={setIssueStatus} className="flex items-center gap-2">
-                  <input type="hidden" name="issueId" value={issue.id} />
-                  <span className="text-muted">Status:</span>
-                  {Object.entries(STATUSES).map(([key, s]) => (
-                    <button
-                      key={key}
-                      name="status"
-                      value={key}
-                      className={`rounded-full px-2.5 py-1 text-xs font-medium ${key === issue.status ? s.className : "border border-border text-muted hover:bg-brand-soft"}`}
-                    >
-                      {s.label}
-                    </button>
-                  ))}
-                </form>
-              ) : (
-                user?.emailVerified && (
-                  <form action={reportContent}>
-                    <input type="hidden" name="targetType" value="issue" />
-                    <input type="hidden" name="targetId" value={issue.id} />
-                    <button className="text-xs text-muted hover:text-red-600">Report this issue</button>
-                  </form>
-                )
-              )}
-              {involved && (
-                <details className="ml-auto text-xs">
-                  <summary className="cursor-pointer text-muted hover:text-foreground">Leave this issue</summary>
-                  <form action={leaveIssueAction} className="mt-2 max-w-xs space-y-2">
-                    <input type="hidden" name="issueId" value={issue.id} />
-                    <p className="text-muted">
-                      Removes your support, your RSVPs to its upcoming meetups and your campaign signatures. Your comments stay. Meetups
-                      you host pass to the next person going.
-                    </p>
-                    <button className={`${buttonStyles.secondary} !px-3 !py-1 text-xs`}>Leave this issue</button>
-                  </form>
-                </details>
-              )}
-            </div>
-          </Card>
-
-          <Card title={`Discussion (${issue.comments.length})`} id="discussion">
-            <ul className="space-y-5">
-              {issue.comments.map((c) => (
-                <li key={c.id} className="group">
-                  <div className="flex items-center gap-2 text-sm">
-                    <span className="grid h-7 w-7 place-items-center rounded-full bg-brand-soft text-xs font-semibold text-link">
-                      {c.author.deactivatedAt ? "–" : c.author.name[0]?.toUpperCase()}
-                    </span>
-                    <span className={`font-medium ${c.author.deactivatedAt ? "text-muted" : ""}`}>{displayName(c.author)}</span>
-                    {c.author.id === issue.authorId && <span className="rounded bg-border px-1.5 text-[10px] uppercase">author</span>}
-                    <span className="text-muted">
-                      <RelativeTime iso={c.createdAt.toISOString()} />
-                    </span>
-                    {user?.emailVerified && user.id !== c.author.id && (
-                      <form action={reportContent} className="ml-auto opacity-0 transition group-hover:opacity-100 focus-within:opacity-100">
-                        <input type="hidden" name="targetType" value="comment" />
-                        <input type="hidden" name="targetId" value={c.id} />
-                        <button className="text-xs text-muted hover:text-red-600">Report</button>
-                      </form>
-                    )}
+      <Panel title={issue.campaigns.length > 1 ? "The asks" : "The ask"} id="ask">
+        <div className="space-y-8">
+          {issue.campaigns.map((c) => {
+            const pct = Math.min(100, Math.round((c._count.signatures / c.goal) * 100));
+            return (
+              <div key={c.id} className="space-y-3">
+                <p className="text-[11px] uppercase tracking-wide text-muted">To {c.target}</p>
+                <p className="font-display text-lg font-semibold leading-snug">{c.ask}</p>
+                <div>
+                  <div className="h-2 overflow-hidden rounded-full bg-border">
+                    <div className="h-full rounded-full bg-brand" style={{ width: `${pct}%` }} />
                   </div>
-                  <p className={`mt-1.5 whitespace-pre-line pl-9 text-sm leading-relaxed ${c.hidden ? "text-muted" : ""}`}>{c.body}</p>
-                  {c.removedAt ? (
-                    <div className="mt-2 pl-9">
-                      <RemovedNotice what="comment" removedAt={c.removedAt} reason={c.removalReason} />
-                    </div>
-                  ) : (
-                    c.hidden && (
-                      <p className="mt-2 pl-9 text-xs text-amber-800 dark:text-amber-300">
-                        Hidden after community reports. Only you can see it while it&apos;s reviewed.
-                      </p>
-                    )
-                  )}
-                </li>
-              ))}
-              {issue.comments.length === 0 && <li className="text-sm text-muted">No comments yet. Start the conversation.</li>}
-            </ul>
-            <div className="mt-6 border-t border-border pt-4">
-              {user ? <CommentForm issueId={issue.id} /> : <SignInPrompt issueId={issue.id} text="join the discussion" />}
-            </div>
-          </Card>
-        </div>
-
-        <aside className="space-y-6">
-          <Card title="Meetups" id="meetups">
-            <ul className="space-y-4">
-              {issue.meetups.map((m) => {
-                const going = Array.isArray(m.rsvps) && m.rsvps.length > 0;
-                const full = !!m.capacity && m._count.rsvps >= m.capacity;
-                return (
-                  <li key={m.id} id={`meetup-${m.id}`} className="rounded-lg border border-border p-3">
-                    <p className="text-xs font-medium uppercase tracking-wide text-link">
-                      <LocalTime iso={m.startsAt.toISOString()} />
-                    </p>
-                    <p className="mt-1 font-medium">{m.title}</p>
-                    <p className="mt-0.5 text-sm text-muted">
-                      {m.isOnline ? "🖥️ Online" : `📍 ${m.location}`} · hosted by {displayName(m.organizer)}
-                      {m.hostChangedAt && " (took over)"}
-                    </p>
-                    {m.description && <p className="mt-2 whitespace-pre-line text-sm">{m.description}</p>}
-                    {m.isOnline && going && /^https?:\/\//.test(m.location) && (
-                      <a href={m.location} target="_blank" rel="noopener noreferrer nofollow" className="mt-2 block text-sm text-link underline">
-                        Join link
-                      </a>
-                    )}
-                    <div className="mt-3 flex items-center justify-between text-sm">
-                      <span className="text-muted">
-                        {m._count.rsvps} going{m.capacity ? ` of ${m.capacity}` : ""}
-                      </span>
-                      {user?.id === m.organizerId ? (
-                        <span className={`${buttonStyles.selected} !px-3 !py-1`}>✓ Hosting</span>
-                      ) : user ? (
-                        <form action={toggleRsvp}>
-                          <input type="hidden" name="meetupId" value={m.id} />
-                          <button
-                            disabled={!going && full}
-                            className={`${going ? buttonStyles.selected : buttonStyles.secondary} !px-3 !py-1`}
-                          >
-                            {going ? "✓ Going" : full ? "Full" : "RSVP"}
-                          </button>
-                        </form>
-                      ) : (
-                        <SignInPrompt issueId={issue.id} text="RSVP" />
-                      )}
-                    </div>
-                    {user?.id === m.organizerId && m.upcoming && (
-                      <details className="mt-3 border-t border-border pt-2 text-xs">
-                        <summary className="cursor-pointer text-muted hover:text-foreground">Can&apos;t host it?</summary>
-                        <form action={stepDownAsHost} className="mt-2 space-y-2">
-                          <input type="hidden" name="meetupId" value={m.id} />
-                          <p className="text-muted">
-                            The first person who RSVP&apos;d becomes the host and gets an email. If nobody else is going, the meetup is
-                            cancelled.
-                          </p>
-                          <button className={`${buttonStyles.secondary} !px-3 !py-1 text-xs`}>Step down as host</button>
-                        </form>
-                      </details>
-                    )}
-                  </li>
-                );
-              })}
-              {issue.meetups.length === 0 && <li className="text-sm text-muted">No upcoming meetups. Getting people in a room is the fastest way to build momentum.</li>}
-            </ul>
-            <div className="mt-4 border-t border-border pt-4">
-              {user ? (
+                  <p className="mt-1 text-xs text-muted">
+                    <strong className="text-foreground">{c._count.signatures}</strong> of {c.goal} signed · started by{" "}
+                    {displayName(c.creator)}
+                  </p>
+                </div>
+                {user ? (
+                  // Keyed on signed so the form resets after signing or removing a signature.
+                  <SignForm key={String(issue.viewerSigned.has(c.id))} campaignId={c.id} signed={issue.viewerSigned.has(c.id)} />
+                ) : (
+                  <SignInPrompt next={`/issues/${issue.id}`} text="sign" />
+                )}
+                {c.signatures.length > 0 && (
+                  <ul className="space-y-1.5 border-l-2 border-border pl-3">
+                    {c.signatures.map((s) => (
+                      <li key={s.userId} className="text-xs text-muted">
+                        “{s.note}” — {displayName(s.user)}
+                      </li>
+                    ))}
+                  </ul>
+                )}
                 <details>
-                  <summary className="cursor-pointer text-sm font-medium text-link">+ Organize a meetup</summary>
-                  <div className="mt-4">
-                    <MeetupForm issueId={issue.id} />
+                  <summary className="cursor-pointer text-sm font-medium text-link">✉️ Write to {c.target}</summary>
+                  <div className="mt-3 space-y-4">
+                    <LetterBuilder
+                      issueTitle={issue.title}
+                      issueUrl={issueUrl}
+                      ask={c.ask}
+                      target={c.target}
+                      signatures={c._count.signatures}
+                      place={place}
+                    />
                   </div>
                 </details>
-              ) : (
-                <SignInPrompt issueId={issue.id} text="organize a meetup" />
-              )}
-            </div>
-          </Card>
-
-          <Card title="Take action" id="advocacy">
-            <div className="space-y-6">
-              {issue.campaigns.map((c) => {
-                const pct = Math.min(100, Math.round((c._count.signatures / c.goal) * 100));
-                return (
-                  <div key={c.id} className="space-y-3">
-                    <p className="text-xs uppercase tracking-wide text-muted">Campaign to {c.target}</p>
-                    <p className="text-sm font-medium leading-relaxed">{c.ask}</p>
-                    <div>
-                      <div className="h-2 overflow-hidden rounded-full bg-border">
-                        <div className="h-full rounded-full bg-brand" style={{ width: `${pct}%` }} />
-                      </div>
-                      <p className="mt-1 text-xs text-muted">
-                        <strong className="text-foreground">{c._count.signatures}</strong> of {c.goal} signatures · started by {displayName(c.creator)}
-                      </p>
-                    </div>
-                    {user ? (
-                      // Keyed on signed so the form resets after signing or removing a signature.
-                      <SignForm key={String(issue.viewerSigned.has(c.id))} campaignId={c.id} signed={issue.viewerSigned.has(c.id)} />
-                    ) : (
-                      <SignInPrompt issueId={issue.id} text="sign" />
-                    )}
-                    {c.signatures.length > 0 && (
-                      <ul className="space-y-1.5 border-l-2 border-brand-soft pl-3">
-                        {c.signatures.map((s) => (
-                          <li key={s.userId} className="text-xs text-muted">
-                            “{s.note}” — {displayName(s.user)}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                    <details>
-                      <summary className="cursor-pointer text-sm font-medium text-link">✉️ Write to {c.target}</summary>
-                      <div className="mt-3 space-y-4">
-                        <LetterBuilder
-                          issueTitle={issue.title}
-                          issueUrl={issueUrl}
-                          ask={c.ask}
-                          target={c.target}
-                          signatures={c._count.signatures}
-                          place={place}
-                        />
-                      </div>
-                    </details>
-                  </div>
-                );
-              })}
-
-              {issue.campaigns.length === 0 && (
-                <p className="text-sm text-muted">
-                  Ready to push for a fix? Start a campaign with a clear ask, gather signatures, and send it to the people who can act.
-                </p>
-              )}
-
-              {user ? (
-                <details className="border-t border-border pt-4">
-                  <summary className="cursor-pointer text-sm font-medium text-link">
-                    + {issue.campaigns.length ? "Start another campaign" : "Start a campaign"}
-                  </summary>
-                  <div className="mt-4">
-                    <CampaignForm issueId={issue.id} />
-                  </div>
-                </details>
-              ) : (
-                <SignInPrompt issueId={issue.id} text="start a campaign" />
-              )}
-
-              <div className="border-t border-border pt-4">
-                <h3 className="mb-2 text-sm font-semibold">Find your representatives</h3>
-                <RepLookup country={issue.country} />
               </div>
-            </div>
-          </Card>
-        </aside>
+            );
+          })}
+
+          {issue.campaigns.length === 0 && (
+            <p className="text-sm text-muted">
+              No ask yet. When neighbours are ready to push for a fix, start a campaign: a clear request to the person who can act,
+              backed by signatures.
+            </p>
+          )}
+
+          {user ? (
+            <details className="border-t border-border pt-4">
+              <summary className="cursor-pointer text-sm font-medium text-link">
+                + {issue.campaigns.length ? "Start another campaign" : "Start a campaign"}
+              </summary>
+              <div className="mt-4">
+                <CampaignForm issueId={issue.id} />
+              </div>
+            </details>
+          ) : (
+            <SignInPrompt next={`/issues/${issue.id}`} text="start a campaign" />
+          )}
+
+          <div className="border-t border-border pt-4">
+            <h3 className="mb-2 text-sm font-semibold">Find your representatives</h3>
+            <RepLookup country={issue.country} />
+          </div>
+        </div>
+      </Panel>
+
+      <div className="flex flex-wrap items-center gap-3 text-sm">
+        {isAuthor ? (
+          <form action={setIssueStatus} className="flex flex-wrap items-center gap-2">
+            <input type="hidden" name="issueId" value={issue.id} />
+            <span className="text-muted">Where it stands:</span>
+            {Object.entries(STATUSES).map(([key, s]) => (
+              <button
+                key={key}
+                name="status"
+                value={key}
+                className={`rounded-full px-2.5 py-1 text-xs font-medium ${key === issue.status ? s.className : "border border-border text-muted hover:border-ink"}`}
+              >
+                {key === "resolved" ? "Won / resolved" : s.label}
+              </button>
+            ))}
+          </form>
+        ) : (
+          user?.emailVerified && (
+            <form action={reportContent}>
+              <input type="hidden" name="targetType" value="issue" />
+              <input type="hidden" name="targetId" value={issue.id} />
+              <button className="text-xs text-muted hover:text-red-600">Report this issue</button>
+            </form>
+          )
+        )}
       </div>
-    </article>
+    </div>
   );
 }

@@ -1,5 +1,6 @@
 import "server-only";
 import { db } from "./db";
+import { cache } from "react";
 import { connection } from "next/server";
 import { boundingBox, distanceKm } from "./geo";
 import { isRecentWin } from "./momentum";
@@ -90,13 +91,22 @@ export async function getAreaPulse(issues: NearbyIssue[]) {
   return { people: people.length, eventsThisWeek, wins };
 }
 
-export async function getIssueDetail(id: string, viewerId: string | null) {
+/**
+ * Everything on a cause's pages. Cached per request, so the shared header and
+ * the About/Chat/Events tab underneath read the database once between them.
+ */
+export const getIssueDetail = cache(async (id: string, viewerId: string | null) => {
   await connection(); // uses the current time, so it's always worked out per request
   const issue = await db.issue.findUnique({
     where: { id },
     include: {
       author: { select: { id: true, name: true, deactivatedAt: true } },
-      _count: { select: { supports: true } },
+      _count: { select: { supports: true, comments: { where: { hidden: false } } } },
+      supports: {
+        orderBy: { createdAt: "asc" },
+        take: 4,
+        select: { user: { select: { name: true, deactivatedAt: true } } },
+      },
       comments: {
         // Authors still see their own hidden or removed comments, with a note.
         where: viewerId ? { OR: [{ hidden: false }, { authorId: viewerId }] } : { hidden: false },
@@ -140,11 +150,17 @@ export async function getIssueDetail(id: string, viewerId: string | null) {
     : [null, []];
 
   const now = Date.now();
+  const { supports, ...rest } = issue;
   return {
-    ...issue,
+    ...rest,
+    supporterNames: supports.filter((s) => !s.user.deactivatedAt).map((s) => s.user.name),
     // The list includes meetups that started in the last few hours; only ones still to come can change host.
     meetups: issue.meetups.map((m) => ({ ...m, upcoming: m.startsAt.getTime() > now })),
     viewerSupports: !!supported,
+    // When the viewer joined (clicked "Join"): starts the chat's 24-hour wait.
+    viewerJoinedAt: supported?.createdAt ?? null,
     viewerSigned: new Set(signedIds.map((s) => s.campaignId)),
   };
-}
+});
+
+export type IssueDetail = NonNullable<Awaited<ReturnType<typeof getIssueDetail>>>;

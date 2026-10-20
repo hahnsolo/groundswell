@@ -12,6 +12,7 @@ import { honeypotTripped, linkError, withinPostingLimit } from "@/lib/spam";
 import { HOUR, rateLimit } from "@/lib/rate-limit";
 import { ESTABLISHED_ACCOUNT_MS, shouldAutoHide } from "@/lib/moderation";
 import { handOverMeetup, leaveIssue } from "@/lib/leaving";
+import { chatAccess } from "@/lib/chat-rules";
 import { fromZodError, type FormState } from "@/lib/forms";
 
 const id = z.string().min(1).max(40);
@@ -133,6 +134,20 @@ export async function addComment(_prev: FormState, formData: FormData): Promise<
   const parsed = commentSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return fromZodError(parsed.error);
   if (!(await issueOpen(parsed.data.issueId))) return ISSUE_GONE;
+  // The chat is for members, and new members read along for a day first.
+  const [issue, membership] = await Promise.all([
+    db.issue.findUnique({ where: { id: parsed.data.issueId }, select: { authorId: true } }),
+    db.issueSupport.findUnique({ where: { issueId_userId: { issueId: parsed.data.issueId, userId: user.id } }, select: { createdAt: true } }),
+  ]);
+  const access = chatAccess({
+    signedIn: true,
+    isAdmin: user.isAdmin,
+    isAuthor: issue?.authorId === user.id,
+    joinedAt: membership?.createdAt ?? null,
+    emailVerified: user.emailVerified,
+  });
+  if (access.kind === "join") return { error: "Join this cause to take part in the chat." };
+  if (access.kind === "read") return { error: "New members can post in the chat a day after joining." };
   const spam = await spamCheck(user, formData, "comment", parsed.data.body);
   if (spam) return spam;
   // Same text posted again within 10 minutes is almost always a double-click or a bot.
@@ -179,7 +194,7 @@ export async function createMeetup(_prev: FormState, formData: FormData): Promis
       rsvps: { create: { userId: user.id } },
     },
   });
-  redirect(`/issues/${data.issueId}#meetup-${meetup.id}`);
+  redirect(`/issues/${data.issueId}/events#meetup-${meetup.id}`);
 }
 
 export async function toggleRsvp(formData: FormData) {

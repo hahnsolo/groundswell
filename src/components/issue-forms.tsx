@@ -15,16 +15,16 @@ export function CommentForm({ issueId }: { issueId: string }) {
       <textarea
         name="body"
         required
-        rows={3}
+        rows={2}
         maxLength={3000}
-        placeholder="Share what you've seen, ask a question, or offer to help…"
+        placeholder="Write a message to your neighbours…"
         defaultValue={state?.values?.body}
         className={inputStyles}
-        aria-label="Your comment"
+        aria-label="Your message"
       />
       {state?.fieldErrors?.body?.[0] && <p className="text-sm text-red-600">{state.fieldErrors.body[0]}</p>}
       <Honeypot />
-      <SubmitButton pendingText="Posting…">Post comment</SubmitButton>
+      <SubmitButton pendingText="Sending…">Send</SubmitButton>
     </form>
   );
 }

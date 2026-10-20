@@ -10,7 +10,7 @@ The main code is in `src/lib/spam.ts`, `src/lib/rate-limit.ts`, `src/lib/better-
 - **Login is handled by Better Auth**, a well-tested open-source library, rather than home-made code. Passwords are stored as one-way hashes (scrambled so even we can't read them).
 - **Passwords must be at least 10 characters.**
 - **Sessions last 30 days** and are stored in the database, so they can be cancelled. Resetting your password **signs you out everywhere**.
-- **Email confirmation:** new accounts get a confirm link (valid 48 hours). Posting issues, comments, meetups and campaigns, signing campaigns, and reporting all need a confirmed email. Supporting an issue and RSVPing don't. Google and Apple accounts count as confirmed.
+- **Email confirmation:** new accounts get a confirm link (valid 48 hours). Raising issues, posting in a chat, organizing events, starting and signing campaigns, and reporting all need a confirmed email. Joining a cause and RSVPing don't. Google and Apple accounts count as confirmed.
 - **Password reset links** expire after 1 hour. The reset page gives the same answer whether or not an email has an account, so nobody can use it to find out who's a member.
 - **Admin pages are invisible:** anyone who isn't an admin gets "page not found" at `/admin/reports`, not "access denied," so the page's existence isn't revealed. Admin can only be granted directly in the database (see [Day to day](day-to-day.md#making-someone-an-admin)), and the sign-up form can't set it.
 - **The live site won't start without a strong `BETTER_AUTH_SECRET`**, so it can never run with a forgeable default.
@@ -45,7 +45,7 @@ The counters are stored in the database, not in server memory. Vercel runs many 
 Almost all spam comes from brand-new accounts posting links, so new accounts are held back for their first day. Real neighbours rarely notice. Also:
 
 - **Honeypot:** every form has a hidden "website" field that people never see. Simple bots fill in every field, so if it's filled in, the post is quietly refused.
-- **Duplicate comments** (same text from the same person within 10 minutes) are refused. That catches double-clicks and copy-paste bots.
+- **Duplicate messages** (same text from the same person within 10 minutes) are refused. That catches double-clicks and copy-paste bots.
 - **Everything posted is checked** for sensible lengths and formats before it's saved. For example, an issue title is 8–120 characters and descriptions are capped at 5,000.
 
 ### Community moderation
@@ -60,7 +60,7 @@ Almost all spam comes from brand-new accounts posting links, so new accounts are
 - The full postal code used for the representative lookup is passed to Open North and **not stored**.
 - The search-engine tag on the admin page says "don't index."
 - **People can delete their account** from `/me` (password required). They're signed out everywhere and shown as "Former member"; after a 30-day grace period (signing in undoes it) their name, email, password and home area are erased for good. Their posts stay so discussions still make sense. See [Day to day](day-to-day.md#deleted-accounts).
-- **People can take things back:** remove their support or campaign signature, or "Leave this issue" to undo all three (support, upcoming RSVPs, signatures) in one go.
+- **People can take things back:** remove a campaign signature, cancel an RSVP, or **Leave** a cause to undo all of it (membership, upcoming RSVPs, signatures) in one go.
 
 ### Browser-level protections
 Every page is sent with standard security headers that stop other sites from embedding Groundswell in a hidden frame (a "clickjacking" trick), stop browsers from guessing file types, and turn off camera, microphone and location access. HTTPS is automatic through Vercel.

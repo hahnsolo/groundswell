@@ -53,6 +53,12 @@ describe("who cares, in words", () => {
     expect(peopleLine(["Priya", "Sam", "Ana"], 14)).toBe("Priya, Sam and 12 neighbours care");
   });
 
+  it("can say 'joined' instead of 'care' for a cause's own page", () => {
+    expect(peopleLine([], 0, "joined")).toBe("Be the first to join");
+    expect(peopleLine(["Priya"], 1, "joined")).toBe("Priya has joined");
+    expect(peopleLine(["Priya", "Sam", "Ana"], 14, "joined")).toBe("Priya, Sam and 12 neighbours have joined");
+  });
+
   it("copes when some supporters have left and can't be named", () => {
     expect(peopleLine(["Priya"], 2)).toBe("Priya and 1 other care");
     expect(peopleLine(["Priya"], 5)).toBe("Priya and 4 neighbours care");

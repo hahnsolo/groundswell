@@ -9,7 +9,7 @@ Enter a postal code, see the issues your neighbours care about, meet up, and pus
 - **Postal code → community.** US ZIP codes and Canadian postal codes resolve to a place and coordinates (via [zippopotam.us](https://zippopotam.us), cached in the DB). Only the coarse area is stored (ZIP / Canadian FSA), never a street address.
 - **Local issue feed.** Issues within 2–50 km, filter by category, sort by support or newest. Each card shows who cares ("Priya, Sam and 12 neighbours") and its momentum (won / meeting soon / asking / joined this week / new — `src/lib/momentum.ts`); recent wins (30 days, from `Issue.resolvedAt`) get their own strip. The home page opens on "your neighbourhood": the last area viewed (an area-only cookie) or your home area.
 - **Raise an issue.** Title, category, details, location.
-- **Connect.** "I care" support, threaded discussion, community reports (3 reports from established accounts auto-hide content for review).
+- **Cause spaces.** Each issue has a header (who's joined, **Join this cause**) and three tabs: About (story, campaign, letter builder), Chat and Events. The chat is members only: join to read, and post once you've been a member for 24 hours (the author can post straight away; rules in `src/lib/chat-rules.ts`, enforced on the server). Community reports: 3 reports from established accounts auto-hide content for review.
 - **Meetups.** Create in-person or online meetups with optional capacity; RSVP; times shown in each viewer's own timezone.
 - **Advocacy.** Campaigns with a concrete ask, a decision-maker target and a signature goal; a letter builder that drafts an email to that decision-maker; representative lookup (Canada via [Represent](https://represent.opennorth.ca), US links to usa.gov).
 - **Accounts** via [Better Auth](https://better-auth.com): email + password, **Sign in with Google**, **Sign in with Apple** (each button appears once its credentials are set). Signing in with Google/Apple links to an existing account with the same email. Sessions are DB-backed; auth endpoints are rate-limited in the database so limits hold across serverless instances.
@@ -62,7 +62,7 @@ src/app/api/auth/[...all]   Better Auth's endpoints (OAuth callbacks, email link
 src/lib/queries.ts          read queries (nearby issues, issue detail)
 src/app/actions/            all writes (Server Actions), validated with Zod
 src/app/area/[country]/[postal]   the community page
-src/app/issues/[id]         issue page: discussion, meetups, advocacy
+src/app/issues/[id]         a cause: shared header (layout.tsx) + About, chat/ and events/ tabs
 src/app/api/representatives Canadian representative lookup
 ```
 

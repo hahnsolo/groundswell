@@ -89,7 +89,8 @@ async function main() {
       category: "safety",
       authorId: alex.id,
       createdAt: new Date(Date.now() - 9 * day),
-      supports: { create: [{ userId: alex.id }, { userId: sam.id }] },
+      // Joined over a week ago, so they're past the chat's 24-hour wait.
+      supports: { create: [{ userId: alex.id, createdAt: new Date(Date.now() - 9 * day) }, { userId: sam.id, createdAt: new Date(Date.now() - 8 * day) }] },
       comments: {
         create: [
           { authorId: sam.id, body: "My daughter crosses here every morning. I counted 3 near-misses last week alone." },

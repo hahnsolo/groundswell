@@ -46,14 +46,16 @@ export function isRecentWin(resolvedAt: Date | null | undefined, now = new Date(
  * `names` are the first few supporters (people who've left are already
  * filtered out); `total` counts everyone, including them.
  */
-export function peopleLine(names: string[], total: number) {
-  if (total <= 0) return "Be the first to care";
+export function peopleLine(names: string[], total: number, verb: "care" | "joined" = "care") {
+  if (total <= 0) return verb === "care" ? "Be the first to care" : "Be the first to join";
+  const one = verb === "care" ? "cares" : "has joined";
+  const many = verb === "care" ? "care" : "have joined";
   const shown = names.slice(0, 2).slice(0, total);
   const others = total - shown.length;
   const neighbours = (n: number) => `${n} neighbour${n === 1 ? "" : "s"}`;
-  if (shown.length === 0) return `${neighbours(total)} ${total === 1 ? "cares" : "care"}`;
-  if (others === 0) return shown.length === 1 ? `${shown[0]} cares` : `${shown[0]} and ${shown[1]} care`;
+  if (shown.length === 0) return `${neighbours(total)} ${total === 1 ? one : many}`;
+  if (others === 0) return shown.length === 1 ? `${shown[0]} ${one}` : `${shown[0]} and ${shown[1]} ${many}`;
   // Exactly one more, and we know their name: just say it.
-  if (others === 1 && shown.length === 2 && names[2]) return `${shown[0]}, ${shown[1]} and ${names[2]} care`;
-  return `${shown.join(", ")} and ${shown.length === 1 && others === 1 ? "1 other" : neighbours(others)} care`;
+  if (others === 1 && shown.length === 2 && names[2]) return `${shown[0]}, ${shown[1]} and ${names[2]} ${many}`;
+  return `${shown.join(", ")} and ${shown.length === 1 && others === 1 ? "1 other" : neighbours(others)} ${many}`;
 }

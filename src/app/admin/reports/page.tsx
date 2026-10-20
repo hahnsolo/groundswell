@@ -181,7 +181,7 @@ function QueueList({
                 {comment && (
                   <p className="text-xs text-muted">
                     on{" "}
-                    <Link href={`/issues/${comment.issue.id}`} className="underline">
+                    <Link href={`/issues/${comment.issue.id}/chat`} className="underline">
                       {comment.issue.title}
                     </Link>
                   </p>

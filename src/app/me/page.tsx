@@ -103,7 +103,7 @@ async function Me({ searchParams }: Pick<PageProps<"/me">, "searchParams">) {
         {rsvps.length === 0 && <p className="text-sm text-muted">You haven&apos;t RSVP&apos;d to any upcoming meetups.</p>}
         {rsvps.map((r) => (
           <div key={r.meetupId} className={row}>
-            <Link href={`/issues/${r.meetup.issueId}#meetup-${r.meetupId}`} className={`${linkRow} flex-1`}>
+            <Link href={`/issues/${r.meetup.issueId}/events#meetup-${r.meetupId}`} className={`${linkRow} flex-1`}>
               <span className="font-medium">{r.meetup.title}</span>
               {r.meetup.organizerId === user.id && <span className={`${tag} ml-2`}>Hosting</span>}
               <span className="block text-sm text-muted">
@@ -112,7 +112,7 @@ async function Me({ searchParams }: Pick<PageProps<"/me">, "searchParams">) {
             </Link>
             {r.meetup.organizerId === user.id ? (
               // Stepping down hands the meetup to someone, so it's confirmed on the meetup itself.
-              <Link href={`/issues/${r.meetup.issueId}#meetup-${r.meetupId}`} className={xButton}>
+              <Link href={`/issues/${r.meetup.issueId}/events#meetup-${r.meetupId}`} className={xButton}>
                 Manage
               </Link>
             ) : (

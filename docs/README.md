@@ -21,7 +21,7 @@ The main [README](../README.md) in the project folder covers the same ground in 
 Groundswell is a website where someone types in their postal code (a Canadian code like `M5V` or a US ZIP like `90210`) and sees the local issues their neighbours care about. They can:
 
 - **raise an issue** (a pothole, a park that needs lights, a dangerous crossing)
-- **show support** ("I care") and **discuss** it
+- **join a cause** and **talk it through** in its members-only chat
 - **organize meetups** (in person or online) and RSVP
 - **run advocacy campaigns**: a clear ask, a decision-maker, a signature goal, and a letter builder that drafts an email to that person. Canadians can look up their representatives.
 

@@ -7,13 +7,12 @@ The screenshots come from the **dev site with demo data** (Alex, Sam and Priya a
 **Contents**
 
 1. [Home page](#1-home-page)
-2. [Area page: issues near you](#2-area-page-issues-near-you)
-3. [Issue page](#3-issue-page): the heart of the app
-   - [Support, share, status](#support-share-and-status)
-   - [Discussion](#discussion)
-   - [Meetups](#meetups)
-   - [Campaigns and the letter builder](#campaigns-and-the-letter-builder)
-   - [Find your representatives](#find-your-representatives)
+2. [Area page: what's going on around a neighbourhood](#2-area-page-whats-going-on-around-a-neighbourhood)
+3. [A cause's space](#3-a-causes-space): the heart of the app
+   - [The header: what it is, who's in, and Join](#the-header-what-it-is-whos-in-and-join)
+   - [About: the holding page](#about-the-holding-page)
+   - [Chat: members only, with a day to settle in](#chat-members-only-with-a-day-to-settle-in)
+   - [Events](#events)
 4. [Raise an issue](#4-raise-an-issue)
 5. [Join, sign in, forgot password](#5-join-sign-in-and-forgot-password)
 6. [Your activity (`/me`)](#6-your-activity-me), including [deleting your account](#deleting-your-account)
@@ -31,7 +30,7 @@ The screenshots come from the **dev site with demo data** (Alex, Sam and Priya a
 - **+ Start something** (red, the one loud button) raises a new issue in the neighbourhood you're looking at. On a phone it's just a **+**.
 - **Signed out:** **Sign in** and **Join**.
 - **Signed in:** a circle with **your initial**, which goes to your activity page. **Sign out** is at the top of that page.
-- **Email not confirmed yet:** a yellow bar under the top bar says *"Confirm your email (…) to post issues, comments and meetups"*, with a button to resend the link (at most 3 times an hour).
+- **Email not confirmed yet:** a yellow bar under the top bar says *"Confirm your email (…) to post issues, comments and meetups"* (this applies to chat messages too), with a button to resend the link (at most 3 times an hour).
 
 ---
 
@@ -98,86 +97,85 @@ Under the title: the first few people's initials and a line like *"Priya, Sam an
 - The moment a cause is marked resolved is recorded, so wins can be shown for 30 days (and, later, on a progress tracker).
 
 ---
-## 3. Issue page
+## 3. A cause's space
 
-`/issues/…`
+`/issues/…` (About) · `/issues/…/chat` · `/issues/…/events`
 
-This is where neighbours actually work together. Everyone can read it; you need to be signed in to take part.
+Each cause (we still call them "issues" in the app for now) is a small space of its own. A shared header sits above three tabs.
 
-**Signed out:** everything is visible, and the action areas say *"Sign in to join the discussion / RSVP / sign / start a campaign."*
+### The header: what it is, who's in, and Join
 
-![Issue page, signed out](images/walkthrough/03-issue-signed-out.webp)
+![A cause's About tab, signed in as a member](images/walkthrough/07-issue-signed-in.webp)
 
-**Signed in** (here as Sam, who supports this issue, is going to the meetup and has signed the campaign):
-
-![Issue page, signed in as Sam](images/walkthrough/07-issue-signed-in.webp)
-
-### Support, share and status
-
-- **I care about this** adds your support (the number goes up). It becomes **✓ I care** once you've clicked it; hovering over it then says **Remove my support**, and clicking takes it back. This one doesn't need a confirmed email.
+- **The small line on top:** topic, place, who started it and when, plus **✓ Won** once it's resolved.
+- **Who's in:** the first few people's initials and *"Alex and Sam have joined."* People who've deleted their account are counted but never named.
+- **Join this cause** (red) is the one big action. Joining is what used to be "I care": it adds you to the count, unlocks the chat, and starts your 24-hour chat clock (below). It doesn't need a confirmed email. Signed-out visitors are sent to sign in first.
+- Once you've joined, you see **✓ Joined** and a small **Leave** link. Leaving removes your support, your RSVPs to its upcoming events and your campaign signatures, and you lose access to the chat. Your messages stay. Events you host pass to the next person going.
 - **Share** opens your phone's share sheet, or copies the link on a computer.
-- **Status:** only the person who raised the issue sees buttons to change it between *Open*, *Being worked on* and *Resolved*. Everyone else sees **Report this issue** there instead (see [section 7](#7-reporting-and-the-moderation-queue-admins)).
-- **Leave this issue:** once you've supported, RSVP'd or signed something here, a small **Leave this issue** link appears. It undoes all of that in one go: your support, your RSVPs to its upcoming meetups, and your campaign signatures. Your comments stay, since they're part of the conversation. If you were hosting one of its meetups, it's handed on (see below).
+- **The tabs:** About · Chat (🔒 if you can't see it yet, otherwise the number of messages) · Events (number coming up).
 
-![Leave this issue, opened](images/walkthrough/20-leave-issue.webp)
+### About: the holding page
 
-### Discussion
+What everyone sees first:
 
-- A simple conversation in time order. The issue's author is marked **AUTHOR**.
-- Type in the box and press **Post comment**.
-- Hovering over someone else's comment shows a **Report** link.
-
-**Rules:** a confirmed email is needed to post. New accounts (first 24 hours) can post 10 comments an hour and no links; established accounts can post 60 an hour with up to 3 links. Posting the same text twice within 10 minutes is refused ("You just posted that.").
-
-### Meetups
-
-Each meetup shows the date and time **in your own time zone**, the place (or "Online"), who's hosting, how many are going, and an **RSVP** button (it becomes **✓ Going**, or **Full** if there's a capacity and it's reached).
-
-Click **+ Organize a meetup** to open the form:
-
-![Meetup form](images/walkthrough/08-meetup-form.webp)
-
-- **Title, when, where** (a public place is suggested), an optional plan, and an optional **capacity**.
-- Tick **Online meetup** and *Where* becomes *Video link*. **The link is only shown to people who've RSVP'd**, so random visitors can't drop into the call.
-- The organizer is automatically marked as going, and sees **✓ Hosting** instead of an RSVP button.
-- Only upcoming meetups are listed (and ones that started in the last 6 hours).
-
-**Can't host it?** The host can open **Can't host it?** → **Step down as host**:
-
-![Step down as host](images/walkthrough/21-step-down.webp)
-
-- The meetup passes to **the first person who RSVP'd** (who still has an account). They get an email saying they're now hosting, with a link to step down themselves, which passes it to the next person.
-- The meetup then shows *"hosted by Sam (took over)"*.
-- If nobody else is going, the meetup is **cancelled**.
-- The same handover happens when a host uses "Leave this issue" or deletes their account.
-
-**Rules:** confirmed email needed; 10 meetups an hour (2 for new accounts); the time must be in the future.
-
-### Campaigns and the letter builder
-
-A campaign turns concern into a specific request to a specific decision-maker.
-
-- **+ Start a campaign** asks three things: **who can fix this** (e.g. "City Council, Ward 4"), **what exactly you're asking for**, and a **signature goal** (default 100).
-- Each campaign shows a progress bar (*2 of 150 signatures*), who started it, and up to 5 recent public notes from signers.
-- **Add my name** signs it, with an optional public note on why it matters. You see **✓ You've signed this campaign** afterwards, with a **Remove my signature** link if you change your mind.
-- **✉️ Write to …** opens the **letter builder**:
+- **The story:** what's happening, in the words of the person who raised it.
+- **Next event:** if there's one coming up, a dark banner with **See event**.
+- **The ask:** the campaign, if there is one: who it's aimed at, the exact request, a progress bar (*2 of 150 signed*), **Add my name** with an optional public note, **Remove my signature** if you change your mind, and **✉️ Write to …**, the letter builder:
 
 ![Letter builder](images/walkthrough/09-letter-builder.webp)
 
-Type your name (and the recipient's email if you have it). The app writes a polite letter that includes the issue, the exact ask, how many neighbours signed, and a link back to the issue. **Open in email** opens your own email app with it filled in, or **Copy letter** copies it. Groundswell itself never sends these emails; they come from the person's own email account.
+Type your name (and the recipient's email if you have it). The app writes a polite letter that includes the issue, the exact ask, how many neighbours signed, and a link back. **Open in email** opens your own email app with it filled in, or **Copy letter** copies it. Groundswell never sends these itself.
 
-**Rules:** confirmed email needed to start or sign (signature counts go to decision-makers, so each must be a real, confirmed person); 5 campaigns an hour (1 for new accounts).
-
-### Find your representatives
-
-- **Canada:** type a **full** postal code and press **Find** to get your MP, provincial representative, councillor and mayor, with a button to copy each email. The full postal code is passed to Open North's free "Represent" service and **not saved**. Limited to 30 lookups an hour per connection.
+- **+ Start a campaign** asks three things: who can fix this, what exactly you're asking for, and a signature goal (default 100).
+- **Find your representatives:** in Canada, type a full postal code to get your MP, provincial representative, councillor and mayor, with their emails. The code is passed to Open North's free "Represent" service and **not saved**. In the US, a link to usa.gov's official lookup.
 
 ![Representative lookup for a Toronto postal code](images/walkthrough/12-rep-lookup.webp)
 
-- **United States:** a link to usa.gov's official lookup, since there isn't a free nationwide equivalent.
+- **At the bottom:** the person who raised it can set *Open*, *Being worked on* or *Won / resolved*. Marking it won records the date, and it shows in **Recent wins** on the neighbourhood pages for 30 days. Everyone else sees **Report this issue** there instead.
+
+**Rules:** signing and starting a campaign need a confirmed email; campaigns are limited to 5 an hour (1 for new accounts).
+
+### Chat: members only, with a day to settle in
+
+The conversation replaces the old "Discussion" comments, which carried over as the start of each chat.
+
+| Who you are | What you see |
+|---|---|
+| Not signed in, or not a member | *"The chat is for neighbours who've joined"*, with **Join this cause** |
+| Joined in the last 24 hours | The whole chat, plus *"You can post from Wednesday 12:52 p.m."* |
+| Member for 24 hours or more | The chat and a message box |
+| The person who raised the cause | Can post straight away |
+| An admin who hasn't joined | Can read (to moderate) but not post |
+
+| Not a member | New member (first 24 hours) |
+|---|---|
+| ![Chat locked for non-members](images/walkthrough/24-chat-locked.webp) | ![Chat during the first 24 hours](images/walkthrough/25-chat-cooling-off.webp) |
+
+A member past the wait:
+
+![Chat for a member](images/walkthrough/23-chat-member.webp)
+
+- Your own messages sit on the right in green; everyone else's on the left. Hover over someone else's message to **Report** it.
+- **Why the 24-hour wait:** it gives newcomers a day to get a feel for the conversation, and it stops bots that join and spam straight away. Reading, RSVPing and signing aren't held back, only posting in the chat.
+- **Other rules:** a confirmed email is needed to post. New accounts (first 24 hours) can post 10 messages an hour and no links; established accounts 60 an hour with up to 3 links. The same message twice within 10 minutes is refused.
+- The server checks all of this on every message, so the rules can't be dodged by skipping the page.
+- **Not live yet:** for now, new messages appear when you send one or reload. Instant, WhatsApp-style delivery (through Cloudflare) is the next phase of the build.
+
+### Events
+
+Every event belongs to a cause. The Events tab lists them, each with the date and time **in your own time zone**, the place (or "Online"), who's hosting, how many are going, and **I'll be there** (it becomes **✓ Going**, or **Full** if there's a capacity and it's reached).
+
+![Events tab with the new-event form open](images/walkthrough/08-meetup-form.webp)
+
+- **+ Organize an event** opens the form: title, when, where (a public place is suggested), an optional plan, and an optional capacity. Tick **Online meetup** and *Where* becomes *Video link*. **The link is only shown to people going**, so random visitors can't drop into the call.
+- The host is automatically going and sees **✓ Hosting**.
+- **Can't host it?** → **Step down as host** passes the event to the first person who RSVP'd (who gets an email), or cancels it if nobody else is going. The event then shows *"hosted by Sam (took over)."*
+
+![Step down as host](images/walkthrough/21-step-down.webp)
+
+**Rules:** confirmed email needed to organize; 10 events an hour (2 for new accounts); the time must be in the future. Only events still to come (and ones that started in the last 6 hours) are listed.
 
 ---
-
 ## 4. Raise an issue
 
 `/issues/new` (from **Start something** in the top bar, or **+ Raise an issue here** on an area page)
@@ -316,11 +314,13 @@ Installed, it opens full-screen with its own icon. It only stores the app's desi
 |---|:-:|:-:|:-:|:-:|:-:|
 | Browse areas, issues, meetups, campaigns | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Look up representatives | ✓ | ✓ | ✓ | ✓ | ✓ |
-| "I care" support, RSVP | | ✓ | ✓ | ✓ | ✓ |
-| Raise issues, comment, organize meetups, start campaigns | | | ✓ | ✓ | ✓ |
+| Join a cause, RSVP | | ✓ | ✓ | ✓ | ✓ |
+| Read a cause's chat | | members | members | ✓ | ✓ (to moderate) |
+| Post in a cause's chat | | | members of 24 h+ | ✓ | members of 24 h+ |
+| Raise issues, organize events, start campaigns | | | ✓ | ✓ | ✓ |
 | Sign campaigns, report content | | | ✓ | ✓ | ✓ |
-| Remove own support, signature, RSVP; "Leave this issue" | | ✓ | ✓ | ✓ | ✓ |
-| Step down as a meetup's host | | ✓ (host) | ✓ (host) | ✓ (host) | ✓ (host) |
+| Remove own signature or RSVP; leave a cause | | ✓ | ✓ | ✓ | ✓ |
+| Step down as an event's host | | ✓ (host) | ✓ (host) | ✓ (host) | ✓ (host) |
 | Delete own account | | ✓ | ✓ | ✓ | ✓ |
 | Change an issue's status | | | | ✓ | |
 | See their own hidden/removed posts (with a notice) | | | | ✓ | |
