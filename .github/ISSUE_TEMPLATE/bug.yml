@@ -1,0 +1,52 @@
+name: Something's broken
+description: A page, button or email that doesn't do what it should.
+labels: ["bug"]
+body:
+  - type: input
+    id: page
+    attributes:
+      label: Page
+      description: The address from your browser.
+      placeholder: https://groundswell.hahnsolo.ca/issues/...
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: What you did
+      placeholder: |
+        1. Signed in
+        2. Opened a cause's Events tab
+        3. Clicked "I'll be there"
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened instead
+      description: Paste a screenshot here if you can.
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Device and browser
+      placeholder: iPhone 15, Safari / Windows laptop, Edge
+    validations:
+      required: true
+  - type: dropdown
+    id: priority
+    attributes:
+      label: How bad is it?
+      options:
+        - "P1: people can't use the site, or data is at risk"
+        - "P2: a feature is broken but there's a way around it"
+        - "P3: looks wrong or is annoying"
+    validations:
+      required: true

@@ -1,0 +1,3 @@
+# Always pick a form, so every issue arrives with a type (bug or feature) and
+# the details we need. Loosen this if people find it a chore.
+blank_issues_enabled: false
