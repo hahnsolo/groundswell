@@ -7,6 +7,7 @@ Plain-language guides to everything that runs Groundswell: what each piece is, w
 | [Walkthrough](walkthrough.md) | You want a picture-by-picture tour of every page and feature, and who can do what. |
 | [Accounts and costs](accounts-and-costs.md) | You want to know which services we use, what they do, and what could ever cost money. |
 | [Keys and secrets](keys-and-secrets.md) | You're adding, checking or replacing a setting or password-like key. |
+| [How changes get made](process.md) | You want to report a bug, ask for a feature, or follow a change from idea to live. |
 | [Day to day](day-to-day.md) | You're running the app on your PC, making a change, checking a deploy, or moderating. |
 | [DNS](dns.md) | You're in GoDaddy's DNS page and need to know what's safe to touch. |
 | [Security and spam](security-and-spam.md) | You want to know what protects the site and what's still on the to-do list. |

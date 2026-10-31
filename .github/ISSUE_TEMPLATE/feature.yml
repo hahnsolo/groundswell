@@ -1,0 +1,51 @@
+name: New feature or change
+description: Something Groundswell should do that it doesn't yet.
+labels: ["feature"]
+body:
+  - type: textarea
+    id: why
+    attributes:
+      label: Who it's for and why
+      description: The person and the problem, in a sentence or two.
+      placeholder: Organizers can't tell who actually showed up to an event, so they can't thank people or count volunteer hours.
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What it should do
+    validations:
+      required: true
+  - type: textarea
+    id: done
+    attributes:
+      label: Done when
+      description: Checks anyone could tick off by using the site.
+      placeholder: |
+        - [ ] The host sees a "Who came?" list after the event
+        - [ ] Ticking someone adds the hours to their profile
+        - [ ] People who weren't ticked see nothing change
+    validations:
+      required: true
+  - type: textarea
+    id: tests
+    attributes:
+      label: How we'll test it
+      description: Unit tests for the rules, a click-through check for the journey, anything to try by hand on the preview.
+    validations:
+      required: true
+  - type: textarea
+    id: out
+    attributes:
+      label: Not part of this
+      description: Related ideas we're deliberately leaving for later.
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      options:
+        - "P1: needed before launch"
+        - "P2: soon after launch"
+        - "P3: someday"
+    validations:
+      required: true
