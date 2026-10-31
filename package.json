@@ -23,7 +23,7 @@
     "icons": "node scripts/generate-icons.mjs"
   },
   "dependencies": {
-    "@prisma/client": "^6.19.0",
+    "@prisma/client": "^7.10.1",
     "better-auth": "1.7.7",
     "next": "16.4.2",
     "react": "19.3.0",
