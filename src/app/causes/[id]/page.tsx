@@ -12,7 +12,7 @@ import { FixerChangeForm } from "@/components/fixer-field";
 import { campaignTargetFor } from "@/lib/fixers";
 
 // The cause's holding page: what it's about, the ask, and what's coming up.
-export default function AboutTab(props: PageProps<"/issues/[id]">) {
+export default function AboutTab(props: PageProps<"/causes/[id]">) {
   return (
     <Suspense fallback={<div className="h-64 animate-pulse rounded-md bg-border/60" />}>
       <About params={props.params} />
@@ -20,14 +20,14 @@ export default function AboutTab(props: PageProps<"/issues/[id]">) {
   );
 }
 
-async function About({ params }: Pick<PageProps<"/issues/[id]">, "params">) {
+async function About({ params }: Pick<PageProps<"/causes/[id]">, "params">) {
   const { id } = await params;
   const user = await getCurrentUser();
   const issue = await getIssueDetail(id, user?.id ?? null);
   if (!issue || issue.removedAt || (issue.hidden && issue.authorId !== user?.id)) return null; // the layout explains
 
   const appUrl = process.env.APP_URL ?? "http://localhost:3000";
-  const issueUrl = `${appUrl}/issues/${issue.id}`;
+  const issueUrl = `${appUrl}/causes/${issue.id}`;
   const place = `${issue.placeName}, ${issue.region}`;
   const isAuthor = user?.id === issue.authorId;
   const next = issue.meetups.find((m) => m.upcoming);
@@ -75,7 +75,7 @@ async function About({ params }: Pick<PageProps<"/issues/[id]">, "params">) {
                   // Keyed on signed so the form resets after signing or removing a signature.
                   <SignForm key={String(issue.viewerSigned.has(c.id))} campaignId={c.id} signed={issue.viewerSigned.has(c.id)} />
                 ) : (
-                  <SignInPrompt next={`/issues/${issue.id}`} text="sign" />
+                  <SignInPrompt next={`/causes/${issue.id}`} text="sign" />
                 )}
                 {c.signatures.length > 0 && (
                   <ul className="space-y-1.5 border-l-2 border-border pl-3">
@@ -123,7 +123,7 @@ async function About({ params }: Pick<PageProps<"/issues/[id]">, "params">) {
               </div>
             </details>
           ) : (
-            <SignInPrompt next={`/issues/${issue.id}`} text="start a campaign" />
+            <SignInPrompt next={`/causes/${issue.id}`} text="start a campaign" />
           )}
 
           <div className="border-t border-border pt-4">
@@ -157,7 +157,7 @@ async function About({ params }: Pick<PageProps<"/issues/[id]">, "params">) {
             <form action={reportContent}>
               <input type="hidden" name="targetType" value="issue" />
               <input type="hidden" name="targetId" value={issue.id} />
-              <button className="text-xs text-muted hover:text-red-600">Report this issue</button>
+              <button className="text-xs text-muted hover:text-red-600">Report this cause</button>
             </form>
           )
         )}

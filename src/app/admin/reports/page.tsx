@@ -30,6 +30,9 @@ type Target = {
   reports: { reason: string; createdAt: Date; reporter: string }[];
 };
 
+/** What people call these on the site. */
+const kindLabel = (type: Target["type"]) => (type === "issue" ? "cause" : "message");
+
 async function Queue() {
   await requireAdmin();
   const reports = await db.report.findMany({
@@ -116,7 +119,7 @@ async function RecentlyRemoved() {
               <form action={restore} className="mt-3">
                 <input type="hidden" name="targetType" value={item.type} />
                 <input type="hidden" name="targetId" value={item.id} />
-                <button className={buttonStyles.secondary}>Restore {item.type}</button>
+                <button className={buttonStyles.secondary}>Restore {kindLabel(item.type)}</button>
               </form>
             </li>
           ))}
@@ -159,7 +162,7 @@ function QueueList({
         return (
           <li key={`${t.type}:${t.id}`} className="rounded-xl border border-border bg-surface p-5">
             <div className="flex flex-wrap items-center gap-2 text-xs">
-              <span className="rounded bg-border px-1.5 py-0.5 uppercase">{t.type}</span>
+              <span className="rounded bg-border px-1.5 py-0.5 uppercase">{kindLabel(t.type)}</span>
               <span className="font-medium text-red-700 dark:text-red-400">
                 {t.reports.length} report{t.reports.length === 1 ? "" : "s"}
               </span>
@@ -174,14 +177,14 @@ function QueueList({
             ) : (
               <div className="mt-3 space-y-1">
                 {issue && (
-                  <Link href={`/issues/${issue.id}`} className="font-semibold hover:underline">
+                  <Link href={`/causes/${issue.id}`} className="font-semibold hover:underline">
                     {issue.title}
                   </Link>
                 )}
                 {comment && (
                   <p className="text-xs text-muted">
                     on{" "}
-                    <Link href={`/issues/${comment.issue.id}/chat`} className="underline">
+                    <Link href={`/causes/${comment.issue.id}/chat`} className="underline">
                       {comment.issue.title}
                     </Link>
                   </p>
@@ -219,7 +222,7 @@ function QueueList({
                 </button>
                 {content && (
                   <button name="decision" value="removed" className={`${buttonStyles.secondary} text-red-700 dark:text-red-400`}>
-                    Remove {t.type}
+                    Remove {kindLabel(t.type)}
                   </button>
                 )}
               </div>

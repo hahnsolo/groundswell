@@ -128,10 +128,10 @@ async function Me({ searchParams }: Pick<PageProps<"/me">, "searchParams">) {
       </section>
 
       <section className={section}>
-        <h2 className="mb-3 font-semibold">Issues you raised</h2>
+        <h2 className="mb-3 font-semibold">Causes you started</h2>
         {issues.length === 0 && <p className="text-sm text-muted">Nothing yet.</p>}
         {issues.map((i) => (
-          <Link key={i.id} href={`/issues/${i.id}`} className={linkRow}>
+          <Link key={i.id} href={`/causes/${i.id}`} className={linkRow}>
             {i.title} <span className="text-sm text-muted">· {i.placeName}</span>
             {i.removedAt ? (
               <span className="ml-2 rounded-full bg-red-100 px-2 py-0.5 text-xs text-red-900 dark:bg-red-900/40 dark:text-red-200">Removed</span>
@@ -145,11 +145,11 @@ async function Me({ searchParams }: Pick<PageProps<"/me">, "searchParams">) {
       </section>
 
       <section className={section}>
-        <h2 className="mb-3 font-semibold">Issues you support</h2>
+        <h2 className="mb-3 font-semibold">Causes you&apos;ve joined</h2>
         {supported.length === 0 && <p className="text-sm text-muted">Nothing yet.</p>}
         {supported.map((s) => (
           <div key={s.issueId} className={row}>
-            <Link href={`/issues/${s.issueId}`} className={`${linkRow} min-w-0 flex-1`}>
+            <Link href={`/causes/${s.issueId}`} className={`${linkRow} min-w-0 flex-1`}>
               {s.issue.title} <span className="text-sm text-muted">· {s.issue.placeName}</span>
             </Link>
             <form action={toggleSupport}>

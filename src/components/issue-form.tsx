@@ -26,7 +26,7 @@ export function IssueForm({ country, postal }: { country: string; postal: string
   return (
     <form action={action} className="space-y-5">
       <FormError message={state?.error} />
-      <Field label="What's the issue?" name="title" errors={e} hint="Short and specific: “No crosswalk at Elm & 5th near the school”">
+      <Field label="What's the cause?" name="title" errors={e} hint="Short and specific: “No crosswalk at Elm & 5th near the school”">
         <input name="title" required maxLength={120} defaultValue={v?.title} className={inputStyles} />
       </Field>
       <Field label="Category" name="category" errors={e}>
@@ -53,12 +53,12 @@ export function IssueForm({ country, postal }: { country: string; postal: string
             ))}
           </select>
         </Field>
-        <Field label="Postal / ZIP code" name="postal" errors={e} hint="Where the issue is. Only the area is stored.">
+        <Field label="Postal / ZIP code" name="postal" errors={e} hint="Where it is. Only the area is stored.">
           <input name="postal" defaultValue={v?.postal ?? postal} required className={inputStyles} />
         </Field>
       </div>
       <Honeypot />
-      <SubmitButton pendingText="Posting…">Post issue</SubmitButton>
+      <SubmitButton pendingText="Posting…">Start this cause</SubmitButton>
     </form>
   );
 }

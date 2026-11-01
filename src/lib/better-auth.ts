@@ -97,7 +97,7 @@ export const auth = betterAuth({
       await sendEmail({
         to: user.email,
         subject: "Confirm your email for Groundswell",
-        text: `Hi ${user.name},\n\nConfirm your email so you can post issues, comments and meetups:\n${url}\n\nThis link expires in 48 hours. If you didn't sign up, you can ignore this email.`,
+        text: `Hi ${user.name},\n\nConfirm your email so you can start causes, chat and organize events:\n${url}\n\nThis link expires in 48 hours. If you didn't sign up, you can ignore this email.`,
       });
     },
   },

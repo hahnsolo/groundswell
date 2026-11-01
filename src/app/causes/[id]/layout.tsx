@@ -18,7 +18,7 @@ import { buttonStyles } from "@/components/styles";
 
 // A cause is a small space: this header (what it is, who's in, Join) sits
 // above its three tabs — About, Chat and Events.
-export default function CauseLayout({ children, params }: LayoutProps<"/issues/[id]">) {
+export default function CauseLayout({ children, params }: LayoutProps<"/causes/[id]">) {
   return (
     <div className="mx-auto max-w-4xl px-4 py-8">
       <Suspense fallback={<div className="h-96 animate-pulse rounded-md bg-border/60" />}>
@@ -31,7 +31,7 @@ export default function CauseLayout({ children, params }: LayoutProps<"/issues/[
 // Fixed light fills (not theme colours), so the dark initials stay readable in dark mode too.
 const AVATAR_COLOURS = ["bg-[#e9b44c]", "bg-[#a9c4b2]", "bg-[#f0c9b8]"];
 
-async function CauseHeader({ params, children }: { params: LayoutProps<"/issues/[id]">["params"]; children: React.ReactNode }) {
+async function CauseHeader({ params, children }: { params: LayoutProps<"/causes/[id]">["params"]; children: React.ReactNode }) {
   const { id } = await params;
   const user = await getCurrentUser();
   const issue = await getIssueDetail(id, user?.id ?? null);
@@ -41,7 +41,7 @@ async function CauseHeader({ params, children }: { params: LayoutProps<"/issues/
     // Only the author gets here. Show what was removed and why, nothing more.
     return (
       <article>
-        <RemovedNotice what="issue" removedAt={issue.removedAt} reason={issue.removalReason} />
+        <RemovedNotice what="cause" removedAt={issue.removedAt} reason={issue.removalReason} />
         <h1 className="mt-6 text-3xl font-semibold">{issue.title}</h1>
         <p className="mt-4 whitespace-pre-line leading-relaxed text-muted">{issue.description}</p>
         <Link href="/me" className="mt-6 inline-block text-sm text-link underline">
@@ -72,7 +72,7 @@ async function CauseHeader({ params, children }: { params: LayoutProps<"/issues/
 
       {issue.hidden && (
         <p className="mt-4 rounded-md bg-amber-50 p-3 text-sm text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
-          This issue was hidden after community reports and is only visible to you while it&apos;s reviewed.
+          This cause was hidden after community reports and is only visible to you while it&apos;s reviewed.
         </p>
       )}
 
@@ -114,7 +114,7 @@ async function CauseHeader({ params, children }: { params: LayoutProps<"/issues/
           </p>
           <div className="flex flex-wrap items-center gap-2">
             {!user ? (
-              <Link href={`/signin?next=${encodeURIComponent(`/issues/${issue.id}`)}`} className={buttonStyles.primary}>
+              <Link href={`/signin?next=${encodeURIComponent(`/causes/${issue.id}`)}`} className={buttonStyles.primary}>
                 Join this cause
               </Link>
             ) : issue.viewerSupports ? (
@@ -141,7 +141,7 @@ async function CauseHeader({ params, children }: { params: LayoutProps<"/issues/
                 <button className={buttonStyles.primary}>Join this cause</button>
               </form>
             )}
-            <ShareButton url={`${appUrl}/issues/${issue.id}`} title={issue.title} />
+            <ShareButton url={`${appUrl}/causes/${issue.id}`} title={issue.title} />
           </div>
         </div>
       </header>

@@ -15,7 +15,7 @@ export function WinsStrip({ wins }: { wins: NearbyIssue[] }) {
         {wins.map((w) => (
           <Link
             key={w.id}
-            href={`/issues/${w.id}`}
+            href={`/causes/${w.id}`}
             className="w-64 shrink-0 rounded-md border-[1.5px] border-ink bg-sage/25 p-3 hover:bg-sage/40 sm:w-72"
           >
             <p className="text-xs font-semibold">

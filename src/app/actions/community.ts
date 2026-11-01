@@ -21,7 +21,7 @@ import { fromZodError, type FormState } from "@/lib/forms";
 const id = z.string().min(1).max(40);
 
 const LIMIT_MESSAGES = {
-  issue: "You've posted a lot of issues this hour. Try again later.",
+  issue: "You've started a lot of causes this hour. Try again later.",
   comment: "Slow down a little — try again shortly.",
   meetup: "You've created several meetups this hour. Try again later.",
   campaign: "You've started several campaigns this hour. Try again later.",
@@ -41,7 +41,7 @@ async function spamCheck(
   return null;
 }
 
-const ISSUE_GONE: FormState = { error: "This issue is no longer available." };
+const ISSUE_GONE: FormState = { error: "This cause is no longer available." };
 
 /** Comments, meetups and campaigns can only be added to issues a moderator hasn't removed. */
 async function issueOpen(issueId: string) {
@@ -113,7 +113,7 @@ export async function createIssue(_prev: FormState, formData: FormData): Promise
       supports: { create: { userId: user.id } },
     },
   });
-  redirect(`/issues/${issue.id}`);
+  redirect(`/causes/${issue.id}`);
 }
 
 export async function setIssueStatus(formData: FormData) {
@@ -148,7 +148,7 @@ export async function setIssueFixer(_prev: FormState, formData: FormData): Promi
 
 export async function toggleSupport(formData: FormData) {
   const issueId = id.parse(formData.get("issueId"));
-  const user = await requireUser(`/issues/${issueId}`);
+  const user = await requireUser(`/causes/${issueId}`);
   const key = { issueId_userId: { issueId, userId: user.id } };
   const existing = await db.issueSupport.findUnique({ where: key });
   if (existing) await db.issueSupport.delete({ where: key });
@@ -240,7 +240,7 @@ export async function toggleRsvp(formData: FormData) {
     select: { issueId: true, organizerId: true, capacity: true, _count: { select: { rsvps: true } } },
   });
   if (!meetup) return;
-  const user = await requireUser(`/issues/${meetup.issueId}`);
+  const user = await requireUser(`/causes/${meetup.issueId}`);
   // Hosts don't un-RSVP from their own meetup; they step down (below) so it passes to someone.
   if (meetup.organizerId === user.id) return;
   const key = { meetupId_userId: { meetupId, userId: user.id } };
@@ -257,7 +257,7 @@ export async function stepDownAsHost(formData: FormData) {
   const meetupId = id.parse(formData.get("meetupId"));
   const meetup = await db.meetup.findUnique({ where: { id: meetupId }, select: { issueId: true, startsAt: true } });
   if (!meetup) return;
-  const user = await requireUser(`/issues/${meetup.issueId}`);
+  const user = await requireUser(`/causes/${meetup.issueId}`);
   if (meetup.startsAt.getTime() <= Date.now()) return;
   await handOverMeetup(meetupId, user.id); // does nothing unless they're the host
   refresh();
@@ -268,7 +268,7 @@ export async function stepDownAsHost(formData: FormData) {
 /** Take back support, RSVPs and signatures on an issue in one go. Comments stay. */
 export async function leaveIssueAction(formData: FormData) {
   const issueId = id.parse(formData.get("issueId"));
-  const user = await requireUser(`/issues/${issueId}`);
+  const user = await requireUser(`/causes/${issueId}`);
   await leaveIssue(user.id, issueId);
   refresh();
 }
@@ -307,7 +307,7 @@ export async function signCampaign(_prev: FormState, formData: FormData): Promis
   if (!parsed.success) return fromZodError(parsed.error);
   const campaign = await db.campaign.findUnique({ where: { id: parsed.data.campaignId }, select: { issueId: true } });
   if (!campaign) return { error: "That campaign no longer exists." };
-  const user = await requireUser(`/issues/${campaign.issueId}`);
+  const user = await requireUser(`/causes/${campaign.issueId}`);
   // Signature counts go to decision-makers, so each one must be a confirmed person.
   if (!user.emailVerified) return { error: UNVERIFIED_ERROR };
   const links = linkError(user, parsed.data.note);

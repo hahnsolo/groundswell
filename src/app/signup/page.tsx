@@ -10,7 +10,7 @@ export default function SignUpPage(props: PageProps<"/signup">) {
   return (
     <div className="mx-auto max-w-sm px-4 py-16">
       <h1 className="text-2xl font-semibold tracking-tight">Join your community</h1>
-      <p className="mb-6 mt-1 text-sm text-muted">Support issues, join meetups and sign campaigns near you.</p>
+      <p className="mb-6 mt-1 text-sm text-muted">Join causes, go to events and sign campaigns near you.</p>
       <Suspense fallback={<SignUpForm />}>
         {props.searchParams.then((sp) => {
           const next = typeof sp.next === "string" ? sp.next : undefined;

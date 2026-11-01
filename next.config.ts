@@ -2,6 +2,10 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   cacheComponents: true,
+  // Causes used to live at /issues/…; keep shared links working.
+  async redirects() {
+    return [{ source: "/issues/:path*", destination: "/causes/:path*", permanent: true }];
+  },
   async headers() {
     return [
       {

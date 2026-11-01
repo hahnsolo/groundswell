@@ -129,11 +129,11 @@ let AWK;
   await sweep(page, "signin", "/signin");
   await sweep(page, "signup", "/signup");
   await sweep(page, "forgot", "/forgot-password");
-  await sweep(page, "not-found", "/issues/nope");
+  await sweep(page, "not-found", "/causes/nope");
   await sweep(page, "offline", "/offline");
   await sweep(page, "area-empty", "/area/us/99501");
-  await sweep(page, "cause-signed-out", `/issues/${AWK}`);
-  await sweep(page, "chat-locked", `/issues/${AWK}/chat`);
+  await sweep(page, "cause-signed-out", `/causes/${AWK}`);
+  await sweep(page, "chat-locked", `/causes/${AWK}/chat`);
   await sweep(page, "goodbye", "/goodbye");
   await page.context().close();
 }
@@ -143,17 +143,17 @@ let AWK;
   await sweep(page, "home-returning", "/area/ca/M5V"); // sets the neighbourhood…
   await sweep(page, "home-returning", "/"); // …then the home page uses it
   await sweep(page, "area-busy", "/area/ca/M5V");
-  await sweep(page, "cause-about", `/issues/${AWK}`, async (p) => {
+  await sweep(page, "cause-about", `/causes/${AWK}`, async (p) => {
     for (const s of await p.locator("summary").all()) await s.click().catch(() => {});
   });
-  await sweep(page, "cause-chat", `/issues/${AWK}/chat`);
-  await sweep(page, "cause-events", `/issues/${AWK}/events`, (p) => p.getByText("+ Organize an event").click());
-  await go(page, `/issues/${AWK}/events`);
+  await sweep(page, "cause-chat", `/causes/${AWK}/chat`);
+  await sweep(page, "cause-events", `/causes/${AWK}/events`, (p) => p.getByText("+ Organize an event").click());
+  await go(page, `/causes/${AWK}/events`);
   await settle(page);
   const eventHref = await page.locator('a[href^="/events/"]').first().getAttribute("href");
   await sweep(page, "event-page", eventHref);
   await sweep(page, "events-nearby", "/events?radius=50");
-  await sweep(page, "new-issue", "/issues/new?country=CA&postal=M5V");
+  await sweep(page, "new-issue", "/causes/new?country=CA&postal=M5V");
   await sweep(page, "me", "/me", (p) => p.getByText("Delete my account…").click());
   await sweep(page, "admin-queue", "/admin/reports");
   await sweep(page, "picker-open", "/area/ca/M5V", (p) => p.getByRole("button", { name: /Your neighbourhood/ }).click());
