@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useActionState } from "react";
 import { deleteAccount, requestPasswordReset, resendVerification, resetPassword } from "@/app/actions/auth";
 import { Field, FormError, SubmitButton, inputStyles, useFormAction } from "./ui";
-import { Turnstile } from "./bot-check";
+import { useBotCheck } from "./bot-check";
 
 export function ResendVerificationButton() {
   const [state, action] = useActionState(resendVerification, null);
@@ -19,6 +19,7 @@ export function ResendVerificationButton() {
 
 export function ForgotPasswordForm() {
   const [state, action] = useFormAction(requestPasswordReset);
+  const bot = useBotCheck(state);
   if (state?.ok) {
     return (
       <p className="rounded-lg bg-brand-soft p-4 text-sm">
@@ -32,8 +33,8 @@ export function ForgotPasswordForm() {
       <Field label="Email" name="email" errors={state?.fieldErrors}>
         <input name="email" type="email" autoComplete="email" required defaultValue={state?.values?.email} className={inputStyles} />
       </Field>
-      <Turnstile resetKey={state} />
-      <SubmitButton className="w-full" pendingText="Sending…">
+      {bot.widget}
+      <SubmitButton className="w-full" pendingText="Sending…" waitingFor={bot.passed ? undefined : "Checking you're human…"}>
         Send reset link
       </SubmitButton>
       <p className="text-center text-sm text-muted">

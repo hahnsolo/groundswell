@@ -29,14 +29,20 @@ export function useFormAction(action: (prev: FormState, formData: FormData) => P
 export function SubmitButton({
   children,
   pendingText,
+  waitingFor,
   variant = "primary",
   className = "",
   ...rest
-}: ComponentProps<"button"> & { pendingText?: string; variant?: keyof typeof buttonStyles }) {
+}: ComponentProps<"button"> & {
+  pendingText?: string;
+  /** While set, the button is disabled and shows this instead (for example "Checking you're human…"). */
+  waitingFor?: string;
+  variant?: keyof typeof buttonStyles;
+}) {
   const { pending } = useFormStatus();
   return (
-    <button type="submit" disabled={pending} className={`${buttonStyles[variant]} ${className}`} {...rest}>
-      {pending ? (pendingText ?? "Saving…") : children}
+    <button type="submit" {...rest} disabled={pending || !!waitingFor || rest.disabled} className={`${buttonStyles[variant]} ${className}`}>
+      {pending ? (pendingText ?? "Saving…") : (waitingFor ?? children)}
     </button>
   );
 }
