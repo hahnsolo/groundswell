@@ -76,14 +76,30 @@ let ISSUE;
   await page.context().close();
 }
 
-// 2. Sam (member for over a week) posts in the chat; removes and re-adds a signature on About.
+// 2. Sam (member for over a week) posts in the chat, and Alex, who has the chat
+//    open, sees it without reloading. Then Sam removes and re-adds a signature on About.
 {
+  const alex = await signIn(browser, "alex@demo.test", opts);
+  await go(alex, `/issues/${ISSUE}/chat`);
+  // E2E_EXPECT_LIVE=1 when the local chat server is running (cd realtime; npm run dev).
+  const live = process.env.E2E_EXPECT_LIVE === "1";
+  if (live) await alex.getByText("Live: new messages appear").waitFor({ timeout: 15000 });
+  await alex.evaluate(() => (window.__notReloaded = true));
+
   const page = await signIn(browser, "sam@demo.test", opts);
   await go(page, `/issues/${ISSUE}/chat`);
   await page.getByLabel("Your message").fill("Counted 4 near-misses this morning.");
+  const sentAt = Date.now();
   await page.getByRole("button", { name: "Send" }).click();
   await waitText(page, /Counted 4 near-misses this morning/);
   step("Members past the wait can post");
+
+  await alex.waitForFunction(() => /Counted 4 near-misses this morning/.test(document.querySelector("main").innerText), null, {
+    timeout: live ? 5000 : 30000,
+  });
+  assert.equal(await alex.evaluate(() => window.__notReloaded), true, "Alex's page reloaded instead of updating in place");
+  step(`Another member sees the message without reloading (${((Date.now() - sentAt) / 1000).toFixed(1)}s, ${live ? "live" : "checking every 10s"})`);
+  await alex.context().close();
   await go(page, `/issues/${ISSUE}`);
   assert.match(await text(page), /✓ Joined/);
   assert.match(await text(page), /2\s+of 150 signed/);

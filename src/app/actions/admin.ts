@@ -5,6 +5,14 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 import { cleanRemovalReason, purgeCutoff } from "@/lib/moderation";
+import { announceChatChange } from "@/lib/live-chat";
+
+/** Open chats showing this content should update. Returns the cause it belongs to. */
+async function causeOf(targetType: "issue" | "comment", targetId: string) {
+  if (targetType === "issue") return targetId;
+  const comment = await db.comment.findUnique({ where: { id: targetId }, select: { issueId: true } });
+  return comment?.issueId ?? null;
+}
 
 const targetSchema = z.object({
   targetType: z.enum(["issue", "comment"]),
@@ -39,6 +47,8 @@ export async function moderate(formData: FormData) {
       data: { resolved: true, resolution: decision, resolvedById: admin.id, resolvedAt: new Date() },
     });
   });
+  const cause = await causeOf(targetType, targetId);
+  if (cause) announceChatChange(cause);
   refresh();
 }
 
@@ -61,5 +71,7 @@ export async function restore(formData: FormData) {
       data: { resolution: "restored", resolvedById: admin.id, resolvedAt: new Date() },
     });
   });
+  const cause = await causeOf(targetType, targetId);
+  if (cause) announceChatChange(cause);
   refresh();
 }

@@ -2,6 +2,11 @@
 
 # dependencies
 /node_modules
+/realtime/node_modules
+
+# live chat server (wrangler's local state, and local secrets)
+/realtime/.wrangler/
+/realtime/.dev.vars
 /.pnp
 .pnp.*
 .yarn/*

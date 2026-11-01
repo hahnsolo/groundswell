@@ -1,0 +1,30 @@
+// The live chat server (see src/index.ts and docs/live-chat.md).
+// `npm run deploy` publishes the live one; `npm run deploy:preview` the one
+// Vercel previews use. Each has its own CHAT_SECRET, set with `wrangler secret put`.
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "groundswell-chat",
+  "main": "src/index.ts",
+  "compatibility_date": "2025-09-01",
+  "observability": { "enabled": true },
+  "durable_objects": {
+    "bindings": [{ "name": "ROOMS", "class_name": "ChatRoom" }]
+  },
+  // Free plan: Durable Objects must use the SQLite storage backend.
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["ChatRoom"] }],
+  "vars": {
+    "ALLOWED_ORIGINS": "https://groundswell.hahnsolo.ca"
+  },
+  "env": {
+    "preview": {
+      "name": "groundswell-chat-preview",
+      "durable_objects": {
+        "bindings": [{ "name": "ROOMS", "class_name": "ChatRoom" }]
+      },
+      "migrations": [{ "tag": "v1", "new_sqlite_classes": ["ChatRoom"] }],
+      "vars": {
+        "ALLOWED_ORIGINS": "https://groundswell-*-hahnsolo.vercel.app"
+      }
+    }
+  }
+}

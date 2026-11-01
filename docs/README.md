@@ -11,6 +11,7 @@ Plain-language guides to everything that runs Groundswell: what each piece is, w
 | [How changes get made](process.md) | You want to report a bug, ask for a feature, or follow a change from idea to live. |
 | [Day to day](day-to-day.md) | You're running the app on your PC, making a change, checking a deploy, or moderating. |
 | [DNS](dns.md) | You're in GoDaddy's DNS page and need to know what's safe to touch. |
+| [Live chat](live-chat.md) | You want to know how chat updates instantly, what it costs, or how to update the chat server. |
 | [Security and spam](security-and-spam.md) | You want to know what protects the site and what's still on the to-do list. |
 | [Troubleshooting](troubleshooting.md) | Something's broken. Lessons from the first setup night. |
 

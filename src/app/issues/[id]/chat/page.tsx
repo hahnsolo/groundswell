@@ -3,6 +3,8 @@ import { getCurrentUser } from "@/lib/auth";
 import { getIssueDetail } from "@/lib/queries";
 import { displayName } from "@/lib/accounts";
 import { CHAT_COOLING_OFF_HOURS, chatAccess } from "@/lib/chat-rules";
+import { chatPass } from "@/lib/live-chat";
+import { LiveChat } from "@/components/live-chat";
 import { reportContent, toggleSupport } from "@/app/actions/community";
 import { LocalTime } from "@/components/local-time";
 import { CommentForm } from "@/components/issue-forms";
@@ -59,8 +61,12 @@ async function Chat({ params }: Pick<PageProps<"/issues/[id]/chat">, "params">) 
     );
   }
 
+  // Only people who can read the chat get a pass to listen for new messages.
+  const pass = await chatPass(issue.id);
+
   return (
     <Panel>
+      <LiveChat pass={pass} />
       <ol className="space-y-3" aria-label="Messages">
         {issue.comments.map((c) => {
           const mine = c.author.id === user?.id;

@@ -1,0 +1,3 @@
+# Copy to .dev.vars for `npm run dev`. Must match CHAT_SECRET in the site's .env.
+CHAT_SECRET=local-dev-chat-secret
+ALLOWED_ORIGINS=http://localhost:3000

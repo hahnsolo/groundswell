@@ -27,6 +27,8 @@ After changing a variable in Vercel, you must **redeploy** for it to take effect
 | `MAIL_FROM` | Who emails come from: `Groundswell <no-reply@groundswell.hahnsolo.ca>` | Config | Not needed | Set |
 | `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | Turnstile's public key, shown to browsers (not a secret) | Config (public) | Optional; Cloudflare's test key | Set (previews: Cloudflare's test key) |
 | `TURNSTILE_SECRET_KEY` | Turnstile's private key, used to check answers | **Secret** | Optional; Cloudflare's test key | Set (previews: Cloudflare's test key) |
+| `CHAT_URL` | Address of the live chat server on Cloudflare (see [Live chat](live-chat.md)) | Config | `http://localhost:8787` | Set (previews: the preview chat server) |
+| `CHAT_SECRET` | Shared with the chat server; signs chat passes and announcements. Must match the chat server's own `CHAT_SECRET` | **Secret** | `local-dev-chat-secret` | Set, a different value for previews |
 | `GOOGLE_CLIENT_ID` | Identifies our app to Google | Config | Optional | Optional |
 | `GOOGLE_CLIENT_SECRET` | Proves to Google it's really us | **Secret** | Optional | Optional |
 | `APPLE_CLIENT_ID` | Our Apple "Services ID" | Config | Optional | Optional |

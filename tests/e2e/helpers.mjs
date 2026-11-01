@@ -3,6 +3,7 @@
 // them anywhere else.
 import { chromium } from "playwright-core";
 import { mkdirSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 
 export const BASE = process.env.E2E_BASE_URL ?? "http://localhost:3000";
 if (!/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(BASE)) {
@@ -10,7 +11,7 @@ if (!/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(BASE)) {
 }
 
 export const PW = "groundswell-demo"; // public demo password from prisma/seed.ts (local only)
-export const OUT = new URL("./output/", import.meta.url).pathname.replace(/^\/(\w:)/, "$1");
+export const OUT = fileURLToPath(new URL("./output/", import.meta.url));
 mkdirSync(OUT, { recursive: true });
 
 // Uses an installed browser instead of downloading one: Edge by default, or

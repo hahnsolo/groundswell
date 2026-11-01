@@ -25,3 +25,6 @@ jobs:
       - run: npm run typecheck
       - run: npm run lint
       - run: npm test
+      # The live chat server (realtime/) has its own small package.
+      - run: npm ci --prefix realtime
+      - run: npm run typecheck --prefix realtime
