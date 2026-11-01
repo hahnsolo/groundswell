@@ -14,6 +14,7 @@ import { ESTABLISHED_ACCOUNT_MS, shouldAutoHide } from "@/lib/moderation";
 import { handOverMeetup, leaveIssue } from "@/lib/leaving";
 import { chatAccess } from "@/lib/chat-rules";
 import { announceChatChange } from "@/lib/live-chat";
+import { descriptionProblem } from "@/lib/words";
 import { fromZodError, type FormState } from "@/lib/forms";
 
 const id = z.string().min(1).max(40);
@@ -53,7 +54,14 @@ const issueSchema = z.object({
   country: z.string(),
   postal: z.string(),
   title: z.string().trim().min(8, "Give it a clear title (8+ characters).").max(120),
-  description: z.string().trim().min(20, "Describe the issue in a sentence or two (20+ characters).").max(5000),
+  description: z
+    .string()
+    .trim()
+    .max(20000)
+    .superRefine((text, ctx) => {
+      const problem = descriptionProblem(text);
+      if (problem) ctx.addIssue({ code: z.ZodIssueCode.custom, message: problem });
+    }),
   category: z.enum(CATEGORY_IDS, { errorMap: () => ({ message: "Pick a category." }) }),
 });
 

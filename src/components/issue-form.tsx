@@ -1,15 +1,27 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import { createIssue } from "@/app/actions/community";
 import { CATEGORIES } from "@/lib/categories";
 import { COUNTRIES } from "@/lib/countries";
 import { Field, FormError, SubmitButton, inputStyles, useFormAction } from "./ui";
 import { Honeypot } from "./bot-check";
+import { DescriptionField } from "./description-field";
 
 export function IssueForm({ country, postal }: { country: string; postal: string }) {
   const [state, action] = useFormAction(createIssue);
   const e = state?.fieldErrors;
   const v = state?.values;
+  // React resets a form after every submit and dropdowns don't pick their
+  // choice back up, so a refused cause would lose these. Put them back after each result.
+  const [category, setCategory] = useState("");
+  const [countryCode, setCountryCode] = useState(country);
+  const categoryBox = useRef<HTMLSelectElement>(null);
+  const countryBox = useRef<HTMLSelectElement>(null);
+  useEffect(() => {
+    if (categoryBox.current) categoryBox.current.value = category;
+    if (countryBox.current) countryBox.current.value = countryCode;
+  }, [state, category, countryCode]);
   return (
     <form action={action} className="space-y-5">
       <FormError message={state?.error} />
@@ -17,7 +29,7 @@ export function IssueForm({ country, postal }: { country: string; postal: string
         <input name="title" required maxLength={120} defaultValue={v?.title} className={inputStyles} />
       </Field>
       <Field label="Category" name="category" errors={e}>
-        <select name="category" required defaultValue={v?.category ?? ""} className={inputStyles}>
+        <select ref={categoryBox} name="category" required value={category} onChange={(ev) => setCategory(ev.target.value)} className={inputStyles}>
           <option value="" disabled>
             Choose one…
           </option>
@@ -28,17 +40,10 @@ export function IssueForm({ country, postal }: { country: string; postal: string
           ))}
         </select>
       </Field>
-      <Field
-        label="Details"
-        name="description"
-        errors={e}
-        hint="What's happening, who it affects, and what a good outcome looks like. Don't include anyone's private info."
-      >
-        <textarea name="description" required rows={7} maxLength={5000} defaultValue={v?.description} className={inputStyles} />
-      </Field>
+      <DescriptionField defaultValue={v?.description} error={e?.description?.[0]} />
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="Country" name="country" errors={e}>
-          <select name="country" defaultValue={v?.country ?? country} className={inputStyles}>
+          <select ref={countryBox} name="country" value={countryCode} onChange={(ev) => setCountryCode(ev.target.value)} className={inputStyles}>
             {COUNTRIES.map((c) => (
               <option key={c.code} value={c.code}>
                 {c.name}

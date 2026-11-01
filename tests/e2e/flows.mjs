@@ -165,5 +165,34 @@ let ISSUE;
   await back.context().close();
 }
 
+// 6. Starting a cause: a thin description is refused, with what to add; a proper one goes up.
+{
+  const page = await signIn(browser, "alex@demo.test", opts);
+  await go(page, "/issues/new?country=CA&postal=M5V");
+  await page.getByLabel("What's the issue?").fill("Broken bench outside the Spadina library");
+  await page.locator('select[name="category"]').selectOption({ index: 1 });
+  const details = page.locator("textarea#description");
+  await details.fill("The bench is broken and people can't sit down while they wait.");
+  assert.match(await page.locator("#description-count").innerText(), /12 of 50 words/);
+  await page.getByRole("button", { name: "Post issue" }).click();
+  await page.getByText(/Add a bit more so neighbours can decide to join/).waitFor({ timeout: 30000 });
+  assert.notEqual(await page.locator('select[name="category"]').inputValue(), "", "the category was forgotten after the refusal");
+  step("A thin description is refused, saying what to add, and the form keeps what was entered");
+  await details.fill(
+    "The bench outside the Spadina Road library has been broken since September. One leg snapped and it tips forward, " +
+      "so nobody can sit on it. Older neighbours wait there for the 77 bus and now have to stand, sometimes for twenty minutes. " +
+      "Parents with strollers use it too. Fixing it means the city replacing the bench, ideally with one that has arms to help people stand up.",
+  );
+  assert.match(await page.locator("#description-count").innerText(), /Good detail/);
+  await Promise.all([
+    page.waitForURL(/\/issues\/(?!new)\w+/, { timeout: 60000, waitUntil: "commit" }),
+    page.getByRole("button", { name: "Post issue" }).click(),
+  ]);
+  await settle(page);
+  assert.match(await text(page), /Broken bench outside the Spadina library/);
+  step("A 60-word description starts the cause");
+  await page.context().close();
+}
+
 await browser.close();
 console.log("All flows passed.");
