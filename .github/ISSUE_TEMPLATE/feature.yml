@@ -1,39 +1,61 @@
 name: New feature or change
-description: Something Groundswell should do that it doesn't yet.
+description: A user story for something Groundswell should do that it doesn't yet.
 labels: ["feature"]
 body:
-  - type: textarea
-    id: why
+  - type: dropdown
+    id: who
     attributes:
-      label: Who it's for and why
-      description: The person and the problem, in a sentence or two.
-      placeholder: Organizers can't tell who actually showed up to an event, so they can't thank people or count volunteer hours.
+      label: Who it's for
+      description: See docs/personas.md for who these people are.
+      options:
+        - Maya, the new neighbour
+        - Dev, the organizer
+        - Rosa, the long-time resident
+        - Jordan, the steward
     validations:
       required: true
   - type: textarea
-    id: what
+    id: story
     attributes:
-      label: What it should do
+      label: Story
+      description: As [person], I want [something], so that [why it matters to them].
+      placeholder: As Maya, I want a record of the hours I volunteered, confirmed by the host, so that I can use it for school or work.
     validations:
       required: true
   - type: textarea
-    id: done
+    id: acceptance
     attributes:
-      label: Done when
-      description: Checks anyone could tick off by using the site.
+      label: Acceptance criteria
+      description: What's true when it works. Anyone using the site should be able to check each one.
       placeholder: |
-        - [ ] The host sees a "Who came?" list after the event
-        - [ ] Ticking someone adds the hours to their profile
+        - [ ] Given an event has ended, when the host opens it, then they see a "Who came?" list
+        - [ ] Ticking someone adds the event's hours to their activity page
         - [ ] People who weren't ticked see nothing change
     validations:
       required: true
   - type: textarea
     id: tests
     attributes:
-      label: How we'll test it
-      description: Unit tests for the rules, a click-through check for the journey, anything to try by hand on the preview.
+      label: Test criteria
+      description: The tests that prove each acceptance criterion.
+      placeholder: |
+        - Unit: hours worked out from start and end; only the host can confirm
+        - Click-through: host ticks an attendee, the attendee sees the hours
+        - By hand on the preview: try it on a phone
     validations:
       required: true
+  - type: checkboxes
+    id: dod
+    attributes:
+      label: Definition of done
+      description: Ticked on the pull request before merging.
+      options:
+        - label: Every acceptance criterion is met, checked on the PR's preview link
+        - label: The tests in Test criteria are written and pass (the PR's checks are green)
+        - label: Click-through checks pass on fresh demo data
+        - label: Visual sweep shows 0 findings if any page or style changed
+        - label: Docs updated where people or the owner would notice the change
+        - label: Merged, and checked on the live site
   - type: textarea
     id: out
     attributes:

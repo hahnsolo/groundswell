@@ -14,7 +14,7 @@ Every change to Groundswell, big or small, follows the same path from idea to li
 An **issue** is a to-do card on GitHub: [github.com/hahnsolo/groundswell/issues](https://github.com/hahnsolo/groundswell/issues). Click **New issue** and pick a form:
 
 - **Something's broken**: a bug. It asks for the page, what you did, what you expected, what happened, and the device.
-- **New feature or change**: it asks who it's for and why, what it should do, a **Done when** checklist, and how we'll test it.
+- **New feature or change**: a user story. It asks who it's for (one of the four people in [Who Groundswell is for](personas.md)), the story ("As Maya, I want…, so that…"), **acceptance criteria**, **test criteria**, and has the **definition of done** checklist built in.
 
 Each issue gets labels:
 
@@ -35,7 +35,7 @@ The **Groundswell** project board (the Projects tab on GitHub) shows every issue
 
 **Backlog** (ideas, not ready) → **Ready** (clear enough to build) → **In progress** → **In review** (a pull request is open) → **Done** (live)
 
-An issue moves to **Ready** only once its **Done when** list is clear. That's the moment to argue about what it should do, before any code exists.
+An issue moves to **Ready** only once its acceptance criteria are clear and any open questions are answered. That's the moment to argue about what it should do, before any code exists.
 
 ## 3. A branch and a pull request per issue
 
@@ -48,7 +48,7 @@ Every PR has the **Done checklist** from [the PR template](../.github/pull_reque
 Two things happen automatically on every PR:
 
 - **Checks** (GitHub Actions, free for public projects): the unit tests, the typecheck (catches code that doesn't fit together) and lint (catches common mistakes). They show as a green ✓ or red ✗ on the PR. A red ✗ blocks merging.
-- **Preview** (Vercel): a private copy of the site with the change in it, at its own address. Vercel posts the link on the PR. Click around and try the **Done when** list yourself. Previews use the Neon **`preview`** database branch, never the live one, so testing there can't touch real people's data.
+- **Preview** (Vercel): a private copy of the site with the change in it, at its own address. Vercel posts the link on the PR. Click around and try the acceptance criteria yourself. Previews use the Neon **`preview`** database branch, never the live one, so testing there can't touch real people's data.
 
 Some checks run on the PC instead, because they need a browser and demo data:
 
