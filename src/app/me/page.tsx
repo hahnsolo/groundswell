@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { COUNTRIES, areaHref } from "@/lib/countries";
-import { setHomeArea, toggleRsvp, toggleSupport } from "@/app/actions/community";
+import { setHomeArea, toggleRsvp, toggleMembership } from "@/app/actions/community";
 import { DeleteAccountForm } from "@/components/account-forms";
 import { signOut } from "@/app/actions/auth";
 import { ACCOUNT_GRACE_DAYS } from "@/lib/accounts";
@@ -35,17 +35,17 @@ async function Me({ searchParams }: Pick<PageProps<"/me">, "searchParams">) {
         ? "Welcome to Groundswell! Set your home area below so we can show you what's happening nearby."
         : null;
   const openReports = user.isAdmin ? await db.report.count({ where: { resolved: false } }) : 0;
-  const [issues, supported, rsvps, credential] = await Promise.all([
-    db.issue.findMany({ where: { authorId: user.id }, orderBy: { createdAt: "desc" }, take: 20 }),
-    db.issueSupport.findMany({
-      where: { userId: user.id, issue: { authorId: { not: user.id }, hidden: false } },
-      include: { issue: true },
+  const [causes, supported, rsvps, credential] = await Promise.all([
+    db.cause.findMany({ where: { authorId: user.id }, orderBy: { createdAt: "desc" }, take: 20 }),
+    db.causeMember.findMany({
+      where: { userId: user.id, cause: { authorId: { not: user.id }, hidden: false } },
+      include: { cause: true },
       orderBy: { createdAt: "desc" },
       take: 20,
     }),
     db.rsvp.findMany({
-      where: { userId: user.id, meetup: { startsAt: { gte: new Date() }, issue: { hidden: false } } },
-      include: { meetup: { include: { issue: { select: { title: true } } } } },
+      where: { userId: user.id, meetup: { startsAt: { gte: new Date() }, cause: { hidden: false } } },
+      include: { meetup: { include: { cause: { select: { title: true } } } } },
       orderBy: { meetup: { startsAt: "asc" } },
     }),
     db.account.findFirst({ where: { userId: user.id, providerId: "credential" }, select: { id: true } }),
@@ -107,7 +107,7 @@ async function Me({ searchParams }: Pick<PageProps<"/me">, "searchParams">) {
               <span className="font-medium">{r.meetup.title}</span>
               {r.meetup.organizerId === user.id && <span className={`${tag} ml-2`}>Hosting</span>}
               <span className="block text-sm text-muted">
-                <LocalTime iso={r.meetup.startsAt.toISOString()} /> · {r.meetup.issue.title}
+                <LocalTime iso={r.meetup.startsAt.toISOString()} /> · {r.meetup.cause.title}
               </span>
             </Link>
             {r.meetup.organizerId === user.id ? (
@@ -129,8 +129,8 @@ async function Me({ searchParams }: Pick<PageProps<"/me">, "searchParams">) {
 
       <section className={section}>
         <h2 className="mb-3 font-semibold">Causes you started</h2>
-        {issues.length === 0 && <p className="text-sm text-muted">Nothing yet.</p>}
-        {issues.map((i) => (
+        {causes.length === 0 && <p className="text-sm text-muted">Nothing yet.</p>}
+        {causes.map((i) => (
           <Link key={i.id} href={`/causes/${i.id}`} className={linkRow}>
             {i.title} <span className="text-sm text-muted">· {i.placeName}</span>
             {i.removedAt ? (
@@ -148,14 +148,14 @@ async function Me({ searchParams }: Pick<PageProps<"/me">, "searchParams">) {
         <h2 className="mb-3 font-semibold">Causes you&apos;ve joined</h2>
         {supported.length === 0 && <p className="text-sm text-muted">Nothing yet.</p>}
         {supported.map((s) => (
-          <div key={s.issueId} className={row}>
-            <Link href={`/causes/${s.issueId}`} className={`${linkRow} min-w-0 flex-1`}>
-              {s.issue.title} <span className="text-sm text-muted">· {s.issue.placeName}</span>
+          <div key={s.causeId} className={row}>
+            <Link href={`/causes/${s.causeId}`} className={`${linkRow} min-w-0 flex-1`}>
+              {s.cause.title} <span className="text-sm text-muted">· {s.cause.placeName}</span>
             </Link>
-            <form action={toggleSupport}>
-              <input type="hidden" name="issueId" value={s.issueId} />
-              <button className={xButton} aria-label={`Stop supporting ${s.issue.title}`}>
-                ✕ Stop supporting
+            <form action={toggleMembership}>
+              <input type="hidden" name="causeId" value={s.causeId} />
+              <button className={xButton} aria-label={`Leave ${s.cause.title}`}>
+                ✕ Leave
               </button>
             </form>
           </div>

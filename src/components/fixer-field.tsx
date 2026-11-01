@@ -1,19 +1,19 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { setIssueFixer } from "@/app/actions/community";
+import { setCauseFixer } from "@/app/actions/community";
 import { FIXER_OTHER_MAX, FIXERS, fixerEmoji, fixerLabel, type FixerId } from "@/lib/fixers";
 import { inputStyles } from "./styles";
 import { FormError, SubmitButton, useFormAction } from "./ui";
 
 /** Lets the person who raised a cause change who they think should fix it. */
-export function FixerChangeForm({ issueId, country, fixer, fixerOther }: { issueId: string; country: string; fixer: string; fixerOther: string | null }) {
-  const [state, action] = useFormAction(setIssueFixer);
+export function FixerChangeForm({ causeId, country, fixer, fixerOther }: { causeId: string; country: string; fixer: string; fixerOther: string | null }) {
+  const [state, action] = useFormAction(setCauseFixer);
   return (
     <details className="text-sm" open={!!state && !state.ok}>
       <summary className="cursor-pointer text-muted hover:text-foreground">Change who should fix it</summary>
       <form action={action} className="mt-3 max-w-xl space-y-3">
-        <input type="hidden" name="issueId" value={issueId} />
+        <input type="hidden" name="causeId" value={causeId} />
         <FormError message={state?.error} />
         <FixerField country={country} defaultValue={fixer} defaultOther={state?.values?.fixerOther ?? fixerOther ?? undefined} errors={state?.fieldErrors} formState={state} />
         <SubmitButton variant="secondary" pendingText="Saving…">

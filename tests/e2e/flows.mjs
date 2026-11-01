@@ -10,14 +10,14 @@ const text = (page) => page.locator("main").innerText();
 const waitText = (page, re) => page.waitForFunction((src) => new RegExp(src, "i").test(document.querySelector("main").innerText), re.source, { timeout: 30000 });
 const step = (s) => console.log("✓", s);
 
-let ISSUE;
+let CAUSE;
 {
   const page = await (await browser.newContext(opts)).newPage();
-  ISSUE = await findCause(page, "/area/us/90046?radius=25", "No safe crossing");
-  // Causes used to live at /issues/…; shared links must still work.
-  await go(page, `/issues/${ISSUE}/chat`);
-  assert.equal(new URL(page.url()).pathname, `/causes/${ISSUE}/chat`);
-  step("Old /issues/ links redirect to /causes/");
+  CAUSE = await findCause(page, "/area/us/90046?radius=25", "No safe crossing");
+  // Causes used to live at /causes/…; shared links must still work.
+  await go(page, `/causes/${CAUSE}/chat`);
+  assert.equal(new URL(page.url()).pathname, `/causes/${CAUSE}/chat`);
+  step("Old /causes/ links redirect to /causes/");
   await page.context().close();
 }
 
@@ -69,7 +69,7 @@ let ISSUE;
 // 1. Chat: Priya isn't a member of the crossing cause → can't see it; joins → read-only for 24 hours.
 {
   const page = await signIn(browser, "priya@demo.test", opts);
-  await go(page, `/causes/${ISSUE}/chat`);
+  await go(page, `/causes/${CAUSE}/chat`);
   assert.match(await text(page), /The chat is for neighbours who.ve joined/);
   assert.doesNotMatch(await text(page), /My daughter crosses here/);
   step("Non-members can't see the chat");
@@ -84,14 +84,14 @@ let ISSUE;
 //    open, sees it without reloading. Then Sam removes and re-adds a signature on About.
 {
   const alex = await signIn(browser, "alex@demo.test", opts);
-  await go(alex, `/causes/${ISSUE}/chat`);
+  await go(alex, `/causes/${CAUSE}/chat`);
   // E2E_EXPECT_LIVE=1 when the local chat server is running (cd realtime; npm run dev).
   const live = process.env.E2E_EXPECT_LIVE === "1";
   if (live) await alex.getByText("Live: new messages appear").waitFor({ timeout: 15000 });
   await alex.evaluate(() => (window.__notReloaded = true));
 
   const page = await signIn(browser, "sam@demo.test", opts);
-  await go(page, `/causes/${ISSUE}/chat`);
+  await go(page, `/causes/${CAUSE}/chat`);
   await page.getByLabel("Your message").fill("Counted 4 near-misses this morning.");
   const sentAt = Date.now();
   await page.getByRole("button", { name: "Send" }).click();
@@ -104,7 +104,7 @@ let ISSUE;
   assert.equal(await alex.evaluate(() => window.__notReloaded), true, "Alex's page reloaded instead of updating in place");
   step(`Another member sees the message without reloading (${((Date.now() - sentAt) / 1000).toFixed(1)}s, ${live ? "live" : "checking every 10s"})`);
   await alex.context().close();
-  await go(page, `/causes/${ISSUE}`);
+  await go(page, `/causes/${CAUSE}`);
   assert.match(await text(page), /✓ Joined/);
   assert.match(await text(page), /2\s+of 150 signed/);
   await page.getByRole("button", { name: "Remove my signature" }).click();
@@ -118,7 +118,7 @@ let ISSUE;
 // 3. Alex steps down as host → Sam (earliest other RSVP) takes over.
 {
   const page = await signIn(browser, "alex@demo.test", opts);
-  await go(page, `/causes/${ISSUE}/events`);
+  await go(page, `/causes/${CAUSE}/events`);
   await page.getByText("Can't host it?").click();
   await page.getByRole("button", { name: "Step down as host" }).click();
   await waitText(page, /hosted by Sam\s*\(took over\)/);
@@ -129,14 +129,14 @@ let ISSUE;
 // 4. Sam leaves the cause → no longer joined, signature gone, the event with nobody left is cancelled.
 {
   const page = await signIn(browser, "sam@demo.test", opts);
-  await go(page, `/causes/${ISSUE}`);
+  await go(page, `/causes/${CAUSE}`);
   await page.locator("summary", { hasText: /^Leave$/ }).click();
   await page.getByRole("button", { name: "Leave this cause" }).click();
   await waitText(page, /1\s+of 150 signed/);
   assert.match(await text(page), /Join this cause/);
-  await go(page, `/causes/${ISSUE}/events`);
+  await go(page, `/causes/${CAUSE}/events`);
   assert.match(await text(page), /No events coming up/);
-  await go(page, `/causes/${ISSUE}/chat`);
+  await go(page, `/causes/${CAUSE}/chat`);
   assert.match(await text(page), /The chat is for neighbours who.ve joined/);
   step("Leave: support, signature and chat access gone; event with nobody left cancelled");
   await page.context().close();

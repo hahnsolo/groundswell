@@ -2,11 +2,11 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { getCurrentUser } from "@/lib/auth";
 import { STATUSES } from "@/lib/categories";
-import { getIssueDetail } from "@/lib/queries";
+import { getCauseDetail } from "@/lib/queries";
 import { displayName } from "@/lib/accounts";
-import { reportContent, setIssueStatus } from "@/app/actions/community";
+import { reportContent, setCauseStatus } from "@/app/actions/community";
 import { LocalTime } from "@/components/local-time";
-import { CampaignForm, LetterBuilder, RepLookup, SignForm } from "@/components/issue-forms";
+import { CampaignForm, LetterBuilder, RepLookup, SignForm } from "@/components/cause-forms";
 import { Panel, SignInPrompt } from "@/components/cause-parts";
 import { FixerChangeForm } from "@/components/fixer-field";
 import { campaignTargetFor } from "@/lib/fixers";
@@ -23,19 +23,19 @@ export default function AboutTab(props: PageProps<"/causes/[id]">) {
 async function About({ params }: Pick<PageProps<"/causes/[id]">, "params">) {
   const { id } = await params;
   const user = await getCurrentUser();
-  const issue = await getIssueDetail(id, user?.id ?? null);
-  if (!issue || issue.removedAt || (issue.hidden && issue.authorId !== user?.id)) return null; // the layout explains
+  const cause = await getCauseDetail(id, user?.id ?? null);
+  if (!cause || cause.removedAt || (cause.hidden && cause.authorId !== user?.id)) return null; // the layout explains
 
   const appUrl = process.env.APP_URL ?? "http://localhost:3000";
-  const issueUrl = `${appUrl}/causes/${issue.id}`;
-  const place = `${issue.placeName}, ${issue.region}`;
-  const isAuthor = user?.id === issue.authorId;
-  const next = issue.meetups.find((m) => m.upcoming);
+  const causeUrl = `${appUrl}/causes/${cause.id}`;
+  const place = `${cause.placeName}, ${cause.region}`;
+  const isAuthor = user?.id === cause.authorId;
+  const next = cause.meetups.find((m) => m.upcoming);
 
   return (
     <div className="space-y-6">
       <Panel>
-        <p className="whitespace-pre-line text-[17px] leading-relaxed">{issue.description}</p>
+        <p className="whitespace-pre-line text-[17px] leading-relaxed">{cause.description}</p>
       </Panel>
 
       {next && (
@@ -54,9 +54,9 @@ async function About({ params }: Pick<PageProps<"/causes/[id]">, "params">) {
         </Link>
       )}
 
-      <Panel title={issue.campaigns.length > 1 ? "The asks" : "The ask"} id="ask">
+      <Panel title={cause.campaigns.length > 1 ? "The asks" : "The ask"} id="ask">
         <div className="space-y-8">
-          {issue.campaigns.map((c) => {
+          {cause.campaigns.map((c) => {
             const pct = Math.min(100, Math.round((c._count.signatures / c.goal) * 100));
             return (
               <div key={c.id} className="space-y-3">
@@ -73,9 +73,9 @@ async function About({ params }: Pick<PageProps<"/causes/[id]">, "params">) {
                 </div>
                 {user ? (
                   // Keyed on signed so the form resets after signing or removing a signature.
-                  <SignForm key={String(issue.viewerSigned.has(c.id))} campaignId={c.id} signed={issue.viewerSigned.has(c.id)} />
+                  <SignForm key={String(cause.viewerSigned.has(c.id))} campaignId={c.id} signed={cause.viewerSigned.has(c.id)} />
                 ) : (
-                  <SignInPrompt next={`/causes/${issue.id}`} text="sign" />
+                  <SignInPrompt next={`/causes/${cause.id}`} text="sign" />
                 )}
                 {c.signatures.length > 0 && (
                   <ul className="space-y-1.5 border-l-2 border-border pl-3">
@@ -90,8 +90,8 @@ async function About({ params }: Pick<PageProps<"/causes/[id]">, "params">) {
                   <summary className="cursor-pointer text-sm font-medium text-link">✉️ Write to {c.target}</summary>
                   <div className="mt-3 space-y-4">
                     <LetterBuilder
-                      issueTitle={issue.title}
-                      issueUrl={issueUrl}
+                      causeTitle={cause.title}
+                      causeUrl={causeUrl}
                       ask={c.ask}
                       target={c.target}
                       signatures={c._count.signatures}
@@ -103,7 +103,7 @@ async function About({ params }: Pick<PageProps<"/causes/[id]">, "params">) {
             );
           })}
 
-          {issue.campaigns.length === 0 && (
+          {cause.campaigns.length === 0 && (
             <p className="text-sm text-muted">
               No ask yet. When neighbours are ready to push for a fix, start a campaign: a clear request to the person who can act,
               backed by signatures.
@@ -113,22 +113,22 @@ async function About({ params }: Pick<PageProps<"/causes/[id]">, "params">) {
           {user ? (
             <details className="border-t border-border pt-4">
               <summary className="cursor-pointer text-sm font-medium text-link">
-                + {issue.campaigns.length ? "Start another campaign" : "Start a campaign"}
+                + {cause.campaigns.length ? "Start another campaign" : "Start a campaign"}
               </summary>
               <div className="mt-4">
                 <CampaignForm
-                  issueId={issue.id}
-                  defaultTarget={campaignTargetFor(issue.fixer, issue.fixerOther, issue.country, issue.placeName)}
+                  causeId={cause.id}
+                  defaultTarget={campaignTargetFor(cause.fixer, cause.fixerOther, cause.country, cause.placeName)}
                 />
               </div>
             </details>
           ) : (
-            <SignInPrompt next={`/causes/${issue.id}`} text="start a campaign" />
+            <SignInPrompt next={`/causes/${cause.id}`} text="start a campaign" />
           )}
 
           <div className="border-t border-border pt-4">
             <h3 className="mb-2 text-sm font-semibold">Find your representatives</h3>
-            <RepLookup country={issue.country} />
+            <RepLookup country={cause.country} />
           </div>
         </div>
       </Panel>
@@ -136,27 +136,27 @@ async function About({ params }: Pick<PageProps<"/causes/[id]">, "params">) {
       <div className="flex flex-wrap items-center gap-3 text-sm">
         {isAuthor ? (
           <div className="w-full space-y-3">
-          <form action={setIssueStatus} className="flex flex-wrap items-center gap-2">
-            <input type="hidden" name="issueId" value={issue.id} />
+          <form action={setCauseStatus} className="flex flex-wrap items-center gap-2">
+            <input type="hidden" name="causeId" value={cause.id} />
             <span className="text-muted">Where it stands:</span>
             {Object.entries(STATUSES).map(([key, s]) => (
               <button
                 key={key}
                 name="status"
                 value={key}
-                className={`rounded-full px-2.5 py-1 text-xs font-medium ${key === issue.status ? s.className : "border border-border text-muted hover:border-ink"}`}
+                className={`rounded-full px-2.5 py-1 text-xs font-medium ${key === cause.status ? s.className : "border border-border text-muted hover:border-ink"}`}
               >
                 {key === "resolved" ? "Won / resolved" : s.label}
               </button>
             ))}
           </form>
-          <FixerChangeForm issueId={issue.id} country={issue.country} fixer={issue.fixer} fixerOther={issue.fixerOther} />
+          <FixerChangeForm causeId={cause.id} country={cause.country} fixer={cause.fixer} fixerOther={cause.fixerOther} />
           </div>
         ) : (
           user?.emailVerified && (
             <form action={reportContent}>
-              <input type="hidden" name="targetType" value="issue" />
-              <input type="hidden" name="targetId" value={issue.id} />
+              <input type="hidden" name="targetType" value="cause" />
+              <input type="hidden" name="targetId" value={cause.id} />
               <button className="text-xs text-muted hover:text-red-600">Report this cause</button>
             </form>
           )

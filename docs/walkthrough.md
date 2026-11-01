@@ -13,7 +13,7 @@ The screenshots come from the **dev site with demo data** (Alex, Sam and Priya a
    - [About: the holding page](#about-the-holding-page)
    - [Chat: members only, with a day to settle in](#chat-members-only-with-a-day-to-settle-in)
    - [Events](#events), [an event's own page](#an-events-own-page) and [events nearby](#events-nearby)
-4. [Raise an issue](#4-raise-an-issue)
+4. [Start a cause](#4-start-a-cause)
 5. [Join, sign in, forgot password](#5-join-sign-in-and-forgot-password)
 6. [Your activity (`/me`)](#6-your-activity-me), including [deleting your account](#deleting-your-account)
 7. [Reporting and the moderation queue (admins)](#7-reporting-and-the-moderation-queue-admins)
@@ -27,10 +27,10 @@ The screenshots come from the **dev site with demo data** (Alex, Sam and Priya a
 
 - **The wave logo and "Groundswell"** go back to the home page.
 - **Your neighbourhood** (e.g. "Downtown Toronto ▾"): the last area you looked at, or your home area. Click it to jump back there or look up another postal code. It's remembered in a small cookie that holds only the area code and its name.
-- **+ Start something** (red, the one loud button) raises a new issue in the neighbourhood you're looking at. On a phone it's just a **+**.
+- **+ Start something** (red, the one loud button) raises a new cause in the neighbourhood you're looking at. On a phone it's just a **+**.
 - **Signed out:** **Sign in** and **Join**.
 - **Signed in:** a circle with **your initial**, which goes to your activity page. **Sign out** is at the top of that page.
-- **Email not confirmed yet:** a yellow bar under the top bar says *"Confirm your email (…) to post issues, comments and meetups"* (this applies to chat messages too), with a button to resend the link (at most 3 times an hour).
+- **Email not confirmed yet:** a yellow bar under the top bar says *"Confirm your email (…) to post causes, comments and meetups"* (this applies to chat messages too), with a button to resend the link (at most 3 times an hour).
 
 ---
 
@@ -73,7 +73,7 @@ The screenshots come from the **dev site with demo data** (Alex, Sam and Priya a
 - **Filter by topic** with the tabs: Everything, Safety, Roads & transit, Housing, Environment, Parks & recreation, Schools & youth, Health, Local business, Utilities & services, Other.
 - **Change the distance:** 2, 5, 10 (default), 25 or 50 km.
 - **Show:** *Most support* (resolved causes sink to the bottom) or *Newest*.
-- **+ Raise an issue here** (or **Start something** in the top bar) starts a new one for this area.
+- **+ Start a cause here** (or **Start something** in the top bar) starts a new one for this area.
 - Visiting an area makes it "your neighbourhood" in the top bar and on the home page.
 - Click any card to open the cause.
 
@@ -93,7 +93,7 @@ Under the title: the first few people's initials and a line like *"Priya, Sam an
 **Behind the scenes:**
 - The first time anyone looks up a code, the app asks a free service (zippopotam.us) where it is, then remembers the answer, so each code is only looked up once.
 - If nothing is nearby, the page suggests looking further out or being the first to raise something.
-- Issues hidden by reports or removed by a moderator never appear here.
+- Causes hidden by reports or removed by a moderator never appear here.
 - The moment a cause is marked resolved is recorded, so wins can be shown for 30 days (and, later, on a progress tracker).
 
 ---
@@ -101,7 +101,7 @@ Under the title: the first few people's initials and a line like *"Priya, Sam an
 
 `/causes/…` (About) · `/causes/…/chat` · `/causes/…/events` (old `/issues/…` links redirect here)
 
-Each cause (we still call them "issues" in the app for now) is a small space of its own. A shared header sits above three tabs.
+Each cause (we still call them "causes" in the app for now) is a small space of its own. A shared header sits above three tabs.
 
 ### The header: what it is, who's in, and Join
 
@@ -124,14 +124,14 @@ What everyone sees first:
 
 ![Letter builder](images/walkthrough/09-letter-builder.webp)
 
-Type your name (and the recipient's email if you have it). The app writes a polite letter that includes the issue, the exact ask, how many neighbours signed, and a link back. **Open in email** opens your own email app with it filled in, or **Copy letter** copies it. Groundswell never sends these itself.
+Type your name (and the recipient's email if you have it). The app writes a polite letter that includes the cause, the exact ask, how many neighbours signed, and a link back. **Open in email** opens your own email app with it filled in, or **Copy letter** copies it. Groundswell never sends these itself.
 
 - **+ Start a campaign** asks three things: who can fix this, what exactly you're asking for, and a signature goal (default 100).
 - **Find your representatives:** in Canada, type a full postal code to get your MP, provincial representative, councillor and mayor, with their emails. The code is passed to Open North's free "Represent" service and **not saved**. In the US, a link to usa.gov's official lookup.
 
 ![Representative lookup for a Toronto postal code](images/walkthrough/12-rep-lookup.webp)
 
-- **At the bottom:** the person who raised it can set *Open*, *Being worked on* or *Won / resolved*. Marking it won records the date, and it shows in **Recent wins** on the neighbourhood pages for 30 days. Everyone else sees **Report this issue** there instead.
+- **At the bottom:** the person who raised it can set *Open*, *Being worked on* or *Won / resolved*. Marking it won records the date, and it shows in **Recent wins** on the neighbourhood pages for 30 days. Everyone else sees **Report this cause** there instead.
 
 **Rules:** signing and starting a campaign need a confirmed email; campaigns are limited to 5 an hour (1 for new accounts).
 
@@ -197,19 +197,19 @@ Every event belongs to a cause. The Events tab lists them, each with the date an
 Every upcoming event for causes around your neighbourhood, split into **This week** and **Later** (up to 60 days ahead), each with its date, time, place, distance, cause and how many are going. **✓ Going** marks the ones you've said yes to. Use **Look further** to widen from 10 km up to 50 km. If we don't know your neighbourhood yet, it asks for a postal code first.
 
 ---
-## 4. Raise an issue
+## 4. Start a cause
 
 `/causes/new` (from **Start something** in the top bar, or **+ Start a cause here** on an area page)
 
-![Raise an issue form](images/walkthrough/10-new-issue.webp)
+![The start-a-cause form](images/walkthrough/10-new-issue.webp)
 
-- **What's the issue?** A short, specific title (8–120 characters).
+- **What's the cause?** A short, specific title (8–120 characters).
 - **Category:** one of the ten.
 - **Details:** what's happening, who it affects, and what a good outcome looks like (20–5,000 characters). The hint reminds people not to include anyone's private information.
 - **Country and postal code:** filled in from the area you came from. Only the area is stored.
-- **Post issue** creates it, counts the author as its first supporter, and opens the new issue page.
+- **Start this cause** creates it, makes the author its first member, and opens the new cause's page.
 
-**Rules:** confirmed email needed; 10 issues an hour (2 for new accounts); new accounts can't include links.
+**Rules:** confirmed email needed; 10 causes an hour (2 for new accounts); new accounts can't include links.
 
 ---
 
@@ -223,7 +223,7 @@ Every upcoming event for causes around your neighbourhood, split into **This wee
 
 1. The account is created and you're signed in straight away.
 2. A **"Confirm your email"** message is sent (on your PC it's printed in the terminal instead). The link works for 48 hours.
-3. Until you click it, you can browse, support issues and RSVP, but not post, sign or report. The yellow bar reminds you.
+3. Until you click it, you can browse, support causes and RSVP, but not post, sign or report. The yellow bar reminds you.
 
 **Sign in** takes you back to the page you were on. After 10 wrong tries on one account (or 20 from one connection) within 15 minutes, it asks you to wait.
 
@@ -244,8 +244,8 @@ Click your name in the top bar.
 - **Sign out** at the top right.
 - **Home area:** set or change your postal code. The top bar falls back to it when you haven't looked at another area.
 - **Upcoming meetups** you've RSVP'd to, with times in your time zone. **✕ Not going** cancels your RSVP. Meetups you host are tagged **Hosting**, with a **Manage** link to the meetup (stepping down is confirmed there).
-- **Issues you raised.** If a moderator hid or removed one, it shows an **Under review** or **Removed** tag here.
-- **Issues you support**, each with **✕ Stop supporting**.
+- **Causes you raised.** If a moderator hid or removed one, it shows an **Under review** or **Removed** tag here.
+- **Causes you support**, each with **✕ Stop supporting**.
 - **Your account:** your sign-in email, and **Delete my account…** (below).
 - **Admins also see** a **Moderation queue** box at the top with the number of open reports.
 
@@ -269,7 +269,7 @@ After confirming, you're signed out everywhere and land on this page:
 
 ### How reporting works
 
-1. Any member with a confirmed email can click **Report** on an issue or a comment (not their own).
+1. Any member with a confirmed email can click **Report** on a cause or a comment (not their own).
 2. The report goes into the moderation queue. Up to 20 reports an hour per person.
 3. If **3 different accounts that are over a day old** report the same thing, it's **hidden automatically** until an admin decides. The author still sees it, with a note that it's under review.
 
@@ -282,7 +282,7 @@ After confirming, you're signed out everywhere and land on this page:
 Each reported item shows its type, number of reports, when it was first reported, the content and who wrote it, and the reporters' reasons. Then:
 
 - **Keep & dismiss reports** (or **Restore** if it was auto-hidden): it stays, and the reports are closed.
-- **Remove comment / issue:** optionally type a reason first (the author will see it), then click.
+- **Remove message / cause:** optionally type a reason first (the author will see it), then click.
 
 ### After removing: undo for 7 days
 
@@ -290,11 +290,11 @@ Each reported item shows its type, number of reports, when it was first reported
 
 Removed content moves to **Recently removed**, which shows when it was removed, when it will be deleted for good, the reason, and a **Restore** button.
 
-Meanwhile, the **author** sees this under their removed comment (or at the top of a removed issue). Nobody else sees the content at all:
+Meanwhile, the **author** sees this under their removed comment (or at the top of a removed cause). Nobody else sees the content at all:
 
 ![What the author sees after a removal](images/walkthrough/15-author-removal-notice.webp)
 
-After **7 days**, the daily clean-up job on Vercel deletes it permanently. Deleting an issue also deletes its comments, meetups and campaigns. Every decision (kept, removed, restored) is recorded with who did it and when.
+After **7 days**, the daily clean-up job on Vercel deletes it permanently. Deleting a cause also deletes its comments, meetups and campaigns. Every decision (kept, removed, restored) is recorded with who did it and when.
 
 ---
 
@@ -305,7 +305,7 @@ The whole site is designed to work on phones first:
 <p>
 <img src="images/walkthrough/16a-phone-home.webp" alt="Home page on a phone" width="300">
 &nbsp;
-<img src="images/walkthrough/16b-phone-issue.webp" alt="Issue page on a phone" width="300">
+<img src="images/walkthrough/16b-phone-issue.webp" alt="Cause page on a phone" width="300">
 </p>
 
 **Installing:** Groundswell can be added to a phone's home screen like an app (it's a "PWA"):
@@ -324,26 +324,26 @@ Installed, it opens full-screen with its own icon. It only stores the app's desi
 |---|---|
 | ![Page not found](images/walkthrough/17-not-found.webp) | ![You're offline](images/walkthrough/18-offline.webp) |
 
-- **Not found** appears for a mistyped address, a deleted or removed issue, or a non-admin trying `/admin/reports`.
+- **Not found** appears for a mistyped address, a deleted or removed cause, or a non-admin trying `/admin/reports`.
 - **You're offline** appears when the installed app is opened without a connection, instead of the browser's error page.
 
 ---
 
 ## 10. Who can do what
 
-| Action | Visitor | Signed in | Email confirmed | Issue author | Admin |
+| Action | Visitor | Signed in | Email confirmed | Cause author | Admin |
 |---|:-:|:-:|:-:|:-:|:-:|
-| Browse areas, issues, meetups, campaigns | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Browse areas, causes, meetups, campaigns | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Look up representatives | ✓ | ✓ | ✓ | ✓ | ✓ |
 | Join a cause, RSVP | | ✓ | ✓ | ✓ | ✓ |
 | Read a cause's chat | | members | members | ✓ | ✓ (to moderate) |
 | Post in a cause's chat | | | members of 24 h+ | ✓ | members of 24 h+ |
-| Raise issues, organize events, start campaigns | | | ✓ | ✓ | ✓ |
+| Raise causes, organize events, start campaigns | | | ✓ | ✓ | ✓ |
 | Sign campaigns, report content | | | ✓ | ✓ | ✓ |
 | Remove own signature or RSVP; leave a cause | | ✓ | ✓ | ✓ | ✓ |
 | Step down as an event's host | | ✓ (host) | ✓ (host) | ✓ (host) | ✓ (host) |
 | Delete own account | | ✓ | ✓ | ✓ | ✓ |
-| Change an issue's status | | | | ✓ | |
+| Change a cause's status | | | | ✓ | |
 | See their own hidden/removed posts (with a notice) | | | | ✓ | |
 | Moderation queue: keep, remove, restore | | | | | ✓ |
 

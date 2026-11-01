@@ -21,9 +21,9 @@ The main [README](../README.md) in the project folder covers the same ground in 
 
 ## What Groundswell is
 
-Groundswell is a website where someone types in their postal code (a Canadian code like `M5V` or a US ZIP like `90210`) and sees the local issues their neighbours care about. They can:
+Groundswell is a website where someone types in their postal code (a Canadian code like `M5V` or a US ZIP like `90210`) and sees the local causes their neighbours care about. They can:
 
-- **raise an issue** (a pothole, a park that needs lights, a dangerous crossing)
+- **start a cause** (a pothole, a park that needs lights, a dangerous crossing)
 - **join a cause** and **talk it through** in its members-only chat
 - **organize meetups** (in person or online) and RSVP
 - **run advocacy campaigns**: a clear ask, a decision-maker, a signature goal, and a letter builder that drafts an email to that person. Canadians can look up their representatives.
@@ -50,7 +50,7 @@ For privacy, it only ever stores the coarse area (the first three characters of 
    ┌────────────────────┐   ┌────────────────────┐   ┌────────────────────┐
    │ Neon               │   │ Resend             │   │ Cloudflare         │
    │ (the database:     │   │ (sends emails:     │   │ Turnstile          │
-   │ users, issues,     │   │ confirm-your-email,│   │ (the "are you      │
+   │ users, causes,     │   │ confirm-your-email,│   │ (the "are you      │
    │ comments…)         │   │ password reset)    │   │ human?" check)     │
    └────────────────────┘   └────────────────────┘   └────────────────────┘
         Ohio (us-east-2)
@@ -74,10 +74,10 @@ In words:
 You don't need to read the code, but this is where things live if you're curious:
 
 ```
-prisma/schema.prisma      what's stored in the database (users, issues, comments…)
+prisma/schema.prisma      what's stored in the database (users, causes, messages…)
 prisma/migrations/        step-by-step history of database changes
 prisma/seed.ts            demo data for your PC (never the live site)
-src/app/                  the pages: home, area, issue, sign-in, /me, /admin/reports
+src/app/                  the pages: home, area, cause, sign-in, /me, /admin/reports
 src/app/actions/          everything that saves something (posting, signing, reporting)
 src/lib/better-auth.ts    login settings
 src/lib/spam.ts           bot check, posting limits, link rules

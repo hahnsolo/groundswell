@@ -5,12 +5,12 @@ import { addComment, createCampaign, createMeetup, signCampaign, unsignCampaign 
 import { Field, FormError, SubmitButton, buttonStyles, inputStyles, useFormAction } from "./ui";
 import { Honeypot } from "./bot-check";
 
-export function CommentForm({ issueId }: { issueId: string }) {
+export function CommentForm({ causeId }: { causeId: string }) {
   // On success React clears the box; on error the text comes back via state.values.
   const [state, action] = useFormAction(addComment);
   return (
     <form action={action} className="space-y-2">
-      <input type="hidden" name="issueId" value={issueId} />
+      <input type="hidden" name="causeId" value={causeId} />
       <FormError message={state?.error} />
       <textarea
         name="body"
@@ -34,7 +34,7 @@ function toLocalInputValue(d: Date) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-export function MeetupForm({ issueId }: { issueId: string }) {
+export function MeetupForm({ causeId }: { causeId: string }) {
   const [state, action] = useFormAction(createMeetup);
   const [local, setLocal] = useState("");
   const [online, setOnline] = useState(false);
@@ -44,7 +44,7 @@ export function MeetupForm({ issueId }: { issueId: string }) {
   const v = state?.values;
   return (
     <form action={action} className="space-y-4">
-      <input type="hidden" name="issueId" value={issueId} />
+      <input type="hidden" name="causeId" value={causeId} />
       {/* Send an unambiguous UTC timestamp; the picker is in the organizer's own timezone. */}
       <input type="hidden" name="startsAt" value={local ? new Date(local).toISOString() : ""} />
       <FormError message={state?.error} />
@@ -79,14 +79,14 @@ export function MeetupForm({ issueId }: { issueId: string }) {
   );
 }
 
-export function CampaignForm({ issueId, defaultTarget }: { issueId: string; defaultTarget?: string }) {
+export function CampaignForm({ causeId, defaultTarget }: { causeId: string; defaultTarget?: string }) {
   const [state, action] = useFormAction(createCampaign);
   const e = state?.fieldErrors;
   const v = state?.values;
   if (state?.ok) return <p className="text-sm text-link">Campaign started — share it with your neighbours!</p>;
   return (
     <form action={action} className="space-y-4">
-      <input type="hidden" name="issueId" value={issueId} />
+      <input type="hidden" name="causeId" value={causeId} />
       <FormError message={state?.error} />
       <Field label="Who can fix this?" name="target" errors={e} hint="A specific decision-maker: city council, school board, landlord, transit agency…">
         <input name="target" required placeholder="City Council — Ward 4" defaultValue={v?.target ?? defaultTarget} className={inputStyles} />
@@ -134,15 +134,15 @@ export function SignForm({ campaignId, signed }: { campaignId: string; signed: b
 }
 
 export function LetterBuilder({
-  issueTitle,
-  issueUrl,
+  causeTitle,
+  causeUrl,
   ask,
   target,
   signatures,
   place,
 }: {
-  issueTitle: string;
-  issueUrl: string;
+  causeTitle: string;
+  causeUrl: string;
   ask: string;
   target: string;
   signatures: number;
@@ -151,14 +151,14 @@ export function LetterBuilder({
   const [name, setName] = useState("");
   const [to, setTo] = useState("");
   const [copied, setCopied] = useState(false);
-  const subject = `Constituent request: ${issueTitle}`;
+  const subject = `Constituent request: ${causeTitle}`;
   const body = `Dear ${target},
 
-I'm writing as a resident of ${place} about an issue affecting our community: ${issueTitle}.
+I'm writing as a resident of ${place} about an issue affecting our community: ${causeTitle}.
 
 ${ask}
 
-${signatures > 1 ? `${signatures} neighbours have signed on in support of this request. ` : ""}You can read the details and our community's discussion here: ${issueUrl}
+${signatures > 1 ? `${signatures} neighbours have signed on in support of this request. ` : ""}You can read the details and our community's discussion here: ${causeUrl}
 
 I would appreciate a response letting us know what steps you can take.
 

@@ -4,8 +4,8 @@ import { currentArea } from "@/lib/current-area";
 import { resolvePlace } from "@/lib/places";
 import { DEFAULT_RADIUS } from "@/lib/geo";
 import { areaHref } from "@/lib/countries";
-import { getAreaPulse, getNearbyIssues } from "@/lib/queries";
-import { IssueCard } from "@/components/issue-card";
+import { getAreaPulse, getNearbyCauses } from "@/lib/queries";
+import { CauseCard } from "@/components/cause-card";
 import { PostalSearch } from "@/components/postal-search";
 import { WinsStrip } from "@/components/wins-strip";
 
@@ -39,16 +39,16 @@ async function HomeContent() {
   const place = area ? await resolvePlace(area.country, area.postal).catch(() => null) : null;
   if (!area || !place) return <Welcome />;
 
-  const issues = await getNearbyIssues({
+  const causes = await getNearbyCauses({
     country: place.country,
     lat: place.lat,
     lng: place.lng,
     radiusKm: DEFAULT_RADIUS,
     sort: "top",
   });
-  const pulse = await getAreaPulse(issues);
+  const pulse = await getAreaPulse(causes);
   const winIds = new Set(pulse.wins.map((w) => w.id));
-  const board = issues.filter((i) => !winIds.has(i.id) && i.status !== "resolved").slice(0, 5);
+  const board = causes.filter((i) => !winIds.has(i.id) && i.status !== "resolved").slice(0, 5);
   const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
   const areaLink = areaHref(place.country, place.postalCode);
 
@@ -56,10 +56,10 @@ async function HomeContent() {
     <div className="mx-auto max-w-5xl px-4 py-10">
       <h1 className="text-3xl font-semibold leading-tight sm:text-4xl">Around {place.placeName} right now</h1>
       <p className="mt-2 text-muted">
-        {issues.length === 0
+        {causes.length === 0
           ? "Nobody has raised anything here yet. You could be the first."
           : [
-              plural(issues.length, "cause") + " neighbours are working on",
+              plural(causes.length, "cause") + " neighbours are working on",
               pulse.eventsThisWeek > 0 && plural(pulse.eventsThisWeek, "event") + " this week",
               pulse.wins.length > 0 && plural(pulse.wins.length, "win") + " this month",
             ]
@@ -70,8 +70,8 @@ async function HomeContent() {
       <WinsStrip wins={pulse.wins} />
 
       <div className="mt-6 space-y-3">
-        {board.map((issue) => (
-          <IssueCard key={issue.id} issue={issue} />
+        {board.map((cause) => (
+          <CauseCard key={cause.id} cause={cause} />
         ))}
       </div>
 

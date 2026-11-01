@@ -11,7 +11,7 @@ import { resolvePlace } from "@/lib/places";
 import { honeypotTripped, linkError, withinPostingLimit } from "@/lib/spam";
 import { HOUR, rateLimit } from "@/lib/rate-limit";
 import { ESTABLISHED_ACCOUNT_MS, shouldAutoHide } from "@/lib/moderation";
-import { handOverMeetup, leaveIssue } from "@/lib/leaving";
+import { handOverMeetup, leaveCause } from "@/lib/leaving";
 import { chatAccess } from "@/lib/chat-rules";
 import { announceChatChange } from "@/lib/live-chat";
 import { descriptionProblem } from "@/lib/words";
@@ -21,7 +21,7 @@ import { fromZodError, type FormState } from "@/lib/forms";
 const id = z.string().min(1).max(40);
 
 const LIMIT_MESSAGES = {
-  issue: "You've started a lot of causes this hour. Try again later.",
+  cause: "You've started a lot of causes this hour. Try again later.",
   comment: "Slow down a little — try again shortly.",
   meetup: "You've created several meetups this hour. Try again later.",
   campaign: "You've started several campaigns this hour. Try again later.",
@@ -41,15 +41,15 @@ async function spamCheck(
   return null;
 }
 
-const ISSUE_GONE: FormState = { error: "This cause is no longer available." };
+const CAUSE_GONE: FormState = { error: "This cause is no longer available." };
 
-/** Comments, meetups and campaigns can only be added to issues a moderator hasn't removed. */
-async function issueOpen(issueId: string) {
-  const issue = await db.issue.findUnique({ where: { id: issueId }, select: { removedAt: true } });
-  return !!issue && !issue.removedAt;
+/** Comments, meetups and campaigns can only be added to causes a moderator hasn't removed. */
+async function causeOpen(causeId: string) {
+  const cause = await db.cause.findUnique({ where: { id: causeId }, select: { removedAt: true } });
+  return !!cause && !cause.removedAt;
 }
 
-// ---------- Issues ----------
+// ---------- Causes ----------
 
 // Who should fix it: one of the choices, plus what they wrote for "Something else".
 const fixerFields = {
@@ -60,7 +60,7 @@ const fixerOtherMissing = (d: { fixer: string; fixerOther?: string }) => d.fixer
 const FIXER_OTHER_MISSING = { fieldErrors: { fixerOther: ["Say who, for example: the school board."] } };
 const fixerData = (d: { fixer: FixerId; fixerOther?: string }) => ({ fixer: d.fixer, fixerOther: d.fixer === "other" ? d.fixerOther : null });
 
-const issueSchema = z.object({
+const causeSchema = z.object({
   country: z.string(),
   postal: z.string(),
   title: z.string().trim().min(8, "Give it a clear title (8+ characters).").max(120),
@@ -76,13 +76,13 @@ const issueSchema = z.object({
   ...fixerFields,
 });
 
-export async function createIssue(_prev: FormState, formData: FormData): Promise<FormState> {
+export async function createCause(_prev: FormState, formData: FormData): Promise<FormState> {
   const user = await requireUser();
   if (!user.emailVerified) return { error: UNVERIFIED_ERROR };
-  const parsed = issueSchema.safeParse(Object.fromEntries(formData));
+  const parsed = causeSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return fromZodError(parsed.error);
   if (fixerOtherMissing(parsed.data)) return FIXER_OTHER_MISSING;
-  const spam = await spamCheck(user, formData, "issue", parsed.data.title, parsed.data.description, parsed.data.fixerOther);
+  const spam = await spamCheck(user, formData, "cause", parsed.data.title, parsed.data.description, parsed.data.fixerOther);
   if (spam) return spam;
 
   const postal = parsePostal(parsed.data.country, parsed.data.postal);
@@ -96,7 +96,7 @@ export async function createIssue(_prev: FormState, formData: FormData): Promise
   }
   if (!place) return { fieldErrors: { postal: ["We couldn't find that code."] } };
 
-  const issue = await db.issue.create({
+  const cause = await db.cause.create({
     data: {
       title: parsed.data.title,
       description: parsed.data.description,
@@ -110,56 +110,56 @@ export async function createIssue(_prev: FormState, formData: FormData): Promise
       lng: place.lng,
       authorId: user.id,
       // The author obviously cares about it.
-      supports: { create: { userId: user.id } },
+      members: { create: { userId: user.id } },
     },
   });
-  redirect(`/causes/${issue.id}`);
+  redirect(`/causes/${cause.id}`);
 }
 
-export async function setIssueStatus(formData: FormData) {
+export async function setCauseStatus(formData: FormData) {
   const user = await requireUser();
   const parsed = z
-    .object({ issueId: id, status: z.enum(["open", "in_progress", "resolved"]) })
+    .object({ causeId: id, status: z.enum(["open", "in_progress", "resolved"]) })
     .safeParse(Object.fromEntries(formData));
   if (!parsed.success) return;
-  const { issueId, status } = parsed.data;
-  const where = { id: issueId, authorId: user.id };
+  const { causeId, status } = parsed.data;
+  const where = { id: causeId, authorId: user.id };
   // Remember when it was won (first time only); clear it if reopened.
   if (status === "resolved") {
-    await db.issue.updateMany({ where: { ...where, status: { not: "resolved" } }, data: { status, resolvedAt: new Date() } });
+    await db.cause.updateMany({ where: { ...where, status: { not: "resolved" } }, data: { status, resolvedAt: new Date() } });
   } else {
-    await db.issue.updateMany({ where, data: { status, resolvedAt: null } });
+    await db.cause.updateMany({ where, data: { status, resolvedAt: null } });
   }
   refresh();
 }
 
 /** The person who raised a cause can change who they think should fix it. */
-export async function setIssueFixer(_prev: FormState, formData: FormData): Promise<FormState> {
+export async function setCauseFixer(_prev: FormState, formData: FormData): Promise<FormState> {
   const user = await requireUser();
-  const parsed = z.object({ issueId: id, ...fixerFields }).safeParse(Object.fromEntries(formData));
+  const parsed = z.object({ causeId: id, ...fixerFields }).safeParse(Object.fromEntries(formData));
   if (!parsed.success) return fromZodError(parsed.error);
   if (fixerOtherMissing(parsed.data)) return FIXER_OTHER_MISSING;
   const links = linkError(user, parsed.data.fixerOther);
   if (links) return { error: links };
-  await db.issue.updateMany({ where: { id: parsed.data.issueId, authorId: user.id, removedAt: null }, data: fixerData(parsed.data) });
+  await db.cause.updateMany({ where: { id: parsed.data.causeId, authorId: user.id, removedAt: null }, data: fixerData(parsed.data) });
   refresh();
   return { ok: true };
 }
 
-export async function toggleSupport(formData: FormData) {
-  const issueId = id.parse(formData.get("issueId"));
-  const user = await requireUser(`/causes/${issueId}`);
-  const key = { issueId_userId: { issueId, userId: user.id } };
-  const existing = await db.issueSupport.findUnique({ where: key });
-  if (existing) await db.issueSupport.delete({ where: key });
-  else await db.issueSupport.create({ data: { issueId, userId: user.id } });
+export async function toggleMembership(formData: FormData) {
+  const causeId = id.parse(formData.get("causeId"));
+  const user = await requireUser(`/causes/${causeId}`);
+  const key = { causeId_userId: { causeId, userId: user.id } };
+  const existing = await db.causeMember.findUnique({ where: key });
+  if (existing) await db.causeMember.delete({ where: key });
+  else await db.causeMember.create({ data: { causeId, userId: user.id } });
   refresh();
 }
 
 // ---------- Discussion ----------
 
 const commentSchema = z.object({
-  issueId: id,
+  causeId: id,
   body: z.string().trim().min(1, "Write something first.").max(3000),
 });
 
@@ -168,16 +168,16 @@ export async function addComment(_prev: FormState, formData: FormData): Promise<
   if (!user.emailVerified) return { error: UNVERIFIED_ERROR };
   const parsed = commentSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return fromZodError(parsed.error);
-  if (!(await issueOpen(parsed.data.issueId))) return ISSUE_GONE;
+  if (!(await causeOpen(parsed.data.causeId))) return CAUSE_GONE;
   // The chat is for members, and new members read along for a day first.
-  const [issue, membership] = await Promise.all([
-    db.issue.findUnique({ where: { id: parsed.data.issueId }, select: { authorId: true } }),
-    db.issueSupport.findUnique({ where: { issueId_userId: { issueId: parsed.data.issueId, userId: user.id } }, select: { createdAt: true } }),
+  const [cause, membership] = await Promise.all([
+    db.cause.findUnique({ where: { id: parsed.data.causeId }, select: { authorId: true } }),
+    db.causeMember.findUnique({ where: { causeId_userId: { causeId: parsed.data.causeId, userId: user.id } }, select: { createdAt: true } }),
   ]);
   const access = chatAccess({
     signedIn: true,
     isAdmin: user.isAdmin,
-    isAuthor: issue?.authorId === user.id,
+    isAuthor: cause?.authorId === user.id,
     joinedAt: membership?.createdAt ?? null,
     emailVerified: user.emailVerified,
   });
@@ -192,7 +192,7 @@ export async function addComment(_prev: FormState, formData: FormData): Promise<
   });
   if (duplicate) return { error: "You just posted that." };
   await db.comment.create({ data: { ...parsed.data, authorId: user.id } });
-  announceChatChange(parsed.data.issueId);
+  announceChatChange(parsed.data.causeId);
   refresh();
   return { ok: true };
 }
@@ -200,7 +200,7 @@ export async function addComment(_prev: FormState, formData: FormData): Promise<
 // ---------- Meetups ----------
 
 const meetupSchema = z.object({
-  issueId: id,
+  causeId: id,
   title: z.string().trim().min(4, "Add a title.").max(120),
   description: z.string().trim().max(3000).default(""),
   startsAt: z.coerce.date({ errorMap: () => ({ message: "Pick a date and time." }) }),
@@ -214,7 +214,7 @@ export async function createMeetup(_prev: FormState, formData: FormData): Promis
   if (!user.emailVerified) return { error: UNVERIFIED_ERROR };
   const parsed = meetupSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return fromZodError(parsed.error);
-  if (!(await issueOpen(parsed.data.issueId))) return ISSUE_GONE;
+  if (!(await causeOpen(parsed.data.causeId))) return CAUSE_GONE;
   if (parsed.data.startsAt.getTime() < Date.now()) {
     return { fieldErrors: { startsAt: ["Pick a time in the future."] } };
   }
@@ -237,10 +237,10 @@ export async function toggleRsvp(formData: FormData) {
   const meetupId = id.parse(formData.get("meetupId"));
   const meetup = await db.meetup.findUnique({
     where: { id: meetupId },
-    select: { issueId: true, organizerId: true, capacity: true, _count: { select: { rsvps: true } } },
+    select: { causeId: true, organizerId: true, capacity: true, _count: { select: { rsvps: true } } },
   });
   if (!meetup) return;
-  const user = await requireUser(`/causes/${meetup.issueId}`);
+  const user = await requireUser(`/causes/${meetup.causeId}`);
   // Hosts don't un-RSVP from their own meetup; they step down (below) so it passes to someone.
   if (meetup.organizerId === user.id) return;
   const key = { meetupId_userId: { meetupId, userId: user.id } };
@@ -255,28 +255,28 @@ export async function toggleRsvp(formData: FormData) {
 /** The host can't make it (or doesn't want to): pass the meetup to the earliest RSVP, or cancel it. */
 export async function stepDownAsHost(formData: FormData) {
   const meetupId = id.parse(formData.get("meetupId"));
-  const meetup = await db.meetup.findUnique({ where: { id: meetupId }, select: { issueId: true, startsAt: true } });
+  const meetup = await db.meetup.findUnique({ where: { id: meetupId }, select: { causeId: true, startsAt: true } });
   if (!meetup) return;
-  const user = await requireUser(`/causes/${meetup.issueId}`);
+  const user = await requireUser(`/causes/${meetup.causeId}`);
   if (meetup.startsAt.getTime() <= Date.now()) return;
   await handOverMeetup(meetupId, user.id); // does nothing unless they're the host
   refresh();
 }
 
-// ---------- Leaving an issue ----------
+// ---------- Leaving a cause ----------
 
-/** Take back support, RSVPs and signatures on an issue in one go. Comments stay. */
-export async function leaveIssueAction(formData: FormData) {
-  const issueId = id.parse(formData.get("issueId"));
-  const user = await requireUser(`/causes/${issueId}`);
-  await leaveIssue(user.id, issueId);
+/** Take back support, RSVPs and signatures on a cause in one go. Comments stay. */
+export async function leaveCauseAction(formData: FormData) {
+  const causeId = id.parse(formData.get("causeId"));
+  const user = await requireUser(`/causes/${causeId}`);
+  await leaveCause(user.id, causeId);
   refresh();
 }
 
 // ---------- Advocacy ----------
 
 const campaignSchema = z.object({
-  issueId: id,
+  causeId: id,
   target: z.string().trim().min(3, "Who needs to act? e.g. \"City Council\".").max(150),
   ask: z.string().trim().min(20, "Spell out exactly what you're asking for (20+ characters).").max(2000),
   goal: z.coerce.number().int().min(5).max(1_000_000).default(100),
@@ -287,7 +287,7 @@ export async function createCampaign(_prev: FormState, formData: FormData): Prom
   if (!user.emailVerified) return { error: UNVERIFIED_ERROR };
   const parsed = campaignSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return fromZodError(parsed.error);
-  if (!(await issueOpen(parsed.data.issueId))) return ISSUE_GONE;
+  if (!(await causeOpen(parsed.data.causeId))) return CAUSE_GONE;
   const spam = await spamCheck(user, formData, "campaign", parsed.data.target, parsed.data.ask);
   if (spam) return spam;
   await db.campaign.create({
@@ -305,9 +305,9 @@ const signSchema = z.object({
 export async function signCampaign(_prev: FormState, formData: FormData): Promise<FormState> {
   const parsed = signSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return fromZodError(parsed.error);
-  const campaign = await db.campaign.findUnique({ where: { id: parsed.data.campaignId }, select: { issueId: true } });
+  const campaign = await db.campaign.findUnique({ where: { id: parsed.data.campaignId }, select: { causeId: true } });
   if (!campaign) return { error: "That campaign no longer exists." };
-  const user = await requireUser(`/causes/${campaign.issueId}`);
+  const user = await requireUser(`/causes/${campaign.causeId}`);
   // Signature counts go to decision-makers, so each one must be a confirmed person.
   if (!user.emailVerified) return { error: UNVERIFIED_ERROR };
   const links = linkError(user, parsed.data.note);
@@ -335,16 +335,16 @@ export async function reportContent(formData: FormData) {
   if (!user?.emailVerified) return;
   if (!(await rateLimit(`report:${user.id}`, 20, HOUR))) return;
   const parsed = z
-    .object({ targetType: z.enum(["issue", "comment"]), targetId: id, reason: z.string().trim().max(300).default("") })
+    .object({ targetType: z.enum(["cause", "comment"]), targetId: id, reason: z.string().trim().max(300).default("") })
     .safeParse(Object.fromEntries(formData));
   if (!parsed.success) return;
   const { targetType, targetId, reason } = parsed.data;
 
   // Nothing to report if it doesn't exist or a moderator already removed it.
   const target =
-    targetType === "issue"
-      ? await db.issue.findUnique({ where: { id: targetId }, select: { removedAt: true } })
-      : await db.comment.findUnique({ where: { id: targetId }, select: { removedAt: true, issueId: true } });
+    targetType === "cause"
+      ? await db.cause.findUnique({ where: { id: targetId }, select: { removedAt: true } })
+      : await db.comment.findUnique({ where: { id: targetId }, select: { removedAt: true, causeId: true } });
   if (!target || target.removedAt) return;
 
   await db.report.upsert({
@@ -365,9 +365,9 @@ export async function reportContent(formData: FormData) {
     },
   });
   if (shouldAutoHide(count)) {
-    if (targetType === "issue") await db.issue.update({ where: { id: targetId }, data: { hidden: true } });
+    if (targetType === "cause") await db.cause.update({ where: { id: targetId }, data: { hidden: true } });
     else await db.comment.update({ where: { id: targetId }, data: { hidden: true } });
-    announceChatChange("issueId" in target ? (target.issueId as string) : targetId);
+    announceChatChange("causeId" in target ? (target.causeId as string) : targetId);
   }
   refresh();
 }

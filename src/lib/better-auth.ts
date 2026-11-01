@@ -32,7 +32,7 @@ const apple =
 export const enabledSocialProviders = [google && "google", apple && "apple"].filter(Boolean) as ("google" | "apple")[];
 
 /**
- * Apple doesn't issue a client secret; you sign one yourself (an ES256 JWT,
+ * Apple doesn't cause a client secret; you sign one yourself (an ES256 JWT,
  * valid for at most 6 months) with the .p8 key from your Apple developer
  * account. We sign a fresh one each time the server starts.
  */

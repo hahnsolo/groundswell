@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { createIssue } from "@/app/actions/community";
+import { createCause } from "@/app/actions/community";
 import { CATEGORIES } from "@/lib/categories";
 import { COUNTRIES } from "@/lib/countries";
 import { Field, FormError, SubmitButton, inputStyles, useFormAction } from "./ui";
@@ -9,8 +9,8 @@ import { Honeypot } from "./bot-check";
 import { DescriptionField } from "./description-field";
 import { FixerField } from "./fixer-field";
 
-export function IssueForm({ country, postal }: { country: string; postal: string }) {
-  const [state, action] = useFormAction(createIssue);
+export function CauseForm({ country, postal }: { country: string; postal: string }) {
+  const [state, action] = useFormAction(createCause);
   const e = state?.fieldErrors;
   const v = state?.values;
   // React resets a form after every submit and dropdowns don't pick their

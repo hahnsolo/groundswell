@@ -22,7 +22,7 @@ describe("momentum label on a cause", () => {
     expect(m).toEqual({ kind: "asking", signed: 48, goal: 150 });
   });
 
-  it("then new supporters this week", () => {
+  it("then new members this week", () => {
     expect(momentum({ ...base, joinedThisWeek: 3 }, now)).toEqual({ kind: "growing", joinedThisWeek: 3 });
   });
 
@@ -66,7 +66,7 @@ describe("who cares, in words", () => {
     expect(peopleLine(["Priya", "Sam", "Ana"], 14, "going")).toBe("Priya, Sam and 12 neighbours are going");
   });
 
-  it("copes when some supporters have left and can't be named", () => {
+  it("copes when some members have left and can't be named", () => {
     expect(peopleLine(["Priya"], 2)).toBe("Priya and 1 other care");
     expect(peopleLine(["Priya"], 5)).toBe("Priya and 4 neighbours care");
     expect(peopleLine([], 3)).toBe("3 neighbours care");

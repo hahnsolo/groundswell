@@ -20,8 +20,8 @@ const browser = await launch();
 // Runs in the page: things wider than the screen, and text with poor contrast.
 function audit() {
   const W = document.documentElement.clientWidth;
-  const issues = [];
-  if (document.documentElement.scrollWidth > W + 1) issues.push(`page scrolls sideways (${document.documentElement.scrollWidth}px wide on a ${W}px screen)`);
+  const findings = [];
+  if (document.documentElement.scrollWidth > W + 1) findings.push(`page scrolls sideways (${document.documentElement.scrollWidth}px wide on a ${W}px screen)`);
   const inScroller = (el) => {
     for (let p = el.parentElement; p; p = p.parentElement) {
       const o = getComputedStyle(p).overflowX;
@@ -41,7 +41,7 @@ function audit() {
     if (s.visibility === "hidden" || s.display === "none" || s.position === "fixed") continue;
     if ((r.right > W + 1 || r.left < -1) && !inScroller(el) && el.children.length === 0) {
       const key = "overflow " + label(el);
-      if (!seen.has(key)) { seen.add(key); issues.push(`sticks out of the screen: ${label(el)} (${Math.round(r.left)}–${Math.round(r.right)}px)`); }
+      if (!seen.has(key)) { seen.add(key); findings.push(`sticks out of the screen: ${label(el)} (${Math.round(r.left)}–${Math.round(r.right)}px)`); }
     }
   }
   // Contrast: text elements against the first solid background behind them.
@@ -78,10 +78,10 @@ function audit() {
     const large = parseFloat(s.fontSize) >= 18.66 || (parseFloat(s.fontSize) >= 14 && Number(s.fontWeight) >= 700);
     if (ratio < (large ? 3 : 4.5)) {
       const key = "contrast " + label(el);
-      if (!seen.has(key)) { seen.add(key); issues.push(`hard to read (contrast ${ratio.toFixed(1)}:1): ${label(el)}`); }
+      if (!seen.has(key)) { seen.add(key); findings.push(`hard to read (contrast ${ratio.toFixed(1)}:1): ${label(el)}`); }
     }
   }
-  return issues;
+  return findings;
 }
 
 const report = [];
@@ -92,10 +92,10 @@ async function sweep(page, name, path, prepare) {
     for (const size of SIZES) {
       await page.setViewportSize({ width: size.width, height: size.height });
       await go(page, path);
-      if (prepare) await prepare(page).catch((e) => report.push({ name, size: size.name, scheme, issues: [`couldn't prepare: ${e.message.split("\n")[0]}`] }));
+      if (prepare) await prepare(page).catch((e) => report.push({ name, size: size.name, scheme, findings: [`couldn't prepare: ${e.message.split("\n")[0]}`] }));
       await page.waitForTimeout(200);
-      const issues = await page.evaluate(audit);
-      report.push({ name, size: size.name, scheme, issues });
+      const findings = await page.evaluate(audit);
+      report.push({ name, size: size.name, scheme, findings });
       const file = `${DIR}${name}-${scheme}-${size.name}.png`;
       await page.screenshot({ path: file, fullPage: true });
       shots.push({ file, size, scheme });
@@ -153,7 +153,7 @@ let AWK;
   const eventHref = await page.locator('a[href^="/events/"]').first().getAttribute("href");
   await sweep(page, "event-page", eventHref);
   await sweep(page, "events-nearby", "/events?radius=50");
-  await sweep(page, "new-issue", "/causes/new?country=CA&postal=M5V");
+  await sweep(page, "new-cause", "/causes/new?country=CA&postal=M5V");
   await sweep(page, "me", "/me", (p) => p.getByText("Delete my account…").click());
   await sweep(page, "admin-queue", "/admin/reports");
   await sweep(page, "picker-open", "/area/ca/M5V", (p) => p.getByRole("button", { name: /Your neighbourhood/ }).click());
@@ -161,7 +161,7 @@ let AWK;
 }
 await browser.close();
 writeFileSync(`${DIR}report.json`, JSON.stringify(report, null, 2));
-const bad = report.filter((r) => r.issues.length);
-for (const r of bad) console.log(`\n${r.name} (${r.size}, ${r.scheme}):\n  - ${r.issues.join("\n  - ")}`);
+const bad = report.filter((r) => r.findings.length);
+for (const r of bad) console.log(`\n${r.name} (${r.size}, ${r.scheme}):\n  - ${r.findings.join("\n  - ")}`);
 console.log(`\n${report.length} views checked, ${bad.length} with findings`);
 if (bad.length) process.exitCode = 1;
