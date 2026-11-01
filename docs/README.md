@@ -52,7 +52,7 @@ For privacy, it only ever stores the coarse area (the first three characters of 
    │ users, issues,     │   │ confirm-your-email,│   │ (the "are you      │
    │ comments…)         │   │ password reset)    │   │ human?" check)     │
    └────────────────────┘   └────────────────────┘   └────────────────────┘
-        Ohio (us-east-2)                                 not switched on yet
+        Ohio (us-east-2)
 
   GitHub holds the code. Every time a change is pushed to GitHub,
   Vercel automatically rebuilds and redeploys the site.
@@ -65,7 +65,7 @@ In words:
 3. **GoDaddy** is where the `hahnsolo.ca` domain is registered. We added a few records under `groundswell` so the address points at Vercel and so email can be sent from it. Your personal Microsoft 365 email is untouched.
 4. **Neon** is the database (Postgres). It has two copies, called branches: `main` for the live site and `dev` for your PC, filled with demo data.
 5. **Resend** sends the site's emails from `no-reply@groundswell.hahnsolo.ca`.
-6. **Cloudflare Turnstile** is the bot check on sign-up, sign-in and password reset. The code is ready, but it stays off until its keys are added (see [Security and spam](security-and-spam.md)).
+6. **Cloudflare Turnstile** is the bot check on sign-up, sign-in and password reset (see [Security and spam](security-and-spam.md)).
 7. **Google and Apple sign-in** are built in too, but stay hidden until their keys are added. Both are optional.
 
 ## The code at a glance

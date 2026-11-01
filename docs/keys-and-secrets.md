@@ -25,8 +25,8 @@ After changing a variable in Vercel, you must **redeploy** for it to take effect
 | `CRON_SECRET` | Lets only Vercel run the daily clean-up job (deletes removed content after 7 days, anonymizes deleted accounts after 30) | **Secret** | Optional (only for testing the job) | **Set** (needed for the job to run) |
 | `RESEND_API_KEY` | Lets the app send email through Resend | **Secret** | Leave unset (emails print in the terminal instead) | Set |
 | `MAIL_FROM` | Who emails come from: `Groundswell <no-reply@groundswell.hahnsolo.ca>` | Config | Not needed | Set |
-| `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | Turnstile's public key, shown to browsers | Config (public) | Optional; Cloudflare's test key | *To do* |
-| `TURNSTILE_SECRET_KEY` | Turnstile's private key, used to check answers | **Secret** | Optional; Cloudflare's test key | *To do* |
+| `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | Turnstile's public key, shown to browsers (not a secret) | Config (public) | Optional; Cloudflare's test key | Set (previews: Cloudflare's test key) |
+| `TURNSTILE_SECRET_KEY` | Turnstile's private key, used to check answers | **Secret** | Optional; Cloudflare's test key | Set (previews: Cloudflare's test key) |
 | `GOOGLE_CLIENT_ID` | Identifies our app to Google | Config | Optional | Optional |
 | `GOOGLE_CLIENT_SECRET` | Proves to Google it's really us | **Secret** | Optional | Optional |
 | `APPLE_CLIENT_ID` | Our Apple "Services ID" | Config | Optional | Optional |
