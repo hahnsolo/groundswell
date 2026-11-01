@@ -21,7 +21,7 @@ export const getEventDetail = cache(async (id: string, viewerId: string | null) 
     where: { id },
     include: {
       organizer: person,
-      issue: {
+      cause: {
         select: {
           id: true,
           title: true,
@@ -64,7 +64,7 @@ export async function getNearbyEvents(opts: { country: string; lat: number; lng:
   const rows = await db.meetup.findMany({
     where: {
       startsAt: { gte: new Date(now - STILL_ON_HOURS * HOUR), lt: new Date(now + EVENTS_AHEAD_DAYS * DAY) },
-      issue: {
+      cause: {
         country: opts.country,
         hidden: false,
         removedAt: null,
@@ -75,7 +75,7 @@ export async function getNearbyEvents(opts: { country: string; lat: number; lng:
     orderBy: { startsAt: "asc" },
     take: 200,
     include: {
-      issue: { select: { id: true, title: true, category: true, placeName: true, lat: true, lng: true } },
+      cause: { select: { id: true, title: true, category: true, placeName: true, lat: true, lng: true } },
       _count: { select: { rsvps: true } },
       rsvps: viewerId ? { where: { userId: viewerId }, select: { userId: true } } : false,
     },
@@ -83,7 +83,7 @@ export async function getNearbyEvents(opts: { country: string; lat: number; lng:
   return rows
     .map((e) => ({
       ...e,
-      distanceKm: distanceKm(opts.lat, opts.lng, e.issue.lat, e.issue.lng),
+      distanceKm: distanceKm(opts.lat, opts.lng, e.cause.lat, e.cause.lng),
       viewerGoing: Array.isArray(e.rsvps) && e.rsvps.length > 0,
       thisWeek: e.startsAt.getTime() < now + 7 * DAY,
     }))

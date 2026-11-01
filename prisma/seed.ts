@@ -42,8 +42,8 @@ async function main() {
     db.rsvp.deleteMany(),
     db.meetup.deleteMany(),
     db.comment.deleteMany(),
-    db.issueSupport.deleteMany(),
-    db.issue.deleteMany(),
+    db.causeMember.deleteMany(),
+    db.cause.deleteMany(),
     db.session.deleteMany(),
     db.account.deleteMany(),
     db.verification.deleteMany(),
@@ -80,7 +80,7 @@ async function main() {
     return { country: p.country, postalCode: p.postalCode, placeName: p.placeName, region: p.regionCode, lat: p.lat, lng: p.lng };
   };
 
-  const crosswalk = await db.issue.create({
+  const crosswalk = await db.cause.create({
     data: {
       ...at("US-90210"),
       title: "No safe crossing on Santa Monica Blvd near the elementary school",
@@ -91,7 +91,7 @@ async function main() {
       authorId: alex.id,
       createdAt: new Date(Date.now() - 9 * day),
       // Joined over a week ago, so they're past the chat's 24-hour wait.
-      supports: { create: [{ userId: alex.id, createdAt: new Date(Date.now() - 9 * day) }, { userId: sam.id, createdAt: new Date(Date.now() - 8 * day) }] },
+      members: { create: [{ userId: alex.id, createdAt: new Date(Date.now() - 9 * day) }, { userId: sam.id, createdAt: new Date(Date.now() - 8 * day) }] },
       comments: {
         create: [
           { authorId: sam.id, body: "My daughter crosses here every morning. I counted 3 near-misses last week alone." },
@@ -125,7 +125,7 @@ async function main() {
     },
   });
 
-  await db.issue.create({
+  await db.cause.create({
     data: {
       ...at("US-90046"),
       title: "Runyon Canyon trailhead overflowing with trash on weekends",
@@ -133,11 +133,11 @@ async function main() {
       category: "environment",
       authorId: sam.id,
       createdAt: new Date(Date.now() - 3 * day),
-      supports: { create: [{ userId: sam.id }] },
+      members: { create: [{ userId: sam.id }] },
     },
   });
 
-  await db.issue.create({
+  await db.cause.create({
     data: {
       ...at("CA-M5V"),
       title: "Rent increases above guideline at 3 buildings on Spadina",
@@ -147,7 +147,7 @@ async function main() {
       fixer: "landlord",
       authorId: priya.id,
       createdAt: new Date(Date.now() - 2 * day),
-      supports: { create: [{ userId: priya.id }] },
+      members: { create: [{ userId: priya.id }] },
       meetups: {
         create: {
           organizerId: priya.id,
@@ -162,7 +162,7 @@ async function main() {
     },
   });
 
-  await db.issue.create({
+  await db.cause.create({
     data: {
       ...at("CA-M6J"),
       title: "Trinity Bellwoods washrooms closed again",
@@ -172,12 +172,12 @@ async function main() {
       status: "in_progress",
       authorId: priya.id,
       createdAt: new Date(Date.now() - 12 * day),
-      supports: { create: [{ userId: priya.id }] },
+      members: { create: [{ userId: priya.id }] },
     },
   });
 
   // A recent win, so neighbourhood pages have something to celebrate.
-  await db.issue.create({
+  await db.cause.create({
     data: {
       ...at("CA-M5V"),
       title: "Broken streetlights on Portland St fixed",
@@ -188,13 +188,13 @@ async function main() {
       resolvedAt: new Date(Date.now() - 4 * day),
       authorId: sam.id,
       createdAt: new Date(Date.now() - 40 * day),
-      supports: { create: [{ userId: sam.id }, { userId: priya.id }, { userId: alex.id }] },
+      members: { create: [{ userId: sam.id }, { userId: priya.id }, { userId: alex.id }] },
     },
   });
 
   // A reported comment, so the moderation queue has something in it.
   const spam = await db.comment.create({
-    data: { issueId: crosswalk.id, authorId: sam.id, body: "BUY CHEAP SUNGLASSES >>> totally-legit-shades.example" },
+    data: { causeId: crosswalk.id, authorId: sam.id, body: "BUY CHEAP SUNGLASSES >>> totally-legit-shades.example" },
   });
   await db.report.create({
     data: { targetType: "comment", targetId: spam.id, reporterId: priya.id, reason: "Spam / advertising" },

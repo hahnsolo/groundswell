@@ -8,7 +8,7 @@ export type CountryConfig = {
   placeholder: string;
   pattern: RegExp;
   // Reduce a user-entered code to the granularity we store and look up.
-  // We deliberately keep this coarse (e.g. Canadian FSA) so a stored issue
+  // We deliberately keep this coarse (e.g. Canadian FSA) so a stored cause
   // never pinpoints anyone's home.
   normalize: (raw: string) => string;
   // Display form of a normalized code.

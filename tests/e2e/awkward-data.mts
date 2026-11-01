@@ -18,7 +18,7 @@ const people = await Promise.all(
 );
 const longWord = "Supercalifragilisticexpialidociousneighbourhoodassociationcommittee";
 const longUrl = "https://www.toronto.ca/services-payments/streets-parking-transportation/road-maintenance/bridges-and-expressways/a-very-long-path-segment-that-never-breaks";
-const awkward = await db.issue.create({
+const awkward = await db.cause.create({
   data: {
     ...M5V,
     title: `The ${longWord} wants the whole length of King St West repaved before winter, safely and accessibly`,
@@ -26,7 +26,7 @@ const awkward = await db.issue.create({
     category: "transit",
     authorId: people[0].id,
     createdAt: ago(20),
-    supports: { create: [people[0], ...people.slice(1), alex].map((p, i) => ({ userId: p.id, createdAt: ago(10 - (i % 9)) })) },
+    members: { create: [people[0], ...people.slice(1), alex].map((p, i) => ({ userId: p.id, createdAt: ago(10 - (i % 9)) })) },
     comments: {
       create: Array.from({ length: 30 }, (_, i) => ({
         authorId: people[i % people.length].id,
@@ -70,7 +70,7 @@ const awkward = await db.issue.create({
 
 // A busy neighbourhood: a dozen more causes.
 for (let i = 0; i < 12; i++) {
-  await db.issue.create({
+  await db.cause.create({
     data: {
       ...M5V,
       lat: M5V.lat + (i - 6) * 0.004,
@@ -80,7 +80,7 @@ for (let i = 0; i < 12; i++) {
       status: i === 4 ? "in_progress" : "open",
       authorId: people[(i + 1) % people.length].id,
       createdAt: ago(i),
-      supports: { create: people.slice(0, (i % 6) + 1).map((p) => ({ userId: p.id, createdAt: ago(i % 9) })) },
+      members: { create: people.slice(0, (i % 6) + 1).map((p) => ({ userId: p.id, createdAt: ago(i % 9) })) },
     },
   });
 }

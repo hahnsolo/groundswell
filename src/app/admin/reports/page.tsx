@@ -25,13 +25,13 @@ export default function ReportsPage() {
 }
 
 type Target = {
-  type: "issue" | "comment";
+  type: "cause" | "comment";
   id: string;
   reports: { reason: string; createdAt: Date; reporter: string }[];
 };
 
 /** What people call these on the site. */
-const kindLabel = (type: Target["type"]) => (type === "issue" ? "cause" : "message");
+const kindLabel = (type: Target["type"]) => (type === "cause" ? "cause" : "message");
 
 async function Queue() {
   await requireAdmin();
@@ -53,8 +53,8 @@ async function Queue() {
   const list = [...targets.values()].sort((a, b) => b.reports.length - a.reports.length);
 
   const ids = (type: Target["type"]) => list.filter((t) => t.type === type).map((t) => t.id);
-  const [issues, comments] = await Promise.all([loadIssues(ids("issue")), loadComments(ids("comment"))]);
-  const issueById = new Map(issues.map((i) => [i.id, i]));
+  const [causes, comments] = await Promise.all([loadCauses(ids("cause")), loadComments(ids("comment"))]);
+  const causeById = new Map(causes.map((i) => [i.id, i]));
   const commentById = new Map(comments.map((c) => [c.id, c]));
 
   return (
@@ -66,7 +66,7 @@ async function Queue() {
       {list.length === 0 ? (
         <p className="rounded-xl border border-dashed border-border bg-surface p-10 text-center text-muted">All clear — nothing to review.</p>
       ) : (
-        <QueueList list={list} issueById={issueById} commentById={commentById} />
+        <QueueList list={list} causeById={causeById} commentById={commentById} />
       )}
       <RecentlyRemoved />
     </>
@@ -76,18 +76,18 @@ async function Queue() {
 async function RecentlyRemoved() {
   const where = { removedAt: { gt: purgeCutoff() } };
   const author = { select: { name: true, email: true, deactivatedAt: true } };
-  const [issues, comments] = await Promise.all([
-    db.issue.findMany({ where, include: { author }, orderBy: { removedAt: "desc" }, take: 100 }),
+  const [causes, comments] = await Promise.all([
+    db.cause.findMany({ where, include: { author }, orderBy: { removedAt: "desc" }, take: 100 }),
     db.comment.findMany({
       where,
-      include: { author, issue: { select: { id: true, title: true } } },
+      include: { author, cause: { select: { id: true, title: true } } },
       orderBy: { removedAt: "desc" },
       take: 100,
     }),
   ]);
   const items = [
-    ...issues.map((i) => ({ ...i, type: "issue" as const, text: i.title, on: null })),
-    ...comments.map((c) => ({ ...c, type: "comment" as const, text: c.body, on: c.issue })),
+    ...causes.map((i) => ({ ...i, type: "cause" as const, text: i.title, on: null })),
+    ...comments.map((c) => ({ ...c, type: "comment" as const, text: c.body, on: c.cause })),
   ].sort((a, b) => b.removedAt!.getTime() - a.removedAt!.getTime());
 
   return (
@@ -129,35 +129,35 @@ async function RecentlyRemoved() {
   );
 }
 
-type IssueRow = Awaited<ReturnType<typeof loadIssues>>[number];
+type CauseRow = Awaited<ReturnType<typeof loadCauses>>[number];
 type CommentRow = Awaited<ReturnType<typeof loadComments>>[number];
 
-function loadIssues(ids: string[]) {
-  return db.issue.findMany({ where: { id: { in: ids } }, include: { author: { select: { name: true, email: true, deactivatedAt: true } } } });
+function loadCauses(ids: string[]) {
+  return db.cause.findMany({ where: { id: { in: ids } }, include: { author: { select: { name: true, email: true, deactivatedAt: true } } } });
 }
 
 function loadComments(ids: string[]) {
   return db.comment.findMany({
     where: { id: { in: ids } },
-    include: { author: { select: { name: true, email: true, deactivatedAt: true } }, issue: { select: { id: true, title: true } } },
+    include: { author: { select: { name: true, email: true, deactivatedAt: true } }, cause: { select: { id: true, title: true } } },
   });
 }
 
 function QueueList({
   list,
-  issueById,
+  causeById,
   commentById,
 }: {
   list: Target[];
-  issueById: Map<string, IssueRow>;
+  causeById: Map<string, CauseRow>;
   commentById: Map<string, CommentRow>;
 }) {
   return (
     <ul className="space-y-4">
       {list.map((t) => {
-        const issue = t.type === "issue" ? issueById.get(t.id) : undefined;
+        const cause = t.type === "cause" ? causeById.get(t.id) : undefined;
         const comment = t.type === "comment" ? commentById.get(t.id) : undefined;
-        const content = issue ?? comment;
+        const content = cause ?? comment;
         const reasons = t.reports.map((r) => r.reason).filter(Boolean);
         return (
           <li key={`${t.type}:${t.id}`} className="rounded-xl border border-border bg-surface p-5">
@@ -176,20 +176,20 @@ function QueueList({
               <p className="mt-3 text-sm text-muted">This content no longer exists.</p>
             ) : (
               <div className="mt-3 space-y-1">
-                {issue && (
-                  <Link href={`/causes/${issue.id}`} className="font-semibold hover:underline">
-                    {issue.title}
+                {cause && (
+                  <Link href={`/causes/${cause.id}`} className="font-semibold hover:underline">
+                    {cause.title}
                   </Link>
                 )}
                 {comment && (
                   <p className="text-xs text-muted">
                     on{" "}
-                    <Link href={`/causes/${comment.issue.id}/chat`} className="underline">
-                      {comment.issue.title}
+                    <Link href={`/causes/${comment.cause.id}/chat`} className="underline">
+                      {comment.cause.title}
                     </Link>
                   </p>
                 )}
-                <p className="line-clamp-4 whitespace-pre-line text-sm">{issue?.description ?? comment?.body}</p>
+                <p className="line-clamp-4 whitespace-pre-line text-sm">{cause?.description ?? comment?.body}</p>
                 <p className="text-xs text-muted">
                   by {displayName(content.author)} ({content.author.email})
                 </p>

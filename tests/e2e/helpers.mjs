@@ -21,7 +21,8 @@ export const launch = () => chromium.launch({ channel: process.env.E2E_BROWSER ?
 export const CONTEXT = { locale: "en-CA", timezoneId: "America/Toronto" };
 
 export async function settle(page) {
-  await page.waitForLoadState("networkidle", { timeout: 60000 }).catch(() => {});
+  // Pages with the bot check never go fully quiet, so don't wait long for that.
+  await page.waitForLoadState("networkidle", { timeout: 10000 }).catch(() => {});
   // Wait for Suspense skeletons to be replaced.
   await page.waitForFunction(() => !document.querySelector(".animate-pulse"), null, { timeout: 60000 }).catch(() => {});
   await page.addStyleTag({ content: "nextjs-portal{display:none!important}" }).catch(() => {});

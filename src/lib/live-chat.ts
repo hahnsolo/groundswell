@@ -15,10 +15,10 @@ function config() {
 export type ChatPass = { url: string; token: string };
 
 /** A pass to listen to a cause's chat. Only give it to people allowed to read that chat. */
-export async function chatPass(issueId: string): Promise<ChatPass | null> {
+export async function chatPass(causeId: string): Promise<ChatPass | null> {
   const c = config();
   if (!c) return null;
-  return { url: c.url.replace(/^http/, "ws"), token: await signChatToken(c.secret, issueId) };
+  return { url: c.url.replace(/^http/, "ws"), token: await signChatToken(c.secret, causeId) };
 }
 
 /**
@@ -26,12 +26,12 @@ export async function chatPass(issueId: string): Promise<ChatPass | null> {
  * Runs after the response is sent, and never fails the action that called it:
  * if the chat server is down, open chats catch up on their next check.
  */
-export function announceChatChange(issueId: string) {
+export function announceChatChange(causeId: string) {
   const c = config();
   if (!c) return;
   after(async () => {
     try {
-      await fetch(`${c.url}/rooms/${issueId}/changed`, {
+      await fetch(`${c.url}/rooms/${causeId}/changed`, {
         method: "POST",
         headers: { Authorization: `Bearer ${c.secret}` },
         signal: AbortSignal.timeout(3000),

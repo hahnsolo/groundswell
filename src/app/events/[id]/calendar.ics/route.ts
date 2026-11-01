@@ -7,7 +7,7 @@ export async function GET(_req: Request, ctx: RouteContext<"/events/[id]/calenda
   const { id } = await ctx.params;
   const user = await getCurrentUser();
   const e = await getEventDetail(id, user?.id ?? null);
-  if (!e || e.issue.removedAt || (e.issue.hidden && e.issue.authorId !== user?.id)) {
+  if (!e || e.cause.removedAt || (e.cause.hidden && e.cause.authorId !== user?.id)) {
     return new Response("Not found", { status: 404 });
   }
   const url = `${process.env.APP_URL ?? "http://localhost:3000"}/events/${e.id}`;

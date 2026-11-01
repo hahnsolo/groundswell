@@ -18,7 +18,7 @@ npm install
 npm run dev
 ```
 
-Then open http://localhost:3000. Try ZIP `90210` or postal code `M5V` to see demo issues.
+Then open http://localhost:3000. Try ZIP `90210` or postal code `M5V` to see demo Causes.
 
 - **Demo accounts** are listed at the top of `prisma/seed.ts`. The first one (`alex@demo.test`) is an admin, so you can see the moderation queue. They only exist in the dev database.
 - **Emails don't get sent** on your PC. They're printed in the terminal where `npm run dev` is running, so you can click the confirm or reset link from there.
@@ -50,7 +50,7 @@ If `prisma/schema.prisma` changed (a new table or column), create a migration on
 npm run db:migrate
 ```
 
-It asks for a name (e.g. `add-issue-photos`), creates a file in `prisma/migrations/`, and applies it to dev. Commit that file with the code. The live database gets the same change automatically on the next deploy.
+It asks for a name (e.g. `add-cause-photos`), creates a file in `prisma/migrations/`, and applies it to dev. Commit that file with the code. The live database gets the same change automatically on the next deploy.
 
 ## How push-to-deploy works
 
@@ -120,15 +120,15 @@ On your PC you can do the same with `npm run db:studio` → `User` table → tic
 
 ## Using the moderation queue
 
-Any member with a confirmed email can **report** an issue or a comment. Reports go to **https://groundswell.hahnsolo.ca/admin/reports** (admins only; everyone else gets a "page not found").
+Any member with a confirmed email can **report** a cause or a comment. Reports go to **https://groundswell.hahnsolo.ca/admin/reports** (admins only; everyone else gets a "page not found").
 
 - Items are sorted by how many reports they have, with the most first. You'll see the content, who wrote it (name and email), and the reasons people gave.
 - An item marked **Hidden** got 3 or more reports from accounts older than a day, so it was hidden automatically until you decide.
 - For each item, choose:
   - **Keep & dismiss reports** (or **Restore** if hidden): the content stays or comes back, and the reports are closed.
-  - **Remove issue / Remove comment:** the content disappears for everyone except its author. You can type an optional reason first; the author sees it. Removing an issue also hides everything under it (comments, meetups, campaigns).
+  - **Remove cause / Remove message:** the content disappears for everyone except its author. You can type an optional reason first; the author sees it. Removing a cause also hides everything under it (comments, meetups, campaigns).
 - **Removed isn't gone yet.** For **7 days**, removed content is listed under **Recently removed** at the bottom of the page, with a **Restore** button in case it was a mistake. During that week the author sees a "A moderator removed this…" notice with your reason and the date it will be deleted.
-- **After 7 days it's deleted for good** by a daily clean-up job (see below). Deleting an issue also deletes its comments, meetups and campaigns. That part can't be undone.
+- **After 7 days it's deleted for good** by a daily clean-up job (see below). Deleting a cause also deletes its comments, meetups and campaigns. That part can't be undone.
 - Every decision is recorded on the reports: who decided, when, and what (kept, removed or restored).
 
 ### The daily clean-up job
@@ -138,7 +138,7 @@ Once a day (around 9:00 UTC), Vercel calls `/api/cron/daily`, which:
 1. permanently deletes anything a moderator removed more than **7 days** ago, and
 2. anonymizes accounts that were deleted more than **30 days** ago (see [Deleted accounts](#deleted-accounts) below).
 
-You can see each run in Vercel → project → **Settings → Cron Jobs**, and its log line ("Daily clean-up: purged N removed issue(s)… anonymized N deleted account(s)") in **Logs**. It only runs on the live site, and only if `CRON_SECRET` is set in Vercel (see [Keys and secrets](keys-and-secrets.md)). Without it, the job refuses to run and logs a warning.
+You can see each run in Vercel → project → **Settings → Cron Jobs**, and its log line ("Daily clean-up: purged N removed cause(s)… anonymized N deleted account(s)") in **Logs**. It only runs on the live site, and only if `CRON_SECRET` is set in Vercel (see [Keys and secrets](keys-and-secrets.md)). Without it, the job refuses to run and logs a warning.
 
 The two numbers live in the code: `REMOVAL_RETENTION_DAYS` in `src/lib/moderation.ts` and `ACCOUNT_GRACE_DAYS` in `src/lib/accounts.ts`.
 

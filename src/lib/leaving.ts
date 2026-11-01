@@ -4,7 +4,7 @@ import { appUrl, sendEmail } from "./mail";
 import { anonymizeCutoff, anonymizedEmail, FORMER_MEMBER, pickNewHost } from "./accounts";
 
 // Everything that happens when someone steps back: from a meetup they host,
-// from an issue, or from Groundswell altogether.
+// from a cause, or from Groundswell altogether.
 
 /** Upcoming = hasn't started yet. Past meetups keep their host for the record. */
 const upcoming = () => ({ startsAt: { gt: new Date() } });
@@ -17,7 +17,7 @@ export async function handOverMeetup(meetupId: string, leavingUserId: string) {
   const meetup = await db.meetup.findUnique({
     where: { id: meetupId },
     include: {
-      issue: { select: { id: true, title: true } },
+      cause: { select: { id: true, title: true } },
       rsvps: { select: { userId: true, createdAt: true, user: { select: { deactivatedAt: true } } } },
     },
   });
@@ -43,7 +43,7 @@ export async function handOverMeetup(meetupId: string, leavingUserId: string) {
     await sendEmail({
       to: host.email,
       subject: `You're now hosting "${meetup.title}"`,
-      text: `Hi ${host.name},\n\nThe host of "${meetup.title}" (about "${meetup.issue.title}") had to step back. You were the first to RSVP, so you're now the host.\n\nIf you can't host it, open the meetup and choose "Step down as host" — it'll pass to the next person who's going:\n${appUrl(`/events/${meetup.id}`)}\n\nThanks for keeping it going!`,
+      text: `Hi ${host.name},\n\nThe host of "${meetup.title}" (about "${meetup.cause.title}") had to step back. You were the first to RSVP, so you're now the host.\n\nIf you can't host it, open the meetup and choose "Step down as host" — it'll pass to the next person who's going:\n${appUrl(`/events/${meetup.id}`)}\n\nThanks for keeping it going!`,
     });
   } catch (err) {
     // The handover stands even if the email doesn't go out.
@@ -52,28 +52,28 @@ export async function handOverMeetup(meetupId: string, leavingUserId: string) {
 }
 
 /** Remove a person's RSVPs to upcoming meetups, handing over any they host. */
-async function leaveUpcomingMeetups(userId: string, issueId?: string) {
-  const where = { ...upcoming(), ...(issueId ? { issueId } : {}) };
+async function leaveUpcomingMeetups(userId: string, causeId?: string) {
+  const where = { ...upcoming(), ...(causeId ? { causeId } : {}) };
   const hosted = await db.meetup.findMany({ where: { ...where, organizerId: userId }, select: { id: true } });
   for (const m of hosted) await handOverMeetup(m.id, userId);
   await db.rsvp.deleteMany({ where: { userId, meetup: where } });
 }
 
 /**
- * "Leave this issue": take back support, RSVPs to its upcoming meetups and
+ * "Leave this cause": take back support, RSVPs to its upcoming meetups and
  * signatures on its campaigns. Comments stay — they're part of the conversation.
  */
-export async function leaveIssue(userId: string, issueId: string) {
-  await leaveUpcomingMeetups(userId, issueId);
+export async function leaveCause(userId: string, causeId: string) {
+  await leaveUpcomingMeetups(userId, causeId);
   await db.$transaction([
-    db.issueSupport.deleteMany({ where: { userId, issueId } }),
-    db.signature.deleteMany({ where: { userId, campaign: { issueId } } }),
+    db.causeMember.deleteMany({ where: { userId, causeId } }),
+    db.signature.deleteMany({ where: { userId, campaign: { causeId } } }),
   ]);
 }
 
 /**
  * "Delete my account", step 1: sign out everywhere and step back from what's
- * still to come. Posts stay (shown as "Former member"); "I care" supports stay
+ * still to come. Posts stay (shown as "Former member"); "I care" members stay
  * as anonymous counts. Signing back in within the grace period restores it.
  */
 export async function deactivateAccount(userId: string) {

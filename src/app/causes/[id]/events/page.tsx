@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { getCurrentUser } from "@/lib/auth";
-import { getIssueDetail } from "@/lib/queries";
+import { getCauseDetail } from "@/lib/queries";
 import { displayName } from "@/lib/accounts";
 import { stepDownAsHost, toggleRsvp } from "@/app/actions/community";
 import { LocalTime } from "@/components/local-time";
-import { MeetupForm } from "@/components/issue-forms";
+import { MeetupForm } from "@/components/cause-forms";
 import { Panel, SignInPrompt } from "@/components/cause-parts";
 import { buttonStyles } from "@/components/styles";
 
@@ -21,13 +21,13 @@ export default function EventsTab(props: PageProps<"/causes/[id]/events">) {
 async function Events({ params }: Pick<PageProps<"/causes/[id]/events">, "params">) {
   const { id } = await params;
   const user = await getCurrentUser();
-  const issue = await getIssueDetail(id, user?.id ?? null);
-  if (!issue || issue.removedAt || (issue.hidden && issue.authorId !== user?.id)) return null; // the layout explains
-  const here = `/causes/${issue.id}/events`;
+  const cause = await getCauseDetail(id, user?.id ?? null);
+  if (!cause || cause.removedAt || (cause.hidden && cause.authorId !== user?.id)) return null; // the layout explains
+  const here = `/causes/${cause.id}/events`;
 
   return (
     <div className="space-y-4">
-      {issue.meetups.map((m) => {
+      {cause.meetups.map((m) => {
         const going = Array.isArray(m.rsvps) && m.rsvps.length > 0;
         const full = !!m.capacity && m._count.rsvps >= m.capacity;
         const hosting = user?.id === m.organizerId;
@@ -92,7 +92,7 @@ async function Events({ params }: Pick<PageProps<"/causes/[id]/events">, "params
         );
       })}
 
-      {issue.meetups.length === 0 && (
+      {cause.meetups.length === 0 && (
         <Panel>
           <p className="text-center text-sm text-muted">No events coming up. Getting people in a room is the fastest way to build momentum.</p>
         </Panel>
@@ -103,7 +103,7 @@ async function Events({ params }: Pick<PageProps<"/causes/[id]/events">, "params
           <details>
             <summary className="cursor-pointer font-medium text-link">+ Organize an event</summary>
             <div className="mt-4">
-              <MeetupForm issueId={issue.id} />
+              <MeetupForm causeId={cause.id} />
             </div>
           </details>
         ) : (

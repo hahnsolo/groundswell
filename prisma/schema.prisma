@@ -17,15 +17,15 @@ datasource db {
 // Passwords live on Account (providerId "credential"), not on User.
 
 model User {
-  id            String   @id @default(cuid())
+  id            String    @id @default(cuid())
   name          String
-  email         String   @unique
-  emailVerified Boolean  @default(false)
+  email         String    @unique
+  emailVerified Boolean   @default(false)
   image         String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
   // App fields (Better Auth "additionalFields"; none are settable by sign-up).
-  isAdmin       Boolean  @default(false)
+  isAdmin       Boolean   @default(false)
   // Home area, so the app can drop people straight into their community.
   homeCountry   String?
   homePostal    String?
@@ -35,16 +35,16 @@ model User {
   deactivatedAt DateTime?
   anonymizedAt  DateTime?
 
-  sessions   Session[]
-  accounts   Account[]
-  issues     Issue[]
-  supports   IssueSupport[]
-  comments   Comment[]
-  meetups    Meetup[]
-  rsvps      Rsvp[]
-  campaigns  Campaign[]
-  signatures Signature[]
-  reports    Report[]
+  sessions    Session[]
+  accounts    Account[]
+  causes      Cause[]
+  memberships CauseMember[]
+  comments    Comment[]
+  meetups     Meetup[]
+  rsvps       Rsvp[]
+  campaigns   Campaign[]
+  signatures  Signature[]
+  reports     Report[]
 }
 
 model Session {
@@ -127,38 +127,38 @@ model Place {
   createdAt  DateTime @default(now())
 }
 
-model Issue {
-  id          String   @id @default(cuid())
-  title       String
-  description String
-  category    String
+model Cause {
+  id            String    @id @default(cuid())
+  title         String
+  description   String
+  category      String
   // open | in_progress | resolved
-  status      String   @default("open")
+  status        String    @default("open")
   // When it was marked resolved: a win, shown off on the neighbourhood pages.
-  resolvedAt  DateTime?
+  resolvedAt    DateTime?
   // Who the person who raised it thinks should fix it (src/lib/fixers.ts):
   // city | province | federal | landlord | business | nonprofit | other | unsure
-  fixer       String   @default("unsure")
+  fixer         String    @default("unsure")
   // What they wrote when fixer is "other".
-  fixerOther  String?
-  country     String
-  postalCode  String
-  placeName   String
-  region      String
-  lat         Float
-  lng         Float
-  authorId    String
-  hidden      Boolean  @default(false)
+  fixerOther    String?
+  country       String
+  postalCode    String
+  placeName     String
+  region        String
+  lat           Float
+  lng           Float
+  authorId      String
+  hidden        Boolean   @default(false)
   // Set when a moderator removes it (hidden is set too). Only the author can
   // still see it, and it's deleted for good after a week (src/lib/moderation.ts).
   removedAt     DateTime?
   removedById   String?
   removalReason String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
 
-  author    User           @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  supports  IssueSupport[]
+  author    User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  members   CauseMember[]
   comments  Comment[]
   meetups   Meetup[]
   campaigns Campaign[]
@@ -168,54 +168,54 @@ model Issue {
   @@index([removedAt])
 }
 
-model IssueSupport {
-  issueId   String
+model CauseMember {
+  causeId   String
   userId    String
   createdAt DateTime @default(now())
-  issue     Issue    @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  cause     Cause    @relation(fields: [causeId], references: [id], onDelete: Cascade)
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@id([issueId, userId])
+  @@id([causeId, userId])
   @@index([userId])
 }
 
 model Comment {
-  id        String   @id @default(cuid())
-  issueId   String
-  authorId  String
-  body      String
-  hidden    Boolean  @default(false)
-  // Same as on Issue.
+  id            String    @id @default(cuid())
+  causeId       String
+  authorId      String
+  body          String
+  hidden        Boolean   @default(false)
+  // Same as on Cause.
   removedAt     DateTime?
   removedById   String?
   removalReason String?
-  createdAt DateTime @default(now())
-  issue     Issue    @relation(fields: [issueId], references: [id], onDelete: Cascade)
-  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  createdAt     DateTime  @default(now())
+  cause         Cause     @relation(fields: [causeId], references: [id], onDelete: Cascade)
+  author        User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
 
-  @@index([issueId, createdAt])
+  @@index([causeId, createdAt])
   @@index([removedAt])
 }
 
 model Meetup {
-  id          String   @id @default(cuid())
-  issueId     String
-  organizerId String
-  title       String
-  description String
-  startsAt    DateTime
+  id            String    @id @default(cuid())
+  causeId       String
+  organizerId   String
+  title         String
+  description   String
+  startsAt      DateTime
   // Free-text venue ("Library, room 2") or a video link when online.
-  location    String
-  isOnline    Boolean  @default(false)
-  capacity    Int?
+  location      String
+  isOnline      Boolean   @default(false)
+  capacity      Int?
   // Set when hosting passed to someone else (the host stepped down or left).
   hostChangedAt DateTime?
-  createdAt   DateTime @default(now())
-  issue       Issue    @relation(fields: [issueId], references: [id], onDelete: Cascade)
-  organizer   User     @relation(fields: [organizerId], references: [id], onDelete: Cascade)
-  rsvps       Rsvp[]
+  createdAt     DateTime  @default(now())
+  cause         Cause     @relation(fields: [causeId], references: [id], onDelete: Cascade)
+  organizer     User      @relation(fields: [organizerId], references: [id], onDelete: Cascade)
+  rsvps         Rsvp[]
 
-  @@index([issueId, startsAt])
+  @@index([causeId, startsAt])
 }
 
 model Rsvp {
@@ -232,17 +232,17 @@ model Rsvp {
 // An advocacy push: a concrete ask aimed at a decision-maker, backed by signatures.
 model Campaign {
   id         String      @id @default(cuid())
-  issueId    String
+  causeId    String
   creatorId  String
   ask        String
   target     String
   goal       Int         @default(100)
   createdAt  DateTime    @default(now())
-  issue      Issue       @relation(fields: [issueId], references: [id], onDelete: Cascade)
+  cause      Cause       @relation(fields: [causeId], references: [id], onDelete: Cascade)
   creator    User        @relation(fields: [creatorId], references: [id], onDelete: Cascade)
   signatures Signature[]
 
-  @@index([issueId])
+  @@index([causeId])
 }
 
 model Signature {
@@ -257,7 +257,7 @@ model Signature {
   @@index([userId])
 }
 
-// Community moderation flags. targetType: issue | comment
+// Community moderation flags. targetType: cause | comment
 model Report {
   id           String    @id @default(cuid())
   targetType   String
@@ -270,7 +270,7 @@ model Report {
   resolvedById String?
   resolvedAt   DateTime?
   createdAt    DateTime  @default(now())
-  reporter   User     @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+  reporter     User      @relation(fields: [reporterId], references: [id], onDelete: Cascade)
 
   @@unique([targetType, targetId, reporterId])
 }

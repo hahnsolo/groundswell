@@ -57,10 +57,10 @@ export function honeypotTripped(formData: FormData) {
 // Brand-new accounts (first 24h) get much tighter limits and can't post links:
 // that's where almost all spam comes from, and real neighbours rarely notice.
 
-type Kind = "issue" | "comment" | "meetup" | "campaign";
+type Kind = "cause" | "comment" | "meetup" | "campaign";
 
 const LIMITS: Record<Kind, { perHour: number; newPerHour: number }> = {
-  issue: { perHour: 10, newPerHour: 2 },
+  cause: { perHour: 10, newPerHour: 2 },
   comment: { perHour: 60, newPerHour: 10 },
   meetup: { perHour: 10, newPerHour: 2 },
   campaign: { perHour: 5, newPerHour: 1 },

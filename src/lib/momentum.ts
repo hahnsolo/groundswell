@@ -43,7 +43,7 @@ export function isRecentWin(resolvedAt: Date | null | undefined, now = new Date(
 
 /**
  * "Priya cares", "Priya and Sam care", "Priya, Sam and 12 neighbours care".
- * `names` are the first few supporters (people who've left are already
+ * `names` are the first few members (people who've left are already
  * filtered out); `total` counts everyone, including them.
  */
 const VERBS = {

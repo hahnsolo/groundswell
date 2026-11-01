@@ -5,9 +5,9 @@ import { CATEGORIES } from "@/lib/categories";
 import { getCountry, parsePostal } from "@/lib/countries";
 import { DEFAULT_RADIUS, RADIUS_OPTIONS } from "@/lib/geo";
 import { resolvePlace } from "@/lib/places";
-import { getAreaPulse, getNearbyIssues, type IssueSort } from "@/lib/queries";
+import { getAreaPulse, getNearbyCauses, type CauseSort } from "@/lib/queries";
 import { WinsStrip } from "@/components/wins-strip";
-import { IssueCard } from "@/components/issue-card";
+import { CauseCard } from "@/components/cause-card";
 import { PostalSearch } from "@/components/postal-search";
 import { buttonStyles } from "@/components/styles";
 import { RememberArea } from "@/components/neighbourhood";
@@ -67,9 +67,9 @@ async function AreaContent({
     ? Number(sp.radius)
     : DEFAULT_RADIUS;
   const category = typeof sp.category === "string" && CATEGORIES.some((c) => c.id === sp.category) ? sp.category : undefined;
-  const sort: IssueSort = sp.sort === "new" ? "new" : "top";
+  const sort: CauseSort = sp.sort === "new" ? "new" : "top";
 
-  const issues = await getNearbyIssues({ country: place.country, lat: place.lat, lng: place.lng, radiusKm: radius, category, sort });
+  const causes = await getNearbyCauses({ country: place.country, lat: place.lat, lng: place.lng, radiusKm: radius, category, sort });
 
   const base = `/area/${country.code.toLowerCase()}/${parsed.postal}`;
   const href = (patch: Record<string, string | number | undefined>) => {
@@ -82,9 +82,9 @@ async function AreaContent({
     return s ? `${base}?${s}` : base;
   };
 
-  const pulse = await getAreaPulse(issues);
+  const pulse = await getAreaPulse(causes);
   const winIds = new Set(pulse.wins.map((w) => w.id));
-  const board = issues.filter((i) => !winIds.has(i.id));
+  const board = causes.filter((i) => !winIds.has(i.id));
   const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
   const pulseLine = [
     plural(pulse.people, "neighbour") + " involved",
@@ -107,7 +107,7 @@ async function AreaContent({
             {getCountry(place.country)?.name} · {country.format(place.postalCode)} · {place.regionCode}
           </p>
           <h1 className="mt-1 text-3xl font-semibold leading-tight sm:text-4xl">What&apos;s going on around {place.placeName}</h1>
-          <p className="mt-2 text-muted">{issues.length === 0 ? "Nothing raised nearby yet." : pulseLine}</p>
+          <p className="mt-2 text-muted">{causes.length === 0 ? "Nothing raised nearby yet." : pulseLine}</p>
           <Link href="/events" className="mt-1 inline-block text-sm font-medium text-link underline underline-offset-4">
             Events around here →
           </Link>
@@ -145,7 +145,7 @@ async function AreaContent({
           <div className="flex items-center gap-2.5">
             <span className="text-muted">Show</span>
             <Link href={href({ sort: "top" })} className={option(sort === "top")}>
-              Most support
+              Most members
             </Link>
             <Link href={href({ sort: "new" })} className={option(sort === "new")}>
               Newest
@@ -155,10 +155,10 @@ async function AreaContent({
       </div>
 
       <div className="mt-5 space-y-3">
-        {board.map((issue) => (
-          <IssueCard key={issue.id} issue={issue} />
+        {board.map((cause) => (
+          <CauseCard key={cause.id} cause={cause} />
         ))}
-        {issues.length === 0 && (
+        {causes.length === 0 && (
           <div className="rounded-md border-[1.5px] border-dashed border-ink bg-surface p-10 text-center">
             <p className="font-display text-xl font-semibold">Be the first to put something on the board here.</p>
             <p className="mt-2 text-sm text-muted">

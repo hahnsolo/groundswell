@@ -10,7 +10,7 @@ The main code is in `src/lib/spam.ts`, `src/lib/rate-limit.ts`, `src/lib/better-
 - **Login is handled by Better Auth**, a well-tested open-source library, rather than home-made code. Passwords are stored as one-way hashes (scrambled so even we can't read them).
 - **Passwords must be at least 10 characters.**
 - **Sessions last 30 days** and are stored in the database, so they can be cancelled. Resetting your password **signs you out everywhere**.
-- **Email confirmation:** new accounts get a confirm link (valid 48 hours). Raising issues, posting in a chat, organizing events, starting and signing campaigns, and reporting all need a confirmed email. Joining a cause and RSVPing don't. Google and Apple accounts count as confirmed.
+- **Email confirmation:** new accounts get a confirm link (valid 48 hours). Raising causes, posting in a chat, organizing events, starting and signing campaigns, and reporting all need a confirmed email. Joining a cause and RSVPing don't. Google and Apple accounts count as confirmed.
 - **Password reset links** expire after 1 hour. The reset page gives the same answer whether or not an email has an account, so nobody can use it to find out who's a member.
 - **Admin pages are invisible:** anyone who isn't an admin gets "page not found" at `/admin/reports`, not "access denied," so the page's existence isn't revealed. Admin can only be granted directly in the database (see [Day to day](day-to-day.md#making-someone-an-admin)), and the sign-up form can't set it.
 - **The live site won't start without a strong `BETTER_AUTH_SECRET`**, so it can never run with a forgeable default.
@@ -38,7 +38,7 @@ The counters are stored in the database, not in server memory. Vercel runs many 
 ### Posting rules
 | | Established accounts | New accounts (first 24 hours) |
 |---|---|---|
-| Issues | 10/hour | 2/hour |
+| Causes | 10/hour | 2/hour |
 | Comments | 60/hour | 10/hour |
 | Meetups | 10/hour | 2/hour |
 | Campaigns | 5/hour | 1/hour |
@@ -48,14 +48,14 @@ Almost all spam comes from brand-new accounts posting links, so new accounts are
 
 - **Honeypot:** every form has a hidden "website" field that people never see. Simple bots fill in every field, so if it's filled in, the post is quietly refused.
 - **Duplicate messages** (same text from the same person within 10 minutes) are refused. That catches double-clicks and copy-paste bots.
-- **Everything posted is checked** for sensible lengths and formats before it's saved. For example, an issue title is 8–120 characters and descriptions are capped at 5,000.
+- **Everything posted is checked** for sensible lengths and formats before it's saved. For example, a cause title is 8–120 characters and descriptions are capped at 5,000.
 
 ### Community moderation
-- Members with a confirmed email can report issues and comments.
+- Members with a confirmed email can report causes and comments.
 - **3 reports** from accounts **older than a day** hide the content automatically until an admin decides. Only older accounts count, so someone can't make three throwaway accounts to silence a person they disagree with.
 - Admins review everything at `/admin/reports` (see [Day to day](day-to-day.md#using-the-moderation-queue)). Each decision is recorded.
 - **Removing is undoable for a week.** Removed content is hidden from everyone but its author, who sees a notice with the moderator's reason. After 7 days a daily job deletes it for good, so people's words aren't kept longer than needed.
-- Removed content can't be reported again, and nothing new (comments, meetups, campaigns) can be added to a removed issue.
+- Removed content can't be reported again, and nothing new (comments, meetups, campaigns) can be added to a removed Cause.
 
 ### Privacy
 - Only the coarse area is stored (Canadian FSA like `M5V`, or a US ZIP), never a street address.

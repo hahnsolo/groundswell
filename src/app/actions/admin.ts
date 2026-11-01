@@ -8,14 +8,14 @@ import { cleanRemovalReason, purgeCutoff } from "@/lib/moderation";
 import { announceChatChange } from "@/lib/live-chat";
 
 /** Open chats showing this content should update. Returns the cause it belongs to. */
-async function causeOf(targetType: "issue" | "comment", targetId: string) {
-  if (targetType === "issue") return targetId;
-  const comment = await db.comment.findUnique({ where: { id: targetId }, select: { issueId: true } });
-  return comment?.issueId ?? null;
+async function causeOf(targetType: "cause" | "comment", targetId: string) {
+  if (targetType === "cause") return targetId;
+  const comment = await db.comment.findUnique({ where: { id: targetId }, select: { causeId: true } });
+  return comment?.causeId ?? null;
 }
 
 const targetSchema = z.object({
-  targetType: z.enum(["issue", "comment"]),
+  targetType: z.enum(["cause", "comment"]),
   targetId: z.string().min(1).max(40),
 });
 
@@ -40,7 +40,7 @@ export async function moderate(formData: FormData) {
       : { hidden: true, removedAt: new Date(), removedById: admin.id, removalReason: cleanRemovalReason(formData.get("reason")) };
 
   await db.$transaction(async (tx) => {
-    if (targetType === "issue") await tx.issue.updateMany({ where, data });
+    if (targetType === "cause") await tx.cause.updateMany({ where, data });
     else await tx.comment.updateMany({ where, data });
     await tx.report.updateMany({
       where: { targetType, targetId, resolved: false },
@@ -63,7 +63,7 @@ export async function restore(formData: FormData) {
 
   await db.$transaction(async (tx) => {
     const { count } =
-      targetType === "issue" ? await tx.issue.updateMany({ where, data }) : await tx.comment.updateMany({ where, data });
+      targetType === "cause" ? await tx.cause.updateMany({ where, data }) : await tx.comment.updateMany({ where, data });
     if (count === 0) return;
     // Record the reversal on the reports that led to the removal.
     await tx.report.updateMany({

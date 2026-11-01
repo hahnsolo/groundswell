@@ -29,7 +29,7 @@ Other causes, in Resend's logs:
 
 ## The live site was using the dev database
 
-**Symptom:** the live site showed the demo issues and demo accounts, or things you posted on the live site appeared on your PC.
+**Symptom:** the live site showed the demo Causes and demo accounts, or things you posted on the live site appeared on your PC.
 
 **What happened:** Neon's **Connect** box remembers the **last branch you picked**. After copying the `dev` connection strings for the PC, opening Connect again to get the "live" strings silently gave the `dev` ones again, and those went into Vercel.
 

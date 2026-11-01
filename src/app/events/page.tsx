@@ -93,7 +93,7 @@ function EventGroup({ title, events }: { title: string; events: NearbyEvent[] })
       <h2 className="mb-3 text-lg font-semibold">{title}</h2>
       <ul className="space-y-3">
         {events.map((e) => {
-          const cat = getCategory(e.issue.category);
+          const cat = getCategory(e.cause.category);
           return (
             <li key={e.id}>
               <Link
@@ -112,13 +112,13 @@ function EventGroup({ title, events }: { title: string; events: NearbyEvent[] })
                   <span className="flex flex-wrap items-center justify-between gap-x-3 text-[11px] uppercase tracking-wide text-muted">
                     <span>
                       <LocalTime iso={e.startsAt.toISOString()} options={{ weekday: "short", hour: "numeric", minute: "2-digit" }} /> ·{" "}
-                      {e.isOnline ? "Online" : e.issue.placeName} · {e.distanceKm < 1 ? "<1" : Math.round(e.distanceKm)} km
+                      {e.isOnline ? "Online" : e.cause.placeName} · {e.distanceKm < 1 ? "<1" : Math.round(e.distanceKm)} km
                     </span>
                     {e.viewerGoing && <span className="rounded-full bg-sage/30 px-2 py-0.5 font-semibold normal-case tracking-normal text-foreground">✓ Going</span>}
                   </span>
                   <span className="mt-1 block font-display text-lg font-semibold leading-snug group-hover:underline">{e.title}</span>
                   <span className="mt-0.5 block text-sm text-muted">
-                    {cat.emoji} For: {e.issue.title} · {e._count.rsvps} going{e.capacity ? ` of ${e.capacity}` : ""}
+                    {cat.emoji} For: {e.cause.title} · {e._count.rsvps} going{e.capacity ? ` of ${e.capacity}` : ""}
                   </span>
                 </span>
               </Link>

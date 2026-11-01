@@ -8,7 +8,7 @@ import { displayName } from "@/lib/accounts";
 import { peopleLine } from "@/lib/momentum";
 import { stepDownAsHost, toggleRsvp } from "@/app/actions/community";
 import { LocalTime } from "@/components/local-time";
-import { ShareButton } from "@/components/issue-forms";
+import { ShareButton } from "@/components/cause-forms";
 import { Panel, SignInPrompt } from "@/components/cause-parts";
 import { buttonStyles } from "@/components/styles";
 
@@ -33,7 +33,7 @@ async function Event({ params }: Pick<PageProps<"/events/[id]">, "params">) {
   const user = await getCurrentUser();
   const e = await getEventDetail(id, user?.id ?? null);
   // Same visibility as its cause: gone if the cause was removed or is hidden (except to its author).
-  if (!e || e.issue.removedAt || (e.issue.hidden && e.issue.authorId !== user?.id)) notFound();
+  if (!e || e.cause.removedAt || (e.cause.hidden && e.cause.authorId !== user?.id)) notFound();
 
   const hosting = user?.id === e.organizerId;
   const full = !!e.capacity && e._count.rsvps >= e.capacity;
@@ -42,13 +42,13 @@ async function Event({ params }: Pick<PageProps<"/events/[id]">, "params">) {
 
   return (
     <article>
-      <Link href={`/causes/${e.issue.id}/events`} className="text-sm text-muted hover:text-foreground">
-        ← Part of <span className="underline underline-offset-2">{e.issue.title}</span>
+      <Link href={`/causes/${e.cause.id}/events`} className="text-sm text-muted hover:text-foreground">
+        ← Part of <span className="underline underline-offset-2">{e.cause.title}</span>
       </Link>
 
       <header className="mt-4">
         <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">
-          Event · {e.issue.placeName}
+          Event · {e.cause.placeName}
           {e.over ? " · this has happened" : !e.upcoming ? " · happening now" : ""}
         </p>
         <h1 className="mt-2 text-3xl font-semibold leading-tight sm:text-4xl">{e.title}</h1>

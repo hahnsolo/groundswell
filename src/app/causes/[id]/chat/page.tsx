@@ -1,13 +1,13 @@
 import { Suspense } from "react";
 import { getCurrentUser } from "@/lib/auth";
-import { getIssueDetail } from "@/lib/queries";
+import { getCauseDetail } from "@/lib/queries";
 import { displayName } from "@/lib/accounts";
 import { CHAT_COOLING_OFF_HOURS, chatAccess } from "@/lib/chat-rules";
 import { chatPass } from "@/lib/live-chat";
 import { LiveChat } from "@/components/live-chat";
-import { reportContent, toggleSupport } from "@/app/actions/community";
+import { reportContent, toggleMembership } from "@/app/actions/community";
 import { LocalTime } from "@/components/local-time";
-import { CommentForm } from "@/components/issue-forms";
+import { CommentForm } from "@/components/cause-forms";
 import { Panel, RemovedNotice, SignInPrompt } from "@/components/cause-parts";
 import { buttonStyles } from "@/components/styles";
 
@@ -24,18 +24,18 @@ export default function ChatTab(props: PageProps<"/causes/[id]/chat">) {
 async function Chat({ params }: Pick<PageProps<"/causes/[id]/chat">, "params">) {
   const { id } = await params;
   const user = await getCurrentUser();
-  const issue = await getIssueDetail(id, user?.id ?? null);
-  if (!issue || issue.removedAt || (issue.hidden && issue.authorId !== user?.id)) return null; // the layout explains
+  const cause = await getCauseDetail(id, user?.id ?? null);
+  if (!cause || cause.removedAt || (cause.hidden && cause.authorId !== user?.id)) return null; // the layout explains
 
-  const isAuthor = user?.id === issue.authorId;
+  const isAuthor = user?.id === cause.authorId;
   const access = chatAccess({
     signedIn: !!user,
     isAdmin: user?.isAdmin,
     isAuthor,
-    joinedAt: issue.viewerJoinedAt,
+    joinedAt: cause.viewerJoinedAt,
     emailVerified: user?.emailVerified,
   });
-  const count = issue._count.comments;
+  const count = cause._count.comments;
   const talking = count === 0 ? "This is where neighbours talk it through." : `${count} message${count === 1 ? "" : "s"} from neighbours so far.`;
 
   if (access.kind === "sign-in" || access.kind === "join") {
@@ -48,10 +48,10 @@ async function Chat({ params }: Pick<PageProps<"/causes/[id]/chat">, "params">) 
           </p>
           <div className="mt-5">
             {access.kind === "sign-in" ? (
-              <SignInPrompt next={`/causes/${issue.id}/chat`} text="join" />
+              <SignInPrompt next={`/causes/${cause.id}/chat`} text="join" />
             ) : (
-              <form action={toggleSupport}>
-                <input type="hidden" name="issueId" value={issue.id} />
+              <form action={toggleMembership}>
+                <input type="hidden" name="causeId" value={cause.id} />
                 <button className={buttonStyles.primary}>Join this cause</button>
               </form>
             )}
@@ -62,20 +62,20 @@ async function Chat({ params }: Pick<PageProps<"/causes/[id]/chat">, "params">) 
   }
 
   // Only people who can read the chat get a pass to listen for new messages.
-  const pass = await chatPass(issue.id);
+  const pass = await chatPass(cause.id);
 
   return (
     <Panel>
       <LiveChat pass={pass} />
       <ol className="space-y-3" aria-label="Messages">
-        {issue.comments.map((c) => {
+        {cause.comments.map((c) => {
           const mine = c.author.id === user?.id;
           return (
             <li key={c.id} className={`group flex ${mine ? "justify-end" : "justify-start"}`}>
               <div className={`max-w-[85%] sm:max-w-[75%] ${mine ? "text-right" : ""}`}>
                 <p className="mb-1 text-xs text-muted">
                   <span className={`font-semibold ${c.author.deactivatedAt ? "" : "text-foreground"}`}>{mine ? "You" : displayName(c.author)}</span>
-                  {c.author.id === issue.authorId && !mine && <span className="ml-1">· started this</span>}
+                  {c.author.id === cause.authorId && !mine && <span className="ml-1">· started this</span>}
                   <span className="ml-1.5">
                     <LocalTime iso={c.createdAt.toISOString()} options={{ month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }} />
                   </span>
@@ -107,15 +107,15 @@ async function Chat({ params }: Pick<PageProps<"/causes/[id]/chat">, "params">) 
             </li>
           );
         })}
-        {issue.comments.length === 0 && <li className="py-6 text-center text-sm text-muted">No messages yet.</li>}
+        {cause.comments.length === 0 && <li className="py-6 text-center text-sm text-muted">No messages yet.</li>}
       </ol>
 
       <div className="mt-6 border-t border-border pt-4">
         {access.kind === "post" ? (
-          <CommentForm issueId={issue.id} />
+          <CommentForm causeId={cause.id} />
         ) : access.kind === "verify-email" ? (
           <p className="text-sm text-muted">Confirm your email address to post. Check your inbox for the link.</p>
-        ) : user?.isAdmin && !issue.viewerJoinedAt ? (
+        ) : user?.isAdmin && !cause.viewerJoinedAt ? (
           <p className="text-sm text-muted">You&apos;re reading as a moderator. Join the cause to take part.</p>
         ) : (
           <p className="flex items-start gap-2 rounded-md border-[1.5px] border-dashed border-ink p-3 text-sm">
