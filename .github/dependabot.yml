@@ -9,6 +9,11 @@ updates:
       minor-and-patch:
         update-types: [minor, patch]
     open-pull-requests-limit: 5
+    # Big version jumps (Prisma 7, TypeScript 7…) can break things, so they're
+    # planned as stories instead. Security fixes still arrive regardless.
+    ignore:
+      - dependency-name: "*"
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: github-actions
     directory: /
     schedule:
