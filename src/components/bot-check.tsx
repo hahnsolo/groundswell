@@ -7,6 +7,8 @@ type TurnstileApi = {
   render: (el: HTMLElement, opts: Record<string, unknown>) => string;
   reset: (id: string) => void;
   remove: (id: string) => void;
+  getResponse: (id: string) => string | undefined;
+  isExpired: (id: string) => boolean;
 };
 
 declare global {
@@ -49,7 +51,16 @@ export function useBotCheck(resetKey?: unknown): { widget: ReactNode; passed: bo
       "expired-callback": () => setCheck("checking"),
       "error-callback": () => setCheck("failed"),
     });
+    // The callbacks above occasionally don't fire on a page's first load (the
+    // token is there but we're never told), so also look for it directly.
+    const watch = setInterval(() => {
+      const id = widgetId.current;
+      if (!id || !window.turnstile) return;
+      const has = !!window.turnstile.getResponse(id) && !window.turnstile.isExpired(id);
+      setCheck((c) => (has ? "passed" : c === "passed" ? "checking" : c));
+    }, 500);
     return () => {
+      clearInterval(watch);
       if (widgetId.current) window.turnstile?.remove(widgetId.current);
       widgetId.current = null;
     };
