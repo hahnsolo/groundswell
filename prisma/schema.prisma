@@ -136,6 +136,11 @@ model Issue {
   status      String   @default("open")
   // When it was marked resolved: a win, shown off on the neighbourhood pages.
   resolvedAt  DateTime?
+  // Who the person who raised it thinks should fix it (src/lib/fixers.ts):
+  // city | province | federal | landlord | business | nonprofit | other | unsure
+  fixer       String   @default("unsure")
+  // What they wrote when fixer is "other".
+  fixerOther  String?
   country     String
   postalCode  String
   placeName   String

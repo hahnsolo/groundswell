@@ -171,12 +171,14 @@ let ISSUE;
   await go(page, "/issues/new?country=CA&postal=M5V");
   await page.getByLabel("What's the issue?").fill("Broken bench outside the Spadina library");
   await page.locator('select[name="category"]').selectOption({ index: 1 });
+  await page.getByLabel("City or town").check();
   const details = page.locator("textarea#description");
   await details.fill("The bench is broken and people can't sit down while they wait.");
   assert.match(await page.locator("#description-count").innerText(), /12 of 50 words/);
   await page.getByRole("button", { name: "Post issue" }).click();
   await page.getByText(/Add a bit more so neighbours can decide to join/).waitFor({ timeout: 30000 });
   assert.notEqual(await page.locator('select[name="category"]').inputValue(), "", "the category was forgotten after the refusal");
+  assert.equal(await page.getByLabel("City or town").isChecked(), true, "who should fix it was forgotten after the refusal");
   step("A thin description is refused, saying what to add, and the form keeps what was entered");
   await details.fill(
     "The bench outside the Spadina Road library has been broken since September. One leg snapped and it tips forward, " +
@@ -190,7 +192,19 @@ let ISSUE;
   ]);
   await settle(page);
   assert.match(await text(page), /Broken bench outside the Spadina library/);
-  step("A 60-word description starts the cause");
+  assert.match(await text(page), /Asking: the city/);
+  step("A 60-word description starts the cause, asking the city");
+
+  // A campaign starts from who should fix it; the leader can change it.
+  await page.getByText("+ Start a campaign").click();
+  assert.equal(await page.locator('input[name="target"]').inputValue(), "City council for Downtown Toronto");
+  // (Next keeps the new-cause page hidden in the background for Back, so look only inside the change form.)
+  const change = page.locator("details", { hasText: "Change who should fix it" });
+  await change.getByText("Change who should fix it").click();
+  await change.getByLabel("Province").check();
+  await change.getByRole("button", { name: "Save" }).click();
+  await waitText(page, /Asking: the province/);
+  step("Campaigns start from who should fix it, and the leader can change it");
   await page.context().close();
 }
 

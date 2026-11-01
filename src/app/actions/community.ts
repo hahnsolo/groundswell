@@ -15,6 +15,7 @@ import { handOverMeetup, leaveIssue } from "@/lib/leaving";
 import { chatAccess } from "@/lib/chat-rules";
 import { announceChatChange } from "@/lib/live-chat";
 import { descriptionProblem } from "@/lib/words";
+import { FIXER_IDS, FIXER_OTHER_MAX, type FixerId } from "@/lib/fixers";
 import { fromZodError, type FormState } from "@/lib/forms";
 
 const id = z.string().min(1).max(40);
@@ -50,6 +51,15 @@ async function issueOpen(issueId: string) {
 
 // ---------- Issues ----------
 
+// Who should fix it: one of the choices, plus what they wrote for "Something else".
+const fixerFields = {
+  fixer: z.enum(FIXER_IDS, { errorMap: () => ({ message: "Pick who you think should fix it. Not sure is fine." }) }),
+  fixerOther: z.string().trim().max(FIXER_OTHER_MAX).optional(),
+};
+const fixerOtherMissing = (d: { fixer: string; fixerOther?: string }) => d.fixer === "other" && !d.fixerOther;
+const FIXER_OTHER_MISSING = { fieldErrors: { fixerOther: ["Say who, for example: the school board."] } };
+const fixerData = (d: { fixer: FixerId; fixerOther?: string }) => ({ fixer: d.fixer, fixerOther: d.fixer === "other" ? d.fixerOther : null });
+
 const issueSchema = z.object({
   country: z.string(),
   postal: z.string(),
@@ -63,6 +73,7 @@ const issueSchema = z.object({
       if (problem) ctx.addIssue({ code: z.ZodIssueCode.custom, message: problem });
     }),
   category: z.enum(CATEGORY_IDS, { errorMap: () => ({ message: "Pick a category." }) }),
+  ...fixerFields,
 });
 
 export async function createIssue(_prev: FormState, formData: FormData): Promise<FormState> {
@@ -70,7 +81,8 @@ export async function createIssue(_prev: FormState, formData: FormData): Promise
   if (!user.emailVerified) return { error: UNVERIFIED_ERROR };
   const parsed = issueSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return fromZodError(parsed.error);
-  const spam = await spamCheck(user, formData, "issue", parsed.data.title, parsed.data.description);
+  if (fixerOtherMissing(parsed.data)) return FIXER_OTHER_MISSING;
+  const spam = await spamCheck(user, formData, "issue", parsed.data.title, parsed.data.description, parsed.data.fixerOther);
   if (spam) return spam;
 
   const postal = parsePostal(parsed.data.country, parsed.data.postal);
@@ -89,6 +101,7 @@ export async function createIssue(_prev: FormState, formData: FormData): Promise
       title: parsed.data.title,
       description: parsed.data.description,
       category: parsed.data.category,
+      ...fixerData(parsed.data),
       country: place.country,
       postalCode: place.postalCode,
       placeName: place.placeName,
@@ -118,6 +131,19 @@ export async function setIssueStatus(formData: FormData) {
     await db.issue.updateMany({ where, data: { status, resolvedAt: null } });
   }
   refresh();
+}
+
+/** The person who raised a cause can change who they think should fix it. */
+export async function setIssueFixer(_prev: FormState, formData: FormData): Promise<FormState> {
+  const user = await requireUser();
+  const parsed = z.object({ issueId: id, ...fixerFields }).safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return fromZodError(parsed.error);
+  if (fixerOtherMissing(parsed.data)) return FIXER_OTHER_MISSING;
+  const links = linkError(user, parsed.data.fixerOther);
+  if (links) return { error: links };
+  await db.issue.updateMany({ where: { id: parsed.data.issueId, authorId: user.id, removedAt: null }, data: fixerData(parsed.data) });
+  refresh();
+  return { ok: true };
 }
 
 export async function toggleSupport(formData: FormData) {

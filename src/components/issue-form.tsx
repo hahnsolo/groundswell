@@ -7,6 +7,7 @@ import { COUNTRIES } from "@/lib/countries";
 import { Field, FormError, SubmitButton, inputStyles, useFormAction } from "./ui";
 import { Honeypot } from "./bot-check";
 import { DescriptionField } from "./description-field";
+import { FixerField } from "./fixer-field";
 
 export function IssueForm({ country, postal }: { country: string; postal: string }) {
   const [state, action] = useFormAction(createIssue);
@@ -41,6 +42,7 @@ export function IssueForm({ country, postal }: { country: string; postal: string
         </select>
       </Field>
       <DescriptionField defaultValue={v?.description} error={e?.description?.[0]} />
+      <FixerField country={countryCode} defaultOther={v?.fixerOther} errors={e} formState={state} />
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="Country" name="country" errors={e}>
           <select ref={countryBox} name="country" value={countryCode} onChange={(ev) => setCountryCode(ev.target.value)} className={inputStyles}>

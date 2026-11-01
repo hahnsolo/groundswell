@@ -87,6 +87,7 @@ async function main() {
       description:
         "Kids heading to school have to cross four lanes with no signal between Wilshire and Rexford. Drivers rarely stop at the painted crosswalk.\n\nA signalized crossing or at least a crossing guard during drop-off would make a huge difference.",
       category: "safety",
+      fixer: "city",
       authorId: alex.id,
       createdAt: new Date(Date.now() - 9 * day),
       // Joined over a week ago, so they're past the chat's 24-hour wait.
@@ -143,6 +144,7 @@ async function main() {
       description:
         "Several tenants in buildings near Spadina & King received above-guideline increase notices. Many of us don't know our rights or whether the landlord's application is valid.\n\nLooking to organize a tenants' meeting and connect with a legal clinic.",
       category: "housing",
+      fixer: "landlord",
       authorId: priya.id,
       createdAt: new Date(Date.now() - 2 * day),
       supports: { create: [{ userId: priya.id }] },
@@ -166,6 +168,7 @@ async function main() {
       title: "Trinity Bellwoods washrooms closed again",
       description: "The park washrooms have been locked for three weeks. Families and seniors are going without. Any update from Parks?",
       category: "parks",
+      fixer: "city",
       status: "in_progress",
       authorId: priya.id,
       createdAt: new Date(Date.now() - 12 * day),

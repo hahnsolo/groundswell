@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Suspense } from "react";
 import { getCurrentUser } from "@/lib/auth";
 import { getCategory } from "@/lib/categories";
+import { askingWhom, fixerEmoji } from "@/lib/fixers";
 import { areaHref } from "@/lib/countries";
 import { getIssueDetail } from "@/lib/queries";
 import { displayName } from "@/lib/accounts";
@@ -61,6 +62,7 @@ async function CauseHeader({ params, children }: { params: LayoutProps<"/issues/
     emailVerified: user?.emailVerified,
   });
   const upcomingEvents = issue.meetups.filter((m) => m.upcoming).length;
+  const asking = askingWhom(issue.fixer, issue.fixerOther, issue.country);
 
   return (
     <article>
@@ -81,6 +83,16 @@ async function CauseHeader({ params, children }: { params: LayoutProps<"/issues/
           {issue.status === "resolved" && <span className="ml-2 rounded-full bg-sage/30 px-2 py-0.5 font-semibold text-foreground">✓ Won</span>}
         </p>
         <h1 className="mt-2 text-3xl font-semibold leading-tight sm:text-4xl">{issue.title}</h1>
+        <p className="mt-2 text-sm">
+          <span aria-hidden="true">{fixerEmoji(issue.fixer, issue.country)} </span>
+          {asking ? (
+            <>
+              Asking: <strong>{asking}</strong>
+            </>
+          ) : (
+            <span className="text-muted">Who should fix it? Not sure yet. Know who? Tell the group in the chat.</span>
+          )}
+        </p>
 
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
           <p className="flex items-center gap-2 text-sm">

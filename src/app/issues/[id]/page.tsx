@@ -8,6 +8,8 @@ import { reportContent, setIssueStatus } from "@/app/actions/community";
 import { LocalTime } from "@/components/local-time";
 import { CampaignForm, LetterBuilder, RepLookup, SignForm } from "@/components/issue-forms";
 import { Panel, SignInPrompt } from "@/components/cause-parts";
+import { FixerChangeForm } from "@/components/fixer-field";
+import { campaignTargetFor } from "@/lib/fixers";
 
 // The cause's holding page: what it's about, the ask, and what's coming up.
 export default function AboutTab(props: PageProps<"/issues/[id]">) {
@@ -114,7 +116,10 @@ async function About({ params }: Pick<PageProps<"/issues/[id]">, "params">) {
                 + {issue.campaigns.length ? "Start another campaign" : "Start a campaign"}
               </summary>
               <div className="mt-4">
-                <CampaignForm issueId={issue.id} />
+                <CampaignForm
+                  issueId={issue.id}
+                  defaultTarget={campaignTargetFor(issue.fixer, issue.fixerOther, issue.country, issue.placeName)}
+                />
               </div>
             </details>
           ) : (
@@ -130,6 +135,7 @@ async function About({ params }: Pick<PageProps<"/issues/[id]">, "params">) {
 
       <div className="flex flex-wrap items-center gap-3 text-sm">
         {isAuthor ? (
+          <div className="w-full space-y-3">
           <form action={setIssueStatus} className="flex flex-wrap items-center gap-2">
             <input type="hidden" name="issueId" value={issue.id} />
             <span className="text-muted">Where it stands:</span>
@@ -144,6 +150,8 @@ async function About({ params }: Pick<PageProps<"/issues/[id]">, "params">) {
               </button>
             ))}
           </form>
+          <FixerChangeForm issueId={issue.id} country={issue.country} fixer={issue.fixer} fixerOther={issue.fixerOther} />
+          </div>
         ) : (
           user?.emailVerified && (
             <form action={reportContent}>
