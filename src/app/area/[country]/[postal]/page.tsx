@@ -113,10 +113,10 @@ async function AreaContent({
           </Link>
         </div>
         <Link
-          href={`/issues/new?country=${place.country}&postal=${encodeURIComponent(place.postalCode)}`}
+          href={`/causes/new?country=${place.country}&postal=${encodeURIComponent(place.postalCode)}`}
           className={`${buttonStyles.secondary} shrink-0`}
         >
-          + Raise an issue here
+          + Start a cause here
         </Link>
       </div>
 
@@ -167,7 +167,7 @@ async function AreaContent({
                   Or try <Link href={href({ radius: 50 })} className="underline">looking further out, up to 50 km</Link>.
                 </>
               ) : (
-                "Raising an issue is how a community starts."
+                "Starting a cause is how a community gets going."
               )}
             </p>
           </div>

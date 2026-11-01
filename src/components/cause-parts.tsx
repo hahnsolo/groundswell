@@ -25,7 +25,7 @@ export function SignInPrompt({ next, text }: { next: string; text: string }) {
   );
 }
 
-export function RemovedNotice({ what, removedAt, reason }: { what: "issue" | "comment" | "message"; removedAt: Date; reason: string | null }) {
+export function RemovedNotice({ what, removedAt, reason }: { what: "cause" | "comment" | "message"; removedAt: Date; reason: string | null }) {
   return (
     <div role="status" className="rounded-md bg-red-50 p-3 text-sm text-red-900 dark:bg-red-950/40 dark:text-red-200">
       <p>

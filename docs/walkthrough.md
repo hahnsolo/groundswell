@@ -99,7 +99,7 @@ Under the title: the first few people's initials and a line like *"Priya, Sam an
 ---
 ## 3. A cause's space
 
-`/issues/…` (About) · `/issues/…/chat` · `/issues/…/events`
+`/causes/…` (About) · `/causes/…/chat` · `/causes/…/events` (old `/issues/…` links redirect here)
 
 Each cause (we still call them "issues" in the app for now) is a small space of its own. A shared header sits above three tabs.
 
@@ -199,7 +199,7 @@ Every upcoming event for causes around your neighbourhood, split into **This wee
 ---
 ## 4. Raise an issue
 
-`/issues/new` (from **Start something** in the top bar, or **+ Raise an issue here** on an area page)
+`/causes/new` (from **Start something** in the top bar, or **+ Start a cause here** on an area page)
 
 ![Raise an issue form](images/walkthrough/10-new-issue.webp)
 

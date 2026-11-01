@@ -48,6 +48,6 @@ export async function signIn(browser, email, options = {}) {
 /** The id of the cause whose card on an area page contains `title`. */
 export async function findCause(page, areaPath, title) {
   await go(page, areaPath);
-  const href = await page.locator('a[href^="/issues/"]', { hasText: title }).first().getAttribute("href", { timeout: 30000 });
+  const href = await page.locator('a[href^="/causes/"]', { hasText: title }).first().getAttribute("href", { timeout: 30000 });
   return href.split("/")[2];
 }

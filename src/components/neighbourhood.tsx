@@ -33,8 +33,8 @@ export function StartSomething({ initial }: { initial: Area | null }) {
   const raw = useSyncExternalStore(subscribe, readCookie, () => null);
   const area = decodeArea(raw) ?? initial;
   const href = area
-    ? `/issues/new?country=${area.country}&postal=${encodeURIComponent(area.postal)}`
-    : "/issues/new";
+    ? `/causes/new?country=${area.country}&postal=${encodeURIComponent(area.postal)}`
+    : "/causes/new";
   return (
     <Link
       href={href}

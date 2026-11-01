@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 /** About · Chat · Events, under a cause's header. */
 export function CauseTabs({ id, chatLocked, messages, events }: { id: string; chatLocked: boolean; messages: number; events: number }) {
   const path = usePathname();
-  const base = `/issues/${id}`;
+  const base = `/causes/${id}`;
   const tabs = [
     { href: base, label: "About" },
     { href: `${base}/chat`, label: "Chat", extra: chatLocked ? "🔒" : messages > 0 ? String(messages) : null },

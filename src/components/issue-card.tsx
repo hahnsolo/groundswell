@@ -21,7 +21,7 @@ export function IssueCard({ issue }: { issue: NearbyIssue }) {
   const supporters = issue._count.supports;
   return (
     <Link
-      href={`/issues/${issue.id}`}
+      href={`/causes/${issue.id}`}
       className="group block rounded-md border-[1.5px] border-ink bg-surface p-4 transition hover:-translate-x-px hover:-translate-y-px hover:shadow-[3px_3px_0_var(--ink)]"
     >
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-[11px] uppercase tracking-wide text-muted">

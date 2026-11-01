@@ -5,7 +5,7 @@ export default function manifest(): MetadataRoute.Manifest {
     id: "/",
     name: "Groundswell",
     short_name: "Groundswell",
-    description: "See the issues your neighbours care about, meet up, and push for change together.",
+    description: "See the causes your neighbours care about, meet up, and push for change together.",
     start_url: "/?source=pwa",
     scope: "/",
     display: "standalone",
@@ -20,7 +20,7 @@ export default function manifest(): MetadataRoute.Manifest {
     ],
     shortcuts: [
       { name: "My activity", url: "/me", icons: [{ src: "/icons/icon-192.png", sizes: "192x192" }] },
-      { name: "Start something", url: "/issues/new", icons: [{ src: "/icons/icon-192.png", sizes: "192x192" }] },
+      { name: "Start something", url: "/causes/new", icons: [{ src: "/icons/icon-192.png", sizes: "192x192" }] },
     ],
   };
 }

@@ -54,7 +54,7 @@ export function DeleteAccountForm({ hasPassword, graceDays }: { hasPassword: boo
       <div className="mt-4 space-y-4 text-sm">
         <ul className="list-disc space-y-1 pl-5 text-muted">
           <li>You&apos;ll be signed out on every device.</li>
-          <li>Issues and comments you posted stay up, credited to &ldquo;Former member&rdquo;.</li>
+          <li>Causes and messages you posted stay up, credited to &ldquo;Former member&rdquo;.</li>
           <li>Your campaign signatures and upcoming RSVPs are removed. Meetups you&apos;re hosting pass to the next person going, or are cancelled.</li>
           <li>
             Sign in within <strong className="text-foreground">{graceDays} days</strong> to undo this. After that your name, email and password

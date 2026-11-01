@@ -42,7 +42,7 @@ async function Event({ params }: Pick<PageProps<"/events/[id]">, "params">) {
 
   return (
     <article>
-      <Link href={`/issues/${e.issue.id}/events`} className="text-sm text-muted hover:text-foreground">
+      <Link href={`/causes/${e.issue.id}/events`} className="text-sm text-muted hover:text-foreground">
         ← Part of <span className="underline underline-offset-2">{e.issue.title}</span>
       </Link>
 

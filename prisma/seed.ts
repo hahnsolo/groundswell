@@ -200,7 +200,7 @@ async function main() {
     data: { targetType: "comment", targetId: spam.id, reporterId: priya.id, reason: "Spam / advertising" },
   });
 
-  console.log(`Seeded demo data. Example issue: /issues/${crosswalk.id}`);
+  console.log(`Seeded demo data. Example cause: /causes/${crosswalk.id}`);
 }
 
 main()

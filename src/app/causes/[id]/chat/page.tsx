@@ -13,7 +13,7 @@ import { buttonStyles } from "@/components/styles";
 
 // The cause's conversation. Members only (see src/lib/chat-rules.ts): join to
 // read along; post once you've been a member for 24 hours.
-export default function ChatTab(props: PageProps<"/issues/[id]/chat">) {
+export default function ChatTab(props: PageProps<"/causes/[id]/chat">) {
   return (
     <Suspense fallback={<div className="h-64 animate-pulse rounded-md bg-border/60" />}>
       <Chat params={props.params} />
@@ -21,7 +21,7 @@ export default function ChatTab(props: PageProps<"/issues/[id]/chat">) {
   );
 }
 
-async function Chat({ params }: Pick<PageProps<"/issues/[id]/chat">, "params">) {
+async function Chat({ params }: Pick<PageProps<"/causes/[id]/chat">, "params">) {
   const { id } = await params;
   const user = await getCurrentUser();
   const issue = await getIssueDetail(id, user?.id ?? null);
@@ -48,7 +48,7 @@ async function Chat({ params }: Pick<PageProps<"/issues/[id]/chat">, "params">) 
           </p>
           <div className="mt-5">
             {access.kind === "sign-in" ? (
-              <SignInPrompt next={`/issues/${issue.id}/chat`} text="join" />
+              <SignInPrompt next={`/causes/${issue.id}/chat`} text="join" />
             ) : (
               <form action={toggleSupport}>
                 <input type="hidden" name="issueId" value={issue.id} />

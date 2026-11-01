@@ -10,7 +10,7 @@ import { Panel, SignInPrompt } from "@/components/cause-parts";
 import { buttonStyles } from "@/components/styles";
 
 // Events belong to a cause: meetups in person or online.
-export default function EventsTab(props: PageProps<"/issues/[id]/events">) {
+export default function EventsTab(props: PageProps<"/causes/[id]/events">) {
   return (
     <Suspense fallback={<div className="h-64 animate-pulse rounded-md bg-border/60" />}>
       <Events params={props.params} />
@@ -18,12 +18,12 @@ export default function EventsTab(props: PageProps<"/issues/[id]/events">) {
   );
 }
 
-async function Events({ params }: Pick<PageProps<"/issues/[id]/events">, "params">) {
+async function Events({ params }: Pick<PageProps<"/causes/[id]/events">, "params">) {
   const { id } = await params;
   const user = await getCurrentUser();
   const issue = await getIssueDetail(id, user?.id ?? null);
   if (!issue || issue.removedAt || (issue.hidden && issue.authorId !== user?.id)) return null; // the layout explains
-  const here = `/issues/${issue.id}/events`;
+  const here = `/causes/${issue.id}/events`;
 
   return (
     <div className="space-y-4">
