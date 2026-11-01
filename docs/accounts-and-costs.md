@@ -13,7 +13,7 @@ Free-plan limits change from time to time. The numbers below are approximate as 
 | Neon | The database | Free | Lots of data, or being busy around the clock |
 | Resend | Sends emails | Free | More than ~3,000 emails/month or ~100/day |
 | GoDaddy | The `hahnsolo.ca` domain and DNS | Already paid for | The yearly domain renewal (which you already pay) |
-| Cloudflare Turnstile *(optional, not set up yet)* | Bot check | Free | Nothing at our scale |
+| Cloudflare Turnstile | Bot check | Free | Nothing at our scale |
 | Google sign-in *(optional, not set up)* | "Sign in with Google" | Free | Nothing |
 | Apple sign-in *(optional, not set up)* | "Sign in with Apple" | — | $99 USD/year Apple Developer membership |
 
@@ -51,11 +51,11 @@ Free-plan limits change from time to time. The numbers below are approximate as 
 - **What it does:** you own `hahnsolo.ca` through GoDaddy, and GoDaddy's DNS is the "address book" that tells the internet where `groundswell.hahnsolo.ca` lives. Your Microsoft 365 email for `hahnsolo.ca` also depends on records there. See [DNS](dns.md) for exactly what was added and what must never be touched.
 - **Cost:** only the domain renewal you already pay. Adding DNS records is free. GoDaddy will try to upsell things like "premium DNS" or "website security." We don't need any of them.
 
-## Cloudflare Turnstile: the bot check (optional, recommended)
+## Cloudflare Turnstile: the bot check
 
 - **What it does:** an "are you human?" check on sign-up, sign-in and password reset. It's usually invisible; sometimes people see a quick checkbox.
-- **Status:** the code is built in but **switched off** until its two keys are added to Vercel. Setting it up is on the to-do list (see [Security and spam](security-and-spam.md)).
-- **Needs:** a free Cloudflare account. You do **not** need to move your DNS to Cloudflare.
+- **Status:** **on** for the live site (widget "Groundswell" in Cloudflare → Turnstile). See [Security and spam](security-and-spam.md).
+- **Account:** free Cloudflare account, signed in with GitHub. Your DNS stays at GoDaddy; nothing moved to Cloudflare.
 - **Cost:** free.
 
 ## Google sign-in (optional)

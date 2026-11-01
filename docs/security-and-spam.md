@@ -15,10 +15,12 @@ The main code is in `src/lib/spam.ts`, `src/lib/rate-limit.ts`, `src/lib/better-
 - **Admin pages are invisible:** anyone who isn't an admin gets "page not found" at `/admin/reports`, not "access denied," so the page's existence isn't revealed. Admin can only be granted directly in the database (see [Day to day](day-to-day.md#making-someone-an-admin)), and the sign-up form can't set it.
 - **The live site won't start without a strong `BETTER_AUTH_SECRET`**, so it can never run with a forgeable default.
 
-### Bot check (Cloudflare Turnstile): built, **not switched on yet**
+### Bot check (Cloudflare Turnstile): **on** since 31 Oct 2026
 - Covers sign-up, sign-in, password reset and resending the confirmation email, in both our forms *and* the login system's public web addresses (so bots can't skip the form and call those directly).
+- Most people see nothing, or a box that ticks itself. Cloudflare only asks for a click when something looks off (automated browsers always get asked).
 - If Cloudflare can't be reached, the check **fails closed**: the attempt is refused rather than waved through.
-- Until the keys are added, the live site logs a warning: "TURNSTILE_SECRET_KEY is not set."
+- The widget is called **Groundswell** in Cloudflare → Turnstile, for the hostname `groundswell.hahnsolo.ca`, mode *Managed*.
+- Previews and your PC use Cloudflare's published test keys, which always pass.
 
 ### Rate limits ("slow down" counters)
 The counters are stored in the database, not in server memory. Vercel runs many short-lived copies of the app, and in-memory counters would reset constantly. Database counters are shared and survive restarts.
@@ -73,8 +75,7 @@ No secret is in the code or on GitHub. They're in `.env` (ignored by git) and Ve
 In rough order of importance:
 
 1. **Turn on 2-step verification (2FA) on every account:** GitHub, Vercel, Neon, Resend, GoDaddy, Cloudflare, and Google/Apple if used. Whoever gets into GitHub or Vercel controls the site; GoDaddy controls your domain *and* your email. Use an authenticator app rather than text messages where offered, and save the backup codes somewhere safe.
-2. **Add the Turnstile keys:** Cloudflare → Turnstile → **Add widget**, hostname `groundswell.hahnsolo.ca`, mode *Managed*. Put `NEXT_PUBLIC_TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY` in Vercel, then redeploy. Afterwards, sign up with a test account to check that the widget appears.
-3. **Add `CRON_SECRET` in Vercel** (before or with the next deploy), so the daily job that deletes removed content can run. See [Keys and secrets](keys-and-secrets.md).
-4. **Make your own account an admin** on the live site (see [Day to day](day-to-day.md#making-someone-an-admin)), so someone is watching the moderation queue.
-5. **Legal pages:** terms of use, a privacy policy (what's stored, why, and how to get it deleted; Canada's PIPEDA applies), and a code of conduct that says what gets removed. Link them from the sign-up page and footer.
-6. **Later, if spam gets through anyway:** a "report user" feature, admin tools to suspend an account, and tightening DMARC from `p=none` to `p=quarantine` once you've seen that all legitimate email passes.
+2. **Add `CRON_SECRET` in Vercel** (before or with the next deploy), so the daily job that deletes removed content can run. See [Keys and secrets](keys-and-secrets.md).
+3. **Make your own account an admin** on the live site (see [Day to day](day-to-day.md#making-someone-an-admin)), so someone is watching the moderation queue.
+4. **Legal pages:** terms of use, a privacy policy (what's stored, why, and how to get it deleted; Canada's PIPEDA applies), and a code of conduct that says what gets removed. Link them from the sign-up page and footer.
+5. **Later, if spam gets through anyway:** a "report user" feature, admin tools to suspend an account, and tightening DMARC from `p=none` to `p=quarantine` once you've seen that all legitimate email passes.
