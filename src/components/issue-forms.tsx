@@ -79,7 +79,7 @@ export function MeetupForm({ issueId }: { issueId: string }) {
   );
 }
 
-export function CampaignForm({ issueId }: { issueId: string }) {
+export function CampaignForm({ issueId, defaultTarget }: { issueId: string; defaultTarget?: string }) {
   const [state, action] = useFormAction(createCampaign);
   const e = state?.fieldErrors;
   const v = state?.values;
@@ -89,7 +89,7 @@ export function CampaignForm({ issueId }: { issueId: string }) {
       <input type="hidden" name="issueId" value={issueId} />
       <FormError message={state?.error} />
       <Field label="Who can fix this?" name="target" errors={e} hint="A specific decision-maker: city council, school board, landlord, transit agency…">
-        <input name="target" required placeholder="City Council — Ward 4" defaultValue={v?.target} className={inputStyles} />
+        <input name="target" required placeholder="City Council — Ward 4" defaultValue={v?.target ?? defaultTarget} className={inputStyles} />
       </Field>
       <Field label="What exactly are you asking for?" name="ask" errors={e} hint="Concrete asks win: “Install a signalized crosswalk at Elm & 5th before next school year.”">
         <textarea name="ask" required rows={4} defaultValue={v?.ask} className={inputStyles} />
