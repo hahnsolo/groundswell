@@ -17,7 +17,10 @@ if (process.env.NODE_ENV === "production" && process.env.NEXT_PHASE !== "phase-p
 export async function verifyHuman(formData: FormData): Promise<boolean> {
   if (!turnstileEnabled) return true;
   const token = formData.get("cf-turnstile-response");
-  if (typeof token !== "string" || !token) return false;
+  if (typeof token !== "string" || !token) {
+    console.warn("Bot check: form sent without a Turnstile token (submitted before the check finished, or the widget didn't load)");
+    return false;
+  }
   try {
     const res = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
       method: "POST",
@@ -28,7 +31,9 @@ export async function verifyHuman(formData: FormData): Promise<boolean> {
       }),
       signal: AbortSignal.timeout(10000),
     });
-    const data = (await res.json()) as { success?: boolean };
+    const data = (await res.json()) as { success?: boolean; "error-codes"?: string[] };
+    // Cloudflare's reason (e.g. timeout-or-duplicate, invalid-input-response) shows in Vercel's logs.
+    if (data.success !== true) console.warn("Bot check: Turnstile refused the token:", data["error-codes"]?.join(", ") || "no reason given");
     return data.success === true;
   } catch (err) {
     console.error("Turnstile verification failed", err);

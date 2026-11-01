@@ -4,10 +4,13 @@ import Link from "next/link";
 import { signIn, signUp } from "@/app/actions/auth";
 import { COUNTRIES } from "@/lib/countries";
 import { Field, FormError, SubmitButton, inputStyles, useFormAction } from "./ui";
-import { Honeypot, Turnstile } from "./bot-check";
+import { Honeypot, useBotCheck } from "./bot-check";
+
+const CHECKING = "Checking you're human…";
 
 export function SignInForm({ next }: { next?: string }) {
   const [state, action] = useFormAction(signIn);
+  const bot = useBotCheck(state);
   const v = state?.values;
   return (
     <form action={action} className="space-y-4">
@@ -24,8 +27,8 @@ export function SignInForm({ next }: { next?: string }) {
           Forgot password?
         </Link>
       </p>
-      <Turnstile resetKey={state} />
-      <SubmitButton className="w-full" pendingText="Signing in…">
+      {bot.widget}
+      <SubmitButton className="w-full" pendingText="Signing in…" waitingFor={bot.passed ? undefined : CHECKING}>
         Sign in
       </SubmitButton>
       <p className="text-center text-sm text-muted">
@@ -40,6 +43,7 @@ export function SignInForm({ next }: { next?: string }) {
 
 export function SignUpForm({ next }: { next?: string }) {
   const [state, action] = useFormAction(signUp);
+  const bot = useBotCheck(state);
   const v = state?.values;
   return (
     <form action={action} className="space-y-4">
@@ -76,8 +80,8 @@ export function SignUpForm({ next }: { next?: string }) {
         {state?.fieldErrors?.postal?.[0] && <p className="text-sm text-red-600 dark:text-red-400">{state.fieldErrors.postal[0]}</p>}
       </fieldset>
       <Honeypot />
-      <Turnstile resetKey={state} />
-      <SubmitButton className="w-full" pendingText="Creating account…">
+      {bot.widget}
+      <SubmitButton className="w-full" pendingText="Creating account…" waitingFor={bot.passed ? undefined : CHECKING}>
         Create account
       </SubmitButton>
       <p className="text-center text-sm text-muted">
