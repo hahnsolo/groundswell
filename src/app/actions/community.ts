@@ -13,6 +13,7 @@ import { HOUR, rateLimit } from "@/lib/rate-limit";
 import { ESTABLISHED_ACCOUNT_MS, shouldAutoHide } from "@/lib/moderation";
 import { handOverMeetup, leaveIssue } from "@/lib/leaving";
 import { chatAccess } from "@/lib/chat-rules";
+import { announceChatChange } from "@/lib/live-chat";
 import { fromZodError, type FormState } from "@/lib/forms";
 
 const id = z.string().min(1).max(40);
@@ -157,6 +158,7 @@ export async function addComment(_prev: FormState, formData: FormData): Promise<
   });
   if (duplicate) return { error: "You just posted that." };
   await db.comment.create({ data: { ...parsed.data, authorId: user.id } });
+  announceChatChange(parsed.data.issueId);
   refresh();
   return { ok: true };
 }
@@ -308,7 +310,7 @@ export async function reportContent(formData: FormData) {
   const target =
     targetType === "issue"
       ? await db.issue.findUnique({ where: { id: targetId }, select: { removedAt: true } })
-      : await db.comment.findUnique({ where: { id: targetId }, select: { removedAt: true } });
+      : await db.comment.findUnique({ where: { id: targetId }, select: { removedAt: true, issueId: true } });
   if (!target || target.removedAt) return;
 
   await db.report.upsert({
@@ -331,6 +333,7 @@ export async function reportContent(formData: FormData) {
   if (shouldAutoHide(count)) {
     if (targetType === "issue") await db.issue.update({ where: { id: targetId }, data: { hidden: true } });
     else await db.comment.update({ where: { id: targetId }, data: { hidden: true } });
+    announceChatChange("issueId" in target ? (target.issueId as string) : targetId);
   }
   refresh();
 }
