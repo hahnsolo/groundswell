@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
@@ -11,6 +12,18 @@ import { CauseCard } from "@/components/cause-card";
 import { PostalSearch } from "@/components/postal-search";
 import { buttonStyles } from "@/components/styles";
 import { RememberArea } from "@/components/neighbourhood";
+
+// "Causes around Downtown Toronto" in the tab and in shared-link previews.
+export async function generateMetadata({ params }: PageProps<"/area/[country]/[postal]">): Promise<Metadata> {
+  const { country, postal } = await params;
+  const parsed = parsePostal(country, decodeURIComponent(postal));
+  if (!parsed.ok) return {};
+  const place = await resolvePlace(parsed.country.code, parsed.postal).catch(() => null);
+  if (!place) return {};
+  const title = `Causes around ${place.placeName}`;
+  const description = `What neighbours around ${place.placeName}, ${place.regionCode} care about, what's coming up, and how to join in.`;
+  return { title, description, openGraph: { title, description }, twitter: { title, description } };
+}
 
 export default function AreaPage(props: PageProps<"/area/[country]/[postal]">) {
   return (

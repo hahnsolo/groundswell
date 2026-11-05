@@ -1,5 +1,8 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { getCauseForShare } from "@/lib/queries";
+import { causeShare } from "@/lib/share-meta";
 import { Suspense } from "react";
 import { getCurrentUser } from "@/lib/auth";
 import { getCategory } from "@/lib/categories";
@@ -19,6 +22,21 @@ import { ShareButton } from "@/components/cause-forms";
 import { CauseTabs } from "@/components/cause-tabs";
 import { RemovedNotice } from "@/components/cause-parts";
 import { buttonStyles } from "@/components/styles";
+
+// The tab title and the preview card when the link is shared in WhatsApp,
+// iMessage, Facebook… (the image is opengraph-image.tsx next to this file).
+export async function generateMetadata({ params }: LayoutProps<"/causes/[id]">): Promise<Metadata> {
+  const { id } = await params;
+  const c = await getCauseForShare(id);
+  const share = c && causeShare(c);
+  if (!share) return { title: "Cause", robots: { index: false } };
+  return {
+    title: share.title,
+    description: share.description,
+    openGraph: { title: share.title, description: share.description, type: "website", url: `/causes/${id}` },
+    twitter: { card: "summary_large_image", title: share.title, description: share.description },
+  };
+}
 
 // A cause is a small space: this header (what it is, who's in, Join) sits
 // above its three tabs — About, Chat and Events.

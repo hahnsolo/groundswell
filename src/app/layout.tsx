@@ -20,9 +20,13 @@ const fraunces = Fraunces({
 });
 
 export const metadata: Metadata = {
+  // Shared links need full URLs for their preview images.
+  metadataBase: new URL(process.env.APP_URL ?? "http://localhost:3000"),
   title: { default: "Groundswell — what matters where you live", template: "%s · Groundswell" },
   description:
     "Enter your postal code to see the causes your neighbours care about, meet up with them, and push for change together.",
+  openGraph: { siteName: "Groundswell", type: "website", locale: "en_CA" },
+  twitter: { card: "summary_large_image" },
   applicationName: "Groundswell",
   appleWebApp: { capable: true, title: "Groundswell", statusBarStyle: "default" },
   icons: { apple: "/icons/apple-touch-icon.png" },
