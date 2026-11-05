@@ -609,7 +609,7 @@ let CAUSE;
   assert.equal(await page.locator("details#invite").count(), 0, "members don't get an invite panel");
   await go(priyaLeads, `/causes/${park}`);
   const invite = priyaLeads.locator("details#invite");
-  await invite.locator("summary").click();
+  await invite.evaluate((d) => (d.open = true)); // open already while it's gathering people (#76)
   const inviteLink = (await invite.locator("code").first().innerText()).trim();
   assert.match(inviteLink, /\/i\/[a-z2-9]{6}$/, "Priya gets a personal invite link");
   assert.match(await invite.innerText(), /Nobody has joined from your invite yet/);
@@ -641,10 +641,27 @@ let CAUSE;
   await alex.getByText("✓ Joined").first().waitFor({ timeout: 30000 });
   await go(priyaLeads, `/causes/${park}`);
   assert.match(await text(priyaLeads), /Where people came from: 1 person came from the flyer, 1 from invites/);
-  await priyaLeads.locator("details#invite summary").click();
+  await priyaLeads.locator("details#invite").evaluate((d) => (d.open = true));
   assert.match(await priyaLeads.getByTestId("invite-count").innerText(), /1 person has joined from your invite/);
-  await priyaLeads.context().close();
   step("Someone who joins through a leader's invite link counts toward 'joined from your invite'");
+
+  // 15. The leader panel (#76): near the top of About, next step first, tools grouped; members see none of it.
+  await go(priyaLeads, `/causes/${park}`);
+  const panel = priyaLeads.locator("section#leader");
+  const [panelTop, descTop] = await Promise.all([panel.boundingBox(), priyaLeads.locator("main p", { hasText: "Several tenants" }).first().boundingBox()]);
+  assert.ok(panelTop.y < descTop.y, "the leader panel comes before the description");
+  assert.match(await priyaLeads.getByTestId("leader-next").innerText(), /Next: get 2 more neighbours to join\.\s*Invite your group/);
+  assert.ok(await panel.locator("details#invite").evaluate((d) => d.open), "while it's gathering people, the invite tools are open");
+  for (const group of ["Move it forward", "People", "The cause"]) assert.equal(await panel.getByRole("heading", { name: group }).count(), 1, `group: ${group}`);
+  for (const tool of ["It's fixed: propose a win", "Add to the timeline: we contacted someone", "Close this cause", "Co-leaders", "Hand over leading this cause", "Edit title and description", "Change who should fix it", "Add a cover image"]) {
+    assert.equal(await panel.getByText(tool, { exact: true }).count(), 1, `the panel has: ${tool}`);
+  }
+  assert.match(await priyaLeads.locator("[aria-label^='Stage:']").innerText(), /Get 2 more neighbours to join and this moves to Gathering/);
+  await go(page, `/causes/${park}`);
+  assert.equal(await page.locator("section#leader").count(), 0, "members don't see the leader panel");
+  assert.match(await page.locator("[aria-label^='Stage:']").innerText(), /2 more neighbours joining moves this to Gathering/);
+  await priyaLeads.context().close();
+  step("The leader panel sits near the top with the next step first and every tool grouped; members see none of it");
 
   await alex.context().close();
   await page.context().close();

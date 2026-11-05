@@ -4,6 +4,7 @@ import {
   canReopen,
   confirmationsNeeded,
   isActive,
+  leaderNext,
   nextStep,
   proposalOpen,
   reachedStage,
@@ -48,6 +49,23 @@ describe("stages follow what happens", () => {
     expect(nextStep("raised", 2)).toBe("3 more neighbours joining moves this to Gathering.");
     expect(nextStep("raised", 4)).toBe("1 more neighbour joining moves this to Gathering.");
     expect(nextStep("won", 9)).toBeNull();
+  });
+
+  it("speaks to the people leading it in 'you' words (#76)", () => {
+    expect(nextStep("raised", 2, true)).toBe("Get 3 more neighbours to join and this moves to Gathering.");
+    expect(nextStep("gathering", 6, true)).toBe("You can hold a first meetup to move this to Organizing.");
+    expect(nextStep("taking_action", 6, true)).toMatch(/^When it's fixed, you can propose a win/);
+    expect(nextStep("taking_action", 6)).toMatch(/whoever leads it/);
+  });
+
+  it("gives the leader one next thing to do (#76)", () => {
+    expect(leaderNext("raised", 4)).toEqual({ text: "Next: get 1 more neighbour to join.", action: "invite" });
+    expect(leaderNext("gathering", 7)?.action).toBe("event");
+    expect(leaderNext("organizing", 7)?.action).toBe("campaign");
+    expect(leaderNext("taking_action", 7)).toEqual({ text: "It's fixed? Propose a win.", action: "win" });
+    expect(leaderNext("taking_action", 7, true)?.action).toBe("waiting");
+    expect(leaderNext("won", 7)).toBeNull();
+    expect(leaderNext("closed", 7, true)).toBeNull();
   });
 });
 

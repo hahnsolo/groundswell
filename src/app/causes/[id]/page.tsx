@@ -6,7 +6,8 @@ import { displayName } from "@/lib/accounts";
 import { removeCoLeader, reportContent, withdrawLeadOffer, withdrawWin } from "@/app/actions/community";
 import { coLeadInviteOpen, leadsCause, MAX_CO_LEADERS } from "@/lib/leadership";
 import { MAX_LEADING_CAUSES } from "@/lib/leading-limit";
-import { isActive } from "@/lib/stages";
+import { isActive, leaderNext, type Stage } from "@/lib/stages";
+import { buttonStyles } from "@/components/styles";
 import { CloseCauseForm, LogContactForm, LogReplyForm, ProposeWinForm } from "@/components/stage-parts";
 import { db } from "@/lib/db";
 import { LEAD_OFFER_DAYS, offerOpen } from "@/lib/leadership";
@@ -98,6 +99,25 @@ async function About({ params }: Pick<PageProps<"/causes/[id]">, "params">) {
 
   return (
     <div className="space-y-6">
+      {leads && user && (
+        <LeaderPanel
+          cause={cause}
+          user={user}
+          isLeader={isLeader}
+          active={active}
+          campaignTarget={campaignTarget}
+          sources={sources}
+          inviteCode={inviteCode}
+          invitedCount={invitedCount}
+          coLeads={coLeads}
+          coLeadSpaces={coLeadSpaces}
+          handOverTo={handOverTo}
+          pendingOffer={pendingOffer}
+          pendingOfferUntil={pendingOfferUntil}
+          place={place}
+        />
+      )}
+
       <Panel>
         <p className="whitespace-pre-line text-[17px] leading-relaxed">{cause.description}</p>
       </Panel>
@@ -212,21 +232,6 @@ async function About({ params }: Pick<PageProps<"/causes/[id]">, "params">) {
         </Panel>
       )}
 
-      {sources && (
-        <p className="rounded-md bg-sage/25 p-2 text-sm">
-          <strong>Where people came from:</strong> {sources}.
-        </p>
-      )}
-
-      {inviteCode && (
-        <details className="border-t border-border pt-4 text-sm" id="invite">
-          <summary className="cursor-pointer font-medium hover:text-foreground">👋 Bring your group over: invite your WhatsApp group, email list or contacts</summary>
-          <div className="mt-3">
-            <InviteYourGroup causeId={cause.id} title={cause.title} place={place} inviteLink={inviteUrl(baseUrl(), inviteCode)} joined={invitedCount} />
-          </div>
-        </details>
-      )}
-
       {cause.stage !== "closed" && (
         <details className="border-t border-border pt-4 text-sm" id="spread">
           <summary className="cursor-pointer font-medium hover:text-foreground">📣 Spread the word: print a flyer, post an image</summary>
@@ -236,34 +241,118 @@ async function About({ params }: Pick<PageProps<"/causes/[id]">, "params">) {
         </details>
       )}
 
-      <div className="flex flex-wrap items-center gap-3 text-sm">
-        {leads ? (
-          <div className="w-full space-y-3">
-          {active && (
-            <>
-              {cause.winProposal ? (
-                <form action={withdrawWin} className="flex flex-wrap items-center gap-3">
-                  <input type="hidden" name="proposalId" value={cause.winProposal.id} />
-                  <span>
-                    You proposed a win: {cause.winProposal.confirmed} of {cause.winProposal.needed} confirmations so far.
-                  </span>
-                  <button className="text-xs text-muted underline hover:text-foreground">Withdraw it</button>
-                </form>
-              ) : (
-                <ProposeWinForm causeId={cause.id} />
-              )}
-              <LogContactForm causeId={cause.id} suggestedWho={campaignTarget} />
-              {cause.actions.some((a) => a.kind === "contacted") && <LogReplyForm causeId={cause.id} />}
-              <CloseCauseForm causeId={cause.id} />
-            </>
-          )}
-          <FixerChangeForm causeId={cause.id} country={cause.country} fixer={cause.fixer} fixerOther={cause.fixerOther} />
-          {canEditCause(cause, user?.id) && <EditCauseForm causeId={cause.id} title={cause.title} description={cause.description} />}
-          {canEditCause(cause, user?.id) && (
-            <details className="text-sm">
-              <summary className="cursor-pointer text-muted hover:text-foreground">{cause.coverUrl ? "Change the cover image" : "Add a cover image"}</summary>
-              <div className="mt-3 max-w-xl">
-                <CoverPicker target="cause" id={cause.id} current={cause.coverUrl} currentAlt={cause.coverAlt} label="Choose a cover image for this cause" />
+      {!leads && user?.emailVerified && (
+        <form action={reportContent} className="text-sm">
+          <input type="hidden" name="targetType" value="cause" />
+          <input type="hidden" name="targetId" value={cause.id} />
+          <button className="text-xs text-muted hover:text-red-600">Report this cause</button>
+        </form>
+      )}
+    </div>
+  );
+}
+
+const STEP_LINKS = {
+  invite: { href: "#invite", label: "Invite your group" },
+  event: { href: "/events", label: "Organize an event" },
+  campaign: { href: "#ask", label: "Start a campaign" },
+  win: { href: "#forward", label: "Propose a win" },
+  waiting: { href: "#win", label: "See it" },
+} as const;
+
+const toolGroup = "space-y-2 border-t border-border pt-4";
+const groupTitle = "text-[11px] font-semibold uppercase tracking-wide text-muted";
+
+/**
+ * The leader panel (#76): only for the people leading the cause, near the top
+ * of About. The next step first, then their tools in three groups.
+ */
+function LeaderPanel({
+  cause,
+  user,
+  isLeader,
+  active,
+  campaignTarget,
+  sources,
+  inviteCode,
+  invitedCount,
+  coLeads,
+  coLeadSpaces,
+  handOverTo,
+  pendingOffer,
+  pendingOfferUntil,
+  place,
+}: {
+  cause: NonNullable<Awaited<ReturnType<typeof getCauseDetail>>>;
+  user: { id: string };
+  isLeader: boolean;
+  active: boolean;
+  campaignTarget: string;
+  sources: string | null;
+  inviteCode: string | null;
+  invitedCount: number;
+  coLeads: NonNullable<Awaited<ReturnType<typeof getCauseDetail>>>["coLeaders"];
+  coLeadSpaces: number;
+  handOverTo: { id: string; name: string }[];
+  pendingOffer: { id: string; to: { name: string } } | null;
+  pendingOfferUntil: Date | null;
+  place: string;
+}) {
+  const step = leaderNext(cause.stage as Stage, cause._count.members, !!cause.winProposal);
+  const link = step ? STEP_LINKS[step.action] : null;
+  const canEdit = canEditCause(cause, user.id);
+  return (
+    <Panel id="leader" title="🧭 Leading this cause" action={<span className="text-xs text-muted">Only you{coLeads.length ? " and your co-leaders" : ""} see this</span>}>
+      <div className="space-y-4 text-sm">
+        {step && link && (
+          <p className="flex flex-wrap items-center justify-between gap-3 rounded-md bg-mustard/25 p-3" data-testid="leader-next">
+            <strong className="min-w-0">{step.text}</strong>
+            <Link href={link.href.startsWith("/") ? `/causes/${cause.id}${link.href}` : link.href} className={`${buttonStyles.secondary} !px-3 !py-1.5`}>
+              {link.label}
+            </Link>
+          </p>
+        )}
+
+        {active && (
+          <section className={toolGroup} id="forward" aria-labelledby="lead-forward">
+            <h3 id="lead-forward" className={groupTitle}>
+              Move it forward
+            </h3>
+            {cause.winProposal ? (
+              <form action={withdrawWin} className="flex flex-wrap items-center gap-3">
+                <input type="hidden" name="proposalId" value={cause.winProposal.id} />
+                <span>
+                  You proposed a win: {cause.winProposal.confirmed} of {cause.winProposal.needed} confirmations so far.
+                </span>
+                <button className="text-xs text-muted underline hover:text-foreground">Withdraw it</button>
+              </form>
+            ) : (
+              <ProposeWinForm causeId={cause.id} />
+            )}
+            <LogContactForm causeId={cause.id} suggestedWho={campaignTarget} />
+            {cause.actions.some((a) => a.kind === "contacted") && <LogReplyForm causeId={cause.id} />}
+            <CloseCauseForm causeId={cause.id} />
+          </section>
+        )}
+
+        <section className={toolGroup} aria-labelledby="lead-people">
+          <h3 id="lead-people" className={groupTitle}>
+            People
+          </h3>
+          <p>
+            {cause._count.members} {cause._count.members === 1 ? "member" : "members"}
+            {sources ? (
+              <>
+                {" "}
+                · <span data-testid="sources">Where people came from: {sources}.</span>
+              </>
+            ) : null}
+          </p>
+          {inviteCode && (
+            <details className="text-sm" id="invite" open={step?.action === "invite"}>
+              <summary className="cursor-pointer font-medium hover:text-foreground">👋 Bring your group over: invite your WhatsApp group, email list or contacts</summary>
+              <div className="mt-3">
+                <InviteYourGroup causeId={cause.id} title={cause.title} place={place} inviteLink={inviteUrl(baseUrl(), inviteCode)} joined={invitedCount} />
               </div>
             </details>
           )}
@@ -284,12 +373,12 @@ async function About({ params }: Pick<PageProps<"/causes/[id]">, "params">) {
                         <strong>{displayName(c.user)}</strong>
                         {!c.acceptedAt && <span className="text-muted"> · invited, waiting for an answer</span>}
                       </span>
-                      {(isLeader || c.userId === user?.id) && (
+                      {(isLeader || c.userId === user.id) && (
                         <form action={removeCoLeader}>
                           <input type="hidden" name="causeId" value={cause.id} />
                           <input type="hidden" name="userId" value={c.userId} />
                           <button className="text-xs text-muted underline hover:text-foreground">
-                            {c.userId === user?.id ? "Step down as co-leader" : c.acceptedAt ? "Remove" : "Withdraw the invite"}
+                            {c.userId === user.id ? "Step down as co-leader" : c.acceptedAt ? "Remove" : "Withdraw the invite"}
                           </button>
                         </form>
                       )}
@@ -303,36 +392,43 @@ async function About({ params }: Pick<PageProps<"/causes/[id]">, "params">) {
             </div>
           </details>
           {isLeader && (
-          <details className="text-sm" open={!!pendingOffer}>
-            <summary className="cursor-pointer text-muted hover:text-foreground">Hand over leading this cause</summary>
-            <div className="mt-3 max-w-xl space-y-3">
-              {pendingOffer ? (
-                <form action={withdrawLeadOffer} className="flex flex-wrap items-center gap-3">
-                  <input type="hidden" name="offerId" value={pendingOffer.id} />
-                  <span>
-                    Waiting for <strong>{pendingOffer.to.name}</strong> to accept (until{" "}
-                    <LocalTime iso={pendingOfferUntil!.toISOString()} options={{ month: "short", day: "numeric" }} />
-                    ).
-                  </span>
-                  <button className="text-xs text-muted underline hover:text-foreground">Withdraw the offer</button>
-                </form>
-              ) : (
-                <HandOverForm causeId={cause.id} members={handOverTo} />
-              )}
-            </div>
-          </details>
+            <details className="text-sm" open={!!pendingOffer}>
+              <summary className="cursor-pointer text-muted hover:text-foreground">Hand over leading this cause</summary>
+              <div className="mt-3 max-w-xl space-y-3">
+                {pendingOffer ? (
+                  <form action={withdrawLeadOffer} className="flex flex-wrap items-center gap-3">
+                    <input type="hidden" name="offerId" value={pendingOffer.id} />
+                    <span>
+                      Waiting for <strong>{pendingOffer.to.name}</strong> to accept (until{" "}
+                      <LocalTime iso={pendingOfferUntil!.toISOString()} options={{ month: "short", day: "numeric" }} />
+                      ).
+                    </span>
+                    <button className="text-xs text-muted underline hover:text-foreground">Withdraw the offer</button>
+                  </form>
+                ) : (
+                  <HandOverForm causeId={cause.id} members={handOverTo} />
+                )}
+              </div>
+            </details>
           )}
-          </div>
-        ) : (
-          user?.emailVerified && (
-            <form action={reportContent}>
-              <input type="hidden" name="targetType" value="cause" />
-              <input type="hidden" name="targetId" value={cause.id} />
-              <button className="text-xs text-muted hover:text-red-600">Report this cause</button>
-            </form>
-          )
-        )}
+        </section>
+
+        <section className={toolGroup} aria-labelledby="lead-cause">
+          <h3 id="lead-cause" className={groupTitle}>
+            The cause
+          </h3>
+          {canEdit && <EditCauseForm causeId={cause.id} title={cause.title} description={cause.description} />}
+          <FixerChangeForm causeId={cause.id} country={cause.country} fixer={cause.fixer} fixerOther={cause.fixerOther} />
+          {canEdit && (
+            <details className="text-sm">
+              <summary className="cursor-pointer text-muted hover:text-foreground">{cause.coverUrl ? "Change the cover image" : "Add a cover image"}</summary>
+              <div className="mt-3 max-w-xl">
+                <CoverPicker target="cause" id={cause.id} current={cause.coverUrl} currentAlt={cause.coverAlt} label="Choose a cover image for this cause" />
+              </div>
+            </details>
+          )}
+        </section>
       </div>
-    </div>
+    </Panel>
   );
 }
