@@ -114,7 +114,11 @@ let CAUSE;
   await alex.evaluate(() => (window.__notReloaded = true));
 
   const page = await signIn(browser, "sam@demo.test", opts);
+  const consoleErrors = [];
+  page.on("console", (m) => m.type() === "error" && consoleErrors.push(m.text()));
   await go(page, `/causes/${CAUSE}/chat`);
+  await page.waitForTimeout(1500); // let it hydrate
+  assert.deepEqual(consoleErrors.filter((t) => /hydrat|cannot be a descendant/i.test(t)), [], "the chat page has hydration errors");
   await page.getByLabel("Your message").fill("Counted 4 near-misses this morning.");
   const sentAt = Date.now();
   await page.getByRole("button", { name: "Send" }).click();
@@ -180,6 +184,7 @@ let CAUSE;
 {
   const alex = await signIn(browser, "alex@demo.test", opts);
   await go(alex, `/causes/${CAUSE}`);
+  assert.equal(await alex.locator("main summary:visible", { hasText: /^Leave$/ }).count(), 0, "the leader is offered Leave");
   const handOver = alex.locator("details", { hasText: "Hand over leading this cause" });
   await handOver.getByText("Hand over leading this cause").click();
   await handOver.getByLabel("Who should take over").selectOption({ label: "Priya" });

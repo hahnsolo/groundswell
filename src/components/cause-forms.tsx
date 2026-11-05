@@ -337,7 +337,7 @@ export function RepLookup({ country }: { country: string }) {
         <a href="https://www.usa.gov/elected-officials" target="_blank" rel="noopener noreferrer" className="font-medium text-link underline">
           usa.gov/elected-officials
         </a>
-        , then paste their email into the letter above.
+        . Then, under <strong>The ask</strong>, use <strong>✉️ Write to…</strong> and add their email to the letter (start a campaign first if there isn&apos;t one).
       </p>
     );
   }

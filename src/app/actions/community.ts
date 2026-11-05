@@ -512,6 +512,9 @@ export async function toggleMembership(formData: FormData) {
   const key = { causeId_userId: { causeId, userId: user.id } };
   const existing = await db.causeMember.findUnique({ where: key });
   if (existing) {
+    // The leader hands the cause over before leaving.
+    const cause = await db.cause.findUnique({ where: { id: causeId }, select: { leaderId: true } });
+    if (cause?.leaderId === user.id) return;
     await db.causeMember.delete({ where: key });
     await db.coLeader.deleteMany({ where: { causeId, userId: user.id } }); // co-leading needs membership
   } else {
@@ -688,6 +691,9 @@ export async function stepDownAsHost(formData: FormData) {
 export async function leaveCauseAction(formData: FormData) {
   const causeId = id.parse(formData.get("causeId"));
   const user = await requireUser(`/causes/${causeId}`);
+  // The leader hands the cause over first; otherwise it'd be led by someone who isn't in it.
+  const cause = await db.cause.findUnique({ where: { id: causeId }, select: { leaderId: true } });
+  if (cause?.leaderId === user.id) return;
   await leaveCause(user.id, causeId);
   refresh();
 }

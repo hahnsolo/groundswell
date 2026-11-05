@@ -263,6 +263,8 @@ async function CauseHeader({ params, children }: { params: LayoutProps<"/causes/
             ) : cause.viewerIsMember ? (
               <>
                 <span className={buttonStyles.selected}>✓ Joined</span>
+                {/* The leader hands the cause over before leaving (About → Hand over leading this cause). */}
+                {user.id !== cause.leaderId && (
                 <details className="relative text-xs">
                   <summary className="cursor-pointer px-1 text-muted hover:text-foreground">Leave</summary>
                   <form
@@ -277,6 +279,7 @@ async function CauseHeader({ params, children }: { params: LayoutProps<"/causes/
                     <button className={`${buttonStyles.secondary} !px-3 !py-1 text-xs`}>Leave this cause</button>
                   </form>
                 </details>
+                )}
               </>
             ) : cause.stage === "closed" ? null : (
               <form action={toggleMembership}>
