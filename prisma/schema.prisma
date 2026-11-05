@@ -204,6 +204,8 @@ model Meetup {
   title         String
   description   String
   startsAt      DateTime
+  // After startsAt, at most 3 days later (src/lib/event-times.ts).
+  endsAt        DateTime
   // Free-text venue ("Library, room 2") or a video link when online.
   location      String
   isOnline      Boolean   @default(false)

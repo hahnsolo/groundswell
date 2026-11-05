@@ -48,9 +48,9 @@ let CAUSE;
   await go(page, new URL(eventUrl).pathname);
   const shown = await page.evaluate(() => {
     const t = document.querySelector("main dl time");
-    const expected = new Date(t.getAttribute("datetime")).toLocaleString(undefined, {
+    const expected = new Intl.DateTimeFormat(undefined, {
       weekday: "long", month: "long", day: "numeric", hour: "numeric", minute: "2-digit",
-    });
+    }).formatRange(new Date(t.getAttribute("datetime")), new Date(t.dataset.end));
     return { text: t.textContent, expected };
   });
   assert.equal(shown.text, shown.expected);
@@ -209,6 +209,30 @@ let CAUSE;
   await change.getByRole("button", { name: "Save" }).click();
   await waitText(page, /Asking: the province/);
   step("Campaigns start from who should fix it, and the leader can change it");
+
+  // 7. An event with an end time: the end follows the start until changed; the page and calendar file use it.
+  const causePath = new URL(page.url()).pathname;
+  await go(page, `${causePath}/events`);
+  await page.getByText("+ Organize an event").click();
+  const form = page.locator("form", { has: page.getByRole("button", { name: "Create meetup" }) });
+  await form.getByLabel("Title").fill("Bench measuring walk");
+  const day = new Date(Date.now() + 10 * 24 * 60 * 60 * 1000);
+  const ymd = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, "0")}-${String(day.getDate()).padStart(2, "0")}`;
+  await form.getByLabel("Starts").fill(`${ymd}T18:00`);
+  assert.equal(await form.getByLabel("Ends").inputValue(), `${ymd}T20:00`, "the end didn't follow the start");
+  await form.getByLabel("Ends").fill(`${ymd}T19:30`);
+  await form.getByLabel("Where").fill("Outside the Spadina Road library");
+  await Promise.all([page.waitForURL(/\/events\/\w+/, { timeout: 60000, waitUntil: "commit" }), form.getByRole("button", { name: "Create meetup" }).click()]);
+  await settle(page);
+  const range = await page.locator("main dl time").innerText();
+  assert.match(range, /6:00/);
+  assert.match(range, /7:30/);
+  const file = await (await page.request.get(`${page.url()}/calendar.ics`)).text();
+  const dtend = file.match(/DTEND:(\d{8}T\d{6}Z)/)[1];
+  // The picker is in the browser's time zone (Toronto here), so work the expected end out there.
+  const expectedEnd = await page.evaluate((local) => new Date(local).toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, ""), `${ymd}T19:30`);
+  assert.equal(dtend, expectedEnd);
+  step(`An event shows its time range (${range}) and the calendar file ends when it does`);
   await page.context().close();
 }
 

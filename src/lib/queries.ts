@@ -114,7 +114,7 @@ export const getCauseDetail = cache(async (id: string, viewerId: string | null) 
         include: { author: { select: { id: true, name: true, deactivatedAt: true } } },
       },
       meetups: {
-        where: { startsAt: { gte: new Date(Date.now() - 6 * 60 * 60 * 1000) } },
+        where: { endsAt: { gt: new Date() } },
         orderBy: { startsAt: "asc" },
         include: {
           organizer: { select: { id: true, name: true, deactivatedAt: true } },
@@ -154,7 +154,7 @@ export const getCauseDetail = cache(async (id: string, viewerId: string | null) 
   return {
     ...rest,
     memberNames: members.filter((s) => !s.user.deactivatedAt).map((s) => s.user.name),
-    // The list includes meetups that started in the last few hours; only ones still to come can change host.
+    // The list includes meetups that are on right now; only ones still to come can change host.
     meetups: cause.meetups.map((m) => ({ ...m, upcoming: m.startsAt.getTime() > now })),
     viewerIsMember: !!supported,
     // When the viewer joined (clicked "Join"): starts the chat's 24-hour wait.

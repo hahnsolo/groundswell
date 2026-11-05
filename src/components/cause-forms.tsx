@@ -4,6 +4,7 @@ import { useState } from "react";
 import { addComment, createCampaign, createMeetup, signCampaign, unsignCampaign } from "@/app/actions/community";
 import { Field, FormError, SubmitButton, buttonStyles, inputStyles, useFormAction } from "./ui";
 import { Honeypot } from "./bot-check";
+import { defaultEnd } from "@/lib/event-times";
 
 export function CommentForm({ causeId }: { causeId: string }) {
   // On success React clears the box; on error the text comes back via state.values.
@@ -37,7 +38,14 @@ function toLocalInputValue(d: Date) {
 export function MeetupForm({ causeId }: { causeId: string }) {
   const [state, action] = useFormAction(createMeetup);
   const [local, setLocal] = useState("");
+  const [localEnd, setLocalEnd] = useState("");
+  // The end follows the start (2 hours later) until the organizer picks one themselves.
+  const [endTouched, setEndTouched] = useState(false);
   const [online, setOnline] = useState(false);
+  const pickStart = (value: string) => {
+    setLocal(value);
+    if (!endTouched) setLocalEnd(value ? toLocalInputValue(defaultEnd(new Date(value))) : "");
+  };
   // Lazy init: computed once in the browser's timezone; the server re-validates.
   const [min] = useState(() => toLocalInputValue(new Date()));
   const e = state?.fieldErrors;
@@ -47,13 +55,30 @@ export function MeetupForm({ causeId }: { causeId: string }) {
       <input type="hidden" name="causeId" value={causeId} />
       {/* Send an unambiguous UTC timestamp; the picker is in the organizer's own timezone. */}
       <input type="hidden" name="startsAt" value={local ? new Date(local).toISOString() : ""} />
+      <input type="hidden" name="endsAt" value={localEnd ? new Date(localEnd).toISOString() : ""} />
       <FormError message={state?.error} />
       <Field label="Title" name="title" errors={e}>
         <input name="title" required placeholder="Neighbourhood walk-through" defaultValue={v?.title} className={inputStyles} />
       </Field>
-      <Field label="When" name="startsAt" errors={e}>
-        <input type="datetime-local" required min={min} suppressHydrationWarning value={local} onChange={(ev) => setLocal(ev.target.value)} className={inputStyles} />
-      </Field>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Field label="Starts" name="startsAt" errors={e}>
+          <input type="datetime-local" required min={min} suppressHydrationWarning value={local} onChange={(ev) => pickStart(ev.target.value)} className={inputStyles} />
+        </Field>
+        <Field label="Ends" name="endsAt" errors={e}>
+          <input
+            type="datetime-local"
+            required
+            min={local || min}
+            suppressHydrationWarning
+            value={localEnd}
+            onChange={(ev) => {
+              setEndTouched(true);
+              setLocalEnd(ev.target.value);
+            }}
+            className={inputStyles}
+          />
+        </Field>
+      </div>
       <label className="flex items-center gap-2 text-sm">
         <input type="checkbox" name="isOnline" checked={online} onChange={(ev) => setOnline(ev.target.checked)} />
         Online meetup

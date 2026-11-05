@@ -15,6 +15,7 @@ export async function GET(_req: Request, ctx: RouteContext<"/events/[id]/calenda
     id: e.id,
     title: e.title,
     startsAt: e.startsAt,
+    endsAt: e.endsAt,
     // Online links are only for people going, so the file just says "Online" and points back here.
     location: e.isOnline ? "Online (link on the event page)" : e.location,
     description: e.description,
