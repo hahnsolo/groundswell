@@ -1,6 +1,6 @@
 import "server-only";
 
-export type Email = { to: string; subject: string; text: string; html?: string };
+export type Email = { to: string; subject: string; text: string; html?: string; headers?: Record<string, string> };
 
 /**
  * Send a transactional email. With RESEND_API_KEY set it goes through Resend;
@@ -33,6 +33,7 @@ export async function sendEmail(email: Email) {
       subject: email.subject,
       text: email.text,
       html: email.html,
+      headers: email.headers,
     }),
     signal: AbortSignal.timeout(10000),
   });

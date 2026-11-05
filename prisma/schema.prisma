@@ -17,25 +17,33 @@ datasource db {
 // Passwords live on Account (providerId "credential"), not on User.
 
 model User {
-  id            String    @id @default(cuid())
-  name          String
-  email         String    @unique
-  emailVerified Boolean   @default(false)
-  image         String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id               String    @id @default(cuid())
+  name             String
+  email            String    @unique
+  emailVerified    Boolean   @default(false)
+  image            String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
   // App fields (Better Auth "additionalFields"; none are settable by sign-up).
-  isAdmin       Boolean   @default(false)
+  isAdmin          Boolean   @default(false)
   // Home area, so the app can drop people straight into their community.
-  homeCountry   String?
-  homePostal    String?
+  homeCountry      String?
+  homePostal       String?
   // "Delete my account": set when they leave. Signing back in within the grace
   // period clears it; after that the daily job anonymizes the account (personal
   // details wiped, posts kept as "Former member") and sets anonymizedAt.
-  deactivatedAt DateTime?
-  anonymizedAt  DateTime?
+  deactivatedAt    DateTime?
+  anonymizedAt     DateTime?
+  // Which notification emails they want (#18; src/lib/notify-rules.ts). Lead and
+  // co-lead requests always go out.
+  notifyEvents     Boolean   @default(true) // the day before an event they're going to
+  notifyWinCheck   Boolean   @default(true) // "is it fixed?" in a cause they joined
+  notifyWins       Boolean   @default(true) // a cause they joined is won
+  notifyNewMembers Boolean   @default(true) // daily: who joined the causes they lead
+  notifyChatDigest Boolean   @default(false) // daily: new chat messages in their causes
 
   sessions           Session[]
+  notifications      NotificationLog[]
   accounts           Account[]
   causes             Cause[]           @relation("CausesStarted")
   leading            Cause[]           @relation("CausesLed")
@@ -236,11 +244,25 @@ model CauseMember {
   causeId   String
   userId    String
   createdAt DateTime @default(now())
+  // No notification emails about this cause (#18).
+  muted     Boolean  @default(false)
   cause     Cause    @relation(fields: [causeId], references: [id], onDelete: Cascade)
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([causeId, userId])
   @@index([userId])
+}
+
+// One row per notification email sent (#18): counts against the daily budget,
+// so sending stops safely within Resend's free plan. The daily job clears old rows.
+model NotificationLog {
+  id        String   @id @default(cuid())
+  userId    String
+  kind      String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([createdAt])
 }
 
 model Comment {
@@ -264,26 +286,28 @@ model Comment {
 }
 
 model Meetup {
-  id            String    @id @default(cuid())
-  causeId       String
-  organizerId   String
-  title         String
-  description   String
-  startsAt      DateTime
+  id             String    @id @default(cuid())
+  causeId        String
+  organizerId    String
+  title          String
+  description    String
+  startsAt       DateTime
   // After startsAt, at most 3 days later (src/lib/event-times.ts).
-  endsAt        DateTime
+  endsAt         DateTime
   // Free-text venue ("Library, room 2") or a video link when online.
-  location      String
-  isOnline      Boolean   @default(false)
-  capacity      Int?
+  location       String
+  isOnline       Boolean   @default(false)
+  capacity       Int?
   // Set when hosting passed to someone else (the host stepped down or left).
-  hostChangedAt DateTime?
+  hostChangedAt  DateTime?
   // Set when the host changes the details (shown as "edited").
-  editedAt      DateTime?
-  createdAt     DateTime  @default(now())
-  cause         Cause     @relation(fields: [causeId], references: [id], onDelete: Cascade)
-  organizer     User      @relation(fields: [organizerId], references: [id], onDelete: Cascade)
-  rsvps         Rsvp[]
+  editedAt       DateTime?
+  // Set when the day-before reminders went out (#18), so they go once.
+  reminderSentAt DateTime?
+  createdAt      DateTime  @default(now())
+  cause          Cause     @relation(fields: [causeId], references: [id], onDelete: Cascade)
+  organizer      User      @relation(fields: [organizerId], references: [id], onDelete: Cascade)
+  rsvps          Rsvp[]
 
   @@index([causeId, startsAt])
 }

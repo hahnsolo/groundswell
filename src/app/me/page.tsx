@@ -6,6 +6,8 @@ import { db } from "@/lib/db";
 import { COUNTRIES, areaHref } from "@/lib/countries";
 import { setHomeArea, toggleRsvp, toggleMembership } from "@/app/actions/community";
 import { DeleteAccountForm } from "@/components/account-forms";
+import { EmailPrefsForm } from "@/components/email-prefs";
+import { setCauseMuted } from "@/app/actions/notifications";
 import { signOut } from "@/app/actions/auth";
 import { ACCOUNT_GRACE_DAYS } from "@/lib/accounts";
 import { LocalTime } from "@/components/local-time";
@@ -35,7 +37,7 @@ async function Me({ searchParams }: Pick<PageProps<"/me">, "searchParams">) {
         ? "Welcome to Groundswell! Set your home area below so we can show you what's happening nearby."
         : null;
   const openReports = user.isAdmin ? await db.report.count({ where: { resolved: false } }) : 0;
-  const [causes, supported, rsvps, credential] = await Promise.all([
+  const [causes, supported, rsvps, credential, prefs] = await Promise.all([
     db.cause.findMany({ where: { authorId: user.id }, orderBy: { createdAt: "desc" }, take: 20 }),
     db.causeMember.findMany({
       where: { userId: user.id, cause: { authorId: { not: user.id }, hidden: false } },
@@ -49,6 +51,10 @@ async function Me({ searchParams }: Pick<PageProps<"/me">, "searchParams">) {
       orderBy: { meetup: { startsAt: "asc" } },
     }),
     db.account.findFirst({ where: { userId: user.id, providerId: "credential" }, select: { id: true } }),
+    db.user.findUniqueOrThrow({
+      where: { id: user.id },
+      select: { notifyEvents: true, notifyWinCheck: true, notifyWins: true, notifyNewMembers: true, notifyChatDigest: true },
+    }),
   ]);
 
   const section = "rounded-xl border border-border bg-surface p-5";
@@ -152,6 +158,13 @@ async function Me({ searchParams }: Pick<PageProps<"/me">, "searchParams">) {
             <Link href={`/causes/${s.causeId}`} className={`${linkRow} min-w-0 flex-1`}>
               {s.cause.title} <span className="text-sm text-muted">· {s.cause.placeName}</span>
             </Link>
+            <form action={setCauseMuted}>
+              <input type="hidden" name="causeId" value={s.causeId} />
+              <input type="hidden" name="muted" value={s.muted ? "0" : "1"} />
+              <button className={xButton} aria-label={`${s.muted ? "Unmute" : "Mute"} emails about ${s.cause.title}`}>
+                {s.muted ? "🔕 Muted" : "Mute emails"}
+              </button>
+            </form>
             <form action={toggleMembership}>
               <input type="hidden" name="causeId" value={s.causeId} />
               <button className={xButton} aria-label={`Leave ${s.cause.title}`}>
@@ -160,6 +173,12 @@ async function Me({ searchParams }: Pick<PageProps<"/me">, "searchParams">) {
             </form>
           </div>
         ))}
+      </section>
+
+      <section className={`${section} scroll-mt-20`} id="email">
+        <h2 className="mb-1 font-semibold">Email</h2>
+        <p className="mb-4 text-sm text-muted">What we email you about. To stop emails about one cause, mute it above.</p>
+        <EmailPrefsForm prefs={prefs} />
       </section>
 
       <section className={section}>

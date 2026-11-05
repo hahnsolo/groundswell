@@ -2,7 +2,8 @@
 // down as host, leaving a cause, deleting an account.
 // Needs fresh demo data (`npm run db:seed`), because it changes it.
 import assert from "node:assert/strict";
-import { CONTEXT, PW, findCause, go, launch, settle, signIn } from "./helpers.mjs";
+import { readFileSync } from "node:fs";
+import { BASE, CONTEXT, PW, findCause, go, launch, settle, signIn } from "./helpers.mjs";
 
 const browser = await launch();
 const opts = { viewport: { width: 1280, height: 860 }, colorScheme: "light", ...CONTEXT };
@@ -423,6 +424,59 @@ let CAUSE;
   await settle(alex);
   assert.match(await text(alex), /Trailhead clean-up/);
   step("The co-leader organizes an event");
+
+  // 11. Email notifications (#18). Events starting about a day from now get reminders from the daily job.
+  // Sam hosts: demo accounts are new for a day (2 events an hour), and Alex has made his two.
+  const host = page;
+  const runDaily = async () => {
+    const env = readFileSync(new URL("../../.env", import.meta.url), "utf8");
+    const cronSecret = env.match(/^CRON_SECRET="?([^"\r\n]*)"?/m)?.[1];
+    const res = await host.request.get(`${BASE}/api/cron/daily`, { headers: { Authorization: `Bearer ${cronSecret}` } });
+    assert.equal(res.status(), 200);
+    return (await res.json()).emails.reminded;
+  };
+  const eventTomorrow = async (title) => {
+    await go(host, `/causes/${trail}/events`);
+    await host.getByText("+ Organize an event").click();
+    const f = host.locator("form", { has: host.getByRole("button", { name: "Create meetup" }) });
+    await f.getByLabel("Title").fill(title);
+    const start = await host.evaluate(() => {
+      const d = new Date(Date.now() + 24 * 60 * 60 * 1000);
+      const pad = (n) => String(n).padStart(2, "0");
+      return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    });
+    await f.getByLabel("Starts").fill(start);
+    await f.getByLabel("Where").fill("Runyon Canyon trailhead gate");
+    await f.getByRole("button", { name: "Create meetup" }).click();
+    await host.waitForURL(/\/events\/\w+/, { timeout: 60000, waitUntil: "commit" }).catch(async (e) => {
+      throw new Error(`Creating "${title}" didn't go through. The form says: ${await f.innerText().catch(() => "?")}`, { cause: e });
+    });
+    await settle(host);
+  };
+
+  await eventTomorrow("Litter pick tomorrow");
+  const reminded = await runDaily();
+  assert.ok(reminded.some((r) => r.email === "sam@demo.test" && r.event === "Litter pick tomorrow"), "the host who's going wasn't reminded");
+  assert.ok(!reminded.some((r) => r.email === "alex@demo.test" && r.event === "Litter pick tomorrow"), "someone not going was reminded");
+  assert.equal((await runDaily()).filter((r) => r.event === "Litter pick tomorrow").length, 0, "a reminder went out twice");
+  step("The day before an event, people going get a reminder (once), others don't");
+
+  await go(host, "/me#email");
+  const prefs = host.locator("#email");
+  assert.equal(await prefs.getByLabel(/Chat summary/).isChecked(), false, "the chat summary should be off by default");
+  await prefs.getByLabel(/Event reminders/).uncheck();
+  await prefs.getByRole("button", { name: "Save email settings" }).click();
+  await prefs.getByText("Saved.").waitFor({ timeout: 30000 });
+  await go(host, "/me");
+  assert.equal(await host.locator("#email").getByLabel(/Event reminders/).isChecked(), false, "the setting wasn't saved");
+  await eventTomorrow("Second litter pick");
+  assert.ok(!(await runDaily()).some((r) => r.email === "sam@demo.test"), "reminded after turning reminders off");
+  step("Turning off event reminders on /me stops them");
+
+  await go(host, "/unsubscribe?u=someone&k=won&t=not-a-real-token");
+  await host.getByRole("button", { name: "Unsubscribe" }).click();
+  await host.getByText(/That link didn.t work/).waitFor({ timeout: 30000 });
+  step("A forged unsubscribe link changes nothing");
   await alex.context().close();
   await page.context().close();
 }
