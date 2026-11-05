@@ -1,7 +1,9 @@
 "use server";
 
 import { refresh } from "next/cache";
+import { cookies } from "next/headers";
 import { after } from "next/server";
+import { readSource, sourceCookie } from "@/lib/sources";
 import { notifyWinCheck, notifyWon } from "@/lib/notify";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -506,6 +508,11 @@ export async function setCauseFixer(_prev: FormState, formData: FormData): Promi
   return { ok: true };
 }
 
+/** How this person found the cause or event (#67), from the tag its page remembered: flyer, whatsapp… or null. */
+async function arrivedFrom(id: string) {
+  return readSource((await cookies()).get(sourceCookie(id))?.value);
+}
+
 export async function toggleMembership(formData: FormData) {
   const causeId = id.parse(formData.get("causeId"));
   const user = await requireUser(`/causes/${causeId}`);
@@ -518,7 +525,7 @@ export async function toggleMembership(formData: FormData) {
     await db.causeMember.delete({ where: key });
     await db.coLeader.deleteMany({ where: { causeId, userId: user.id } }); // co-leading needs membership
   } else {
-    await db.causeMember.create({ data: { causeId, userId: user.id } });
+    await db.causeMember.create({ data: { causeId, userId: user.id, source: await arrivedFrom(causeId) } });
     await refreshStage(causeId); // the fifth member moves it to Gathering
   }
   refresh();
@@ -669,7 +676,7 @@ export async function toggleRsvp(formData: FormData) {
   const existing = await db.rsvp.findUnique({ where: key });
   if (existing) await db.rsvp.delete({ where: key });
   else if (!meetup.capacity || meetup._count.rsvps < meetup.capacity) {
-    await db.rsvp.create({ data: { meetupId, userId: user.id } });
+    await db.rsvp.create({ data: { meetupId, userId: user.id, source: await arrivedFrom(meetupId) } });
   }
   refresh();
 }

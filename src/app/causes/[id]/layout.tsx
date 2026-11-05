@@ -20,6 +20,8 @@ import { canReopen, isActive } from "@/lib/stages";
 import { StageTracker } from "@/components/stage-tracker";
 import { RelativeTime } from "@/components/local-time";
 import { ShareButton } from "@/components/cause-forms";
+import { SourceTag } from "@/components/source-tag";
+import { taggedUrl } from "@/lib/sources";
 import { CauseTabs } from "@/components/cause-tabs";
 import { RemovedNotice } from "@/components/cause-parts";
 import { buttonStyles } from "@/components/styles";
@@ -102,6 +104,8 @@ async function CauseHeader({ params, children }: { params: LayoutProps<"/causes/
 
   return (
     <article>
+      {/* A flyer or post brings people here tagged (#67); remember it until they join. */}
+      <SourceTag ids={[cause.id]} />
       <Link href={areaHref(cause.country, cause.postalCode)} className="text-sm text-muted hover:text-foreground">
         ← Around {place}
       </Link>
@@ -307,7 +311,7 @@ async function CauseHeader({ params, children }: { params: LayoutProps<"/causes/
                 <button className={buttonStyles.primary}>Join this cause</button>
               </form>
             )}
-            <ShareButton url={`${appUrl}/causes/${cause.id}`} title={cause.title} />
+            <ShareButton url={taggedUrl(`${appUrl}/causes/${cause.id}`, "link")} title={cause.title} />
           </div>
         </div>
       </header>

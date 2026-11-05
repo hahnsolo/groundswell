@@ -20,6 +20,86 @@ export function photoData(bytes: ArrayBuffer | null) {
   return `data:${type};base64,${Buffer.from(b).toString("base64")}`;
 }
 
+/** Sizes for posts (#67): Instagram/Facebook square, and a phone-screen story. */
+export const POSTER_SIZES = { square: { width: 1080, height: 1080 }, story: { width: 1080, height: 1920 } } as const;
+
+/**
+ * A square post or a story (#67), in the same look as the preview card: the
+ * cover photo on top, the title big, when and where, and a QR code with the
+ * short link (links in Instagram posts can't be tapped, so people scan or type).
+ */
+export function posterImage({
+  format,
+  kicker,
+  title,
+  lines,
+  photo,
+  qr,
+  link,
+  scan,
+}: {
+  format: keyof typeof POSTER_SIZES;
+  kicker: string;
+  title: string;
+  lines: string[];
+  photo?: string | null;
+  qr: string;
+  link: string;
+  scan: string;
+}) {
+  const { width } = POSTER_SIZES[format];
+  const story = format === "story";
+  const photoHeight = photo ? (story ? 760 : 470) : 0;
+  // Without a photo there's room to spare: bigger type, and everything centred rather than a gap in the middle.
+  const roomy = !photo;
+  const titleSize = (title.length > 70 ? 54 : title.length > 40 ? 64 : 76) + (story ? 8 : 0) + (roomy && story ? 18 : 0);
+  const qrSize = story ? (roomy ? 380 : 300) : 210;
+  return new ImageResponse(
+    (
+      <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", background: PAPER, borderBottom: `18px solid ${BRAND}` }}>
+        {photo && (
+          // eslint-disable-next-line @next/next/no-img-element -- drawn by Satori, not a page
+          <img src={photo} alt="" width={width} height={photoHeight} style={{ width, height: photoHeight, objectFit: "cover", borderBottom: `6px solid ${INK}` }} />
+        )}
+        <div
+          style={{
+            display: "flex",
+            flex: 1,
+            flexDirection: "column",
+            justifyContent: roomy && story ? "center" : "flex-start",
+            padding: story ? "64px 72px 56px" : "44px 60px 40px",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 14, fontSize: 28, color: MUTED }}>
+            <div style={{ display: "flex", width: 40, height: 20, borderTop: `6px solid ${BRAND}`, borderRadius: "40px 40px 0 0" }} />
+            <span style={{ color: INK, fontWeight: 700 }}>Groundswell</span>
+            <span>· {kicker}</span>
+          </div>
+          <div style={{ display: "flex", marginTop: story ? 36 : 22, fontSize: titleSize, fontWeight: 700, color: INK, lineHeight: 1.08 }}>{title}</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: story ? 32 : 18, fontSize: story ? 40 : 32, color: INK }}>
+            {lines.map((l) => (
+              <span key={l} style={{ display: "flex" }}>
+                {l}
+              </span>
+            ))}
+          </div>
+          {roomy && story ? <div style={{ display: "flex", height: 120 }} /> : <div style={{ display: "flex", flex: 1 }} />}
+          <div style={{ display: "flex", alignItems: "center", gap: 32 }}>
+            {/* eslint-disable-next-line @next/next/no-img-element -- drawn by Satori, not a page */}
+            <img src={qr} alt="" width={qrSize} height={qrSize} style={{ width: qrSize, height: qrSize, border: `4px solid ${INK}`, borderRadius: 12 }} />
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, flex: 1 }}>
+              <span style={{ display: "flex", fontSize: story ? 44 : 34, fontWeight: 700, color: INK }}>{scan}</span>
+              <span style={{ display: "flex", fontSize: story ? 32 : 26, color: MUTED }}>or go to</span>
+              <span style={{ display: "flex", fontSize: story ? 36 : 28, fontWeight: 700, color: BRAND }}>{link}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    ),
+    POSTER_SIZES[format],
+  );
+}
+
 export function shareImage({ kicker, title, pill, lines, photo }: { kicker: string; title: string; pill?: string; lines: string[]; photo?: string | null }) {
   const titleSize = title.length > 70 ? 56 : title.length > 40 ? 66 : 76;
   if (photo) {

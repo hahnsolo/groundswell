@@ -12,6 +12,8 @@ import { db } from "@/lib/db";
 import { LEAD_OFFER_DAYS, offerOpen } from "@/lib/leadership";
 import { CoLeaderInviteForm, HandOverForm } from "@/components/handover";
 import { CoverPicker } from "@/components/cover-picker";
+import { SpreadTheWord } from "@/components/spread-the-word";
+import { causeSources } from "@/lib/spread";
 import { LocalTime } from "@/components/local-time";
 import { CampaignForm, LetterBuilder, SignForm } from "@/components/cause-forms";
 import { WhoCanFix } from "@/components/who-can-fix";
@@ -59,6 +61,8 @@ async function About({ params }: Pick<PageProps<"/causes/[id]">, "params">) {
         })
       ).map((m) => m.user)
     : [];
+  // The people leading it see where members came from (#67).
+  const sources = leads ? await causeSources(cause.id) : null;
   const next = cause.meetups.find((m) => m.upcoming);
   const active = isActive(cause.stage);
   // What's been done, newest first: logged contacts and replies, campaigns, the first meetup, the outcome.
@@ -201,6 +205,21 @@ async function About({ params }: Pick<PageProps<"/causes/[id]">, "params">) {
             ))}
           </ol>
         </Panel>
+      )}
+
+      {sources && (
+        <p className="rounded-md bg-sage/25 p-2 text-sm">
+          <strong>Where people came from:</strong> {sources}.
+        </p>
+      )}
+
+      {cause.stage !== "closed" && (
+        <details className="border-t border-border pt-4 text-sm" id="spread">
+          <summary className="cursor-pointer font-medium hover:text-foreground">📣 Spread the word: print a flyer, post an image</summary>
+          <div className="mt-3">
+            <SpreadTheWord kind="cause" id={cause.id} pageUrl={causeUrl} title={cause.title} />
+          </div>
+        </details>
       )}
 
       <div className="flex flex-wrap items-center gap-3 text-sm">

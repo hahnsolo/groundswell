@@ -1,5 +1,5 @@
 import { STAGE_LABELS, type Stage } from "./stages";
-import { placeTime } from "./time-zones";
+import { placeTime, zoneFor } from "./time-zones";
 
 // What a cause or event says about itself when its link is shared (browser
 // tab, WhatsApp/iMessage/Facebook preview cards). Pure, so it's easy to test.
@@ -67,4 +67,20 @@ export function eventShare(e: EventShareInput) {
     causeTitle: clip(e.cause.title, 80),
     going: e.going === 1 ? "1 going" : `${e.going} going`,
   };
+}
+
+/** On a flyer, big and plain: "Tuesday, November 10" and "6:00 – 8:00 p.m. EST", in the place's time zone (#67). */
+export function flyerWhen(start: Date, end: Date, country: string, region: string) {
+  const timeZone = zoneFor(country, region);
+  const locale = country === "CA" ? "en-CA" : "en-US";
+  const day = (d: Date, long = true) =>
+    d.toLocaleDateString(locale, { weekday: long ? "long" : "short", month: long ? "long" : "short", day: "numeric", timeZone });
+  const time = (d: Date, zone = false) => d.toLocaleTimeString(locale, { hour: "numeric", minute: "2-digit", timeZone, ...(zone ? { timeZoneName: "short" } : {}) });
+  const sameDay = day(start) === day(end);
+  return { day: day(start), time: sameDay ? `${time(start)} – ${time(end, true)}` : `${time(start, true)} until ${day(end, false)}, ${time(end)}` };
+}
+
+/** Flyers show the host's first name only: they're posted in public. */
+export function firstName(name: string) {
+  return name.trim().split(/\s+/)[0] || name;
 }
