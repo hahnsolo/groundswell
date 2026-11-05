@@ -40,13 +40,13 @@ postgresql://user:••••••@ep-something-words-123456-pooler.us-east-2.
                          └──────────── endpoint ID ────────────┘
 ```
 
-1. In Neon → **Branches**, click `main` and `dev`. Each shows its endpoint ID. Note which is which.
-2. In Vercel → Environment Variables, reveal `DATABASE_URL` and `DIRECT_URL` and read just the `ep-…` part. **Both must match `main`.**
+1. In Neon → **Branches**, click `production` and `dev`. Each shows its endpoint ID. Note which is which.
+2. In Vercel → Environment Variables, reveal `DATABASE_URL` and `DIRECT_URL` and read just the `ep-…` part. **Both must match `production`.**
 3. In your `.env`, both must match `dev`.
 
 You only need to look at the `ep-…` part. Don't copy or paste the whole string anywhere, since it contains the password.
 
-**How to fix it:** Neon → **Connect** → in the **Branch** dropdown, *deliberately* select `main` → copy the pooled string (add `&pgbouncer=true`) and the direct string → paste into Vercel → redeploy. The first deploy against an empty `main` creates the tables automatically.
+**How to fix it:** Neon → **Connect** → in the **Branch** dropdown, *deliberately* select `production` → copy the pooled string (add `&pgbouncer=true`) and the direct string → paste into Vercel → redeploy. The first deploy against an empty `main` creates the tables automatically.
 
 **Rule from now on:** every time you open Neon's Connect box or SQL Editor, look at the branch picker first.
 

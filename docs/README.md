@@ -64,7 +64,7 @@ In words:
 1. **GitHub** stores the code ([github.com/hahnsolo/groundswell](https://github.com/hahnsolo/groundswell)). It's the single source of truth.
 2. **Vercel** watches GitHub. When new code lands on the `main` branch, it builds the site, updates the database structure if needed, and puts the new version live. It runs in Cleveland (`cle1`) because that's right next to the database in Ohio, which keeps every page fast.
 3. **GoDaddy** is where the `hahnsolo.ca` domain is registered. We added a few records under `groundswell` so the address points at Vercel and so email can be sent from it. Your personal Microsoft 365 email is untouched.
-4. **Neon** is the database (Postgres). It has two copies, called branches: `main` for the live site and `dev` for your PC, filled with demo data.
+4. **Neon** is the database (Postgres). It has three copies, called branches: `production` for the live site, `dev` for your PC (filled with demo data), and `preview` for the private preview sites of pull requests.
 5. **Resend** sends the site's emails from `no-reply@groundswell.hahnsolo.ca`.
 6. **Cloudflare Turnstile** is the bot check on sign-up, sign-in and password reset (see [Security and spam](security-and-spam.md)).
 7. **Google and Apple sign-in** are built in too, but stay hidden until their keys are added. Both are optional.

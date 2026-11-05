@@ -112,13 +112,13 @@ Every push to `main` on GitHub redeploys automatically; the build runs `prisma m
 
 **1. Database — [Neon](https://neon.tech)** (free)
 - Create a project (region near your users, e.g. AWS US East / Canada).
-- **Branches → Create branch** named `dev` — that's for your PC; `main` is for the live site.
+- **Branches → Create branch** named `dev` — that's for your PC; `production` (Neon's default branch) is for the live site.
 - For each branch, **Connect** shows two strings. The **pooled** one (host contains `-pooler`) is `DATABASE_URL` — add `&pgbouncer=true` to the end. The **direct** one is `DIRECT_URL`.
 - Put the `dev` branch strings in your local `.env`.
 
 **2. Hosting — [Vercel](https://vercel.com)** (free Hobby plan)
 - **Add New → Project → Import** `hahnsolo/groundswell` from GitHub.
-- Under **Environment Variables** add: `DATABASE_URL` + `DIRECT_URL` (Neon **main** branch), `APP_URL` = `https://groundswell.hahnsolo.ca`, a **new** `BETTER_AUTH_SECRET`, a `CRON_SECRET`, and the email/Turnstile keys below. Do **not** add `ALLOW_DB_SEED`.
+- Under **Environment Variables** add: `DATABASE_URL` + `DIRECT_URL` (Neon **production** branch), `APP_URL` = `https://groundswell.hahnsolo.ca`, a **new** `BETTER_AUTH_SECRET`, a `CRON_SECRET`, and the email/Turnstile keys below. Do **not** add `ALLOW_DB_SEED`.
 - **Deploy.** It's live at `groundswell-….vercel.app` in a couple of minutes.
 
 **3. Your domain — GoDaddy DNS** (doesn't touch hahnsolo.ca or your Outlook email)
@@ -136,7 +136,7 @@ Every push to `main` on GitHub redeploys automatically; the build runs `prisma m
 - **Add widget**, hostname `groundswell.hahnsolo.ca`, mode *Managed*. Set `NEXT_PUBLIC_TURNSTILE_SITE_KEY` and `TURNSTILE_SECRET_KEY` in Vercel. Redeploy.
 
 **6. Make yourself admin**
-- Sign up on the live site and confirm your email. Then in Neon → **SQL Editor** (main branch):
+- Sign up on the live site and confirm your email. Then in Neon → **SQL Editor** (`production` branch):
   `UPDATE "User" SET "isAdmin" = true WHERE email = 'you@example.com';`
 
 **Optional:** add `https://groundswell.hahnsolo.ca` (and `/api/auth/callback/google`) to your Google OAuth client to enable Google sign-in.
