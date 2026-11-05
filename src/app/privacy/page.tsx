@@ -56,6 +56,12 @@ export default function PrivacyPage() {
             how many came from each place. No advertising or tracking cookies, and no analytics.
           </li>
           <li>
+            <strong>Invites:</strong> if you join through someone&apos;s invite link, we note who invited you, so the people leading the
+            cause can see how many joined from their invite. If you lead a cause and use your own contact list to invite people, the
+            file is read on your own device only: it&apos;s never sent to us or stored, and we never email or text the people on it. You
+            send the invites yourself, from your own apps.
+          </li>
+          <li>
             <strong>Finding your representatives:</strong> if you type your full postal code to find your representatives, it&apos;s
             sent to Open North to look them up and is not saved. The representatives shown on each cause are looked up from the
             area&apos;s centre, not from anyone&apos;s address.

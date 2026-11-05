@@ -162,6 +162,37 @@ export async function qrDataUrl(url: string) {
   return `data:image/svg+xml;base64,${Buffer.from(await qrSvg(url)).toString("base64")}`;
 }
 
+/**
+ * A leader's or co-leader's personal invite code for a cause (#68), made the
+ * first time they open it. Null if they aren't a member.
+ */
+export async function ensureInviteCode(causeId: string, userId: string): Promise<string | null> {
+  const key = { causeId_userId: { causeId, userId } };
+  const row = await db.causeMember.findUnique({ where: key, select: { inviteCode: true } });
+  if (!row) return null;
+  if (row.inviteCode) return row.inviteCode;
+  for (let attempt = 0; attempt < 5; attempt++) {
+    try {
+      // Only if it's still unset (another tab may have just made one).
+      await db.causeMember.updateMany({ where: { causeId, userId, inviteCode: null }, data: { inviteCode: makeShortCode() } });
+      break;
+    } catch (e) {
+      if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") continue; // taken: try another
+      throw e;
+    }
+  }
+  return (await db.causeMember.findUnique({ where: key, select: { inviteCode: true } }))?.inviteCode ?? null;
+}
+
+/** Whose invite a code is, or null (#68). */
+export async function findInviteCode(code: string) {
+  if (!isShortCode(code)) return null;
+  return db.causeMember.findUnique({ where: { inviteCode: code }, select: { causeId: true, userId: true } });
+}
+
+/** How many people joined a cause through this person's invite link (#68). */
+export const joinedFromInvite = (causeId: string, userId: string) => db.causeMember.count({ where: { causeId, invitedById: userId } });
+
 /** "9 people came from the flyer, 14 from WhatsApp" for the people leading it, or null. */
 export async function causeSources(causeId: string) {
   const rows = await db.causeMember.groupBy({ by: ["source"], where: { causeId, source: { not: null } }, _count: { _all: true } });

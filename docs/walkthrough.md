@@ -156,6 +156,13 @@ Type your name (and the recipient's email if you have it). The app writes a poli
   - **Share images:** a square post, a story and a wide card, each with the QR code and short link. Download one, or tap **Share** on a phone to post it straight from the share sheet.
   - **Where are you posting it?** tags the images and the link (Instagram, WhatsApp, Facebook, email, text…).
   - The people leading the cause, and an event's host, see **Where people came from**, like *"9 people came from the flyer, 14 from WhatsApp"*. Each person counts once, from the first tagged link they used.
+- **👋 Bring your group over** (on About, for the leader and co-leaders of an open cause):
+  - **Your invite link** (`groundswell.hahnsolo.ca/i/k7m2qp`), one per person leading it, with *"14 people have joined from your invite"*.
+  - **The message:** ready-written and editable, with **Share to WhatsApp**, **Text** and **Email** buttons that open your own apps. Paste it into a WhatsApp group to invite everyone at once.
+  - **Use my contact list:** pick a spreadsheet (Excel .xlsx or .csv) with names, emails and/or phone numbers. Columns are found by their usual names (Name, First name, Email, Mobile, Phone…).
+    - Emails: **Copy all addresses**, or **Open in my email** with everyone in BCC (big lists open in groups of 40).
+    - Phone numbers: a checklist, each with **WhatsApp** and **Text** buttons and a message that starts with their first name. Ticks are kept on that device.
+    - The file is read in the browser only. It's never uploaded or stored, and Groundswell never emails or texts the people on it (consent and anti-spam law: CASL, the TCPA).
 
 **Rules:** signing and starting a campaign need a confirmed email; campaigns are limited to 5 an hour (1 for new accounts).
 
