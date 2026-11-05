@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { closeCause, logContact, logReply, proposeWin } from "@/app/actions/community";
+import { closeCause, logContact, logReply, markDelivered, proposeWin } from "@/app/actions/community";
 import { Field, FormError, SubmitButton, inputStyles, useFormAction } from "./ui";
 import { Honeypot } from "./bot-check";
 
@@ -91,6 +91,45 @@ export function LogContactForm({ causeId, suggestedWho }: { causeId: string; sug
         </div>
         <Field label="Anything to add? (optional)" name="note" errors={e}>
           <input name="note" maxLength={500} placeholder="Sent the petition with 150 signatures." defaultValue={state?.values?.note} className={inputStyles} />
+        </Field>
+        <Honeypot />
+        <div className="flex items-center gap-3">
+          <SubmitButton variant="secondary" pendingText="Adding…">
+            Add to timeline
+          </SubmitButton>
+          {state?.ok && <span className="text-muted">Added.</span>}
+        </div>
+      </form>
+    </Tool>
+  );
+}
+
+/** "We delivered it" (#74): how and when the petition was handed over. Logged on the timeline. */
+export function DeliveredForm({ campaignId, target }: { campaignId: string; target: string }) {
+  const [state, action] = useFormAction(markDelivered);
+  const [date] = useState(today);
+  const e = state?.fieldErrors;
+  return (
+    <Tool summary="📬 We delivered it" open={!!state && !state.ok}>
+      <form action={action} className="space-y-3">
+        <input type="hidden" name="campaignId" value={campaignId} />
+        <p className="text-muted">Adds it to the timeline: delivered to {target}, with today&apos;s signature count.</p>
+        <FormError message={state?.error} />
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field label="How?" name="how" errors={e}>
+            <select name="how" required defaultValue={state?.values?.how ?? "email"} className={inputStyles}>
+              <option value="email">By email</option>
+              <option value="letter">By letter</option>
+              <option value="meeting">At a meeting</option>
+              <option value="in_person">In person</option>
+            </select>
+          </Field>
+          <Field label="When?" name="happenedAt" errors={e}>
+            <input name="happenedAt" type="date" required max={date} defaultValue={state?.values?.happenedAt ?? date} suppressHydrationWarning className={inputStyles} />
+          </Field>
+        </div>
+        <Field label="Anything to add? (optional)" name="note" errors={e}>
+          <input name="note" maxLength={500} placeholder="Handed to the councillor's assistant at City Hall." defaultValue={state?.values?.note} className={inputStyles} />
         </Field>
         <Honeypot />
         <div className="flex items-center gap-3">

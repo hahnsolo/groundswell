@@ -694,8 +694,51 @@ let CAUSE;
   await alex.locator("section", { has: alex.getByRole("heading", { name: "Needs you" }) }).getByRole("link", { name: /asked you to co-lead/ }).click();
   await alex.waitForURL(new RegExp(`/causes/${park}$`));
   await alex.getByRole("button", { name: "Accept" }).waitFor({ timeout: 30000 });
-  await priyaLeads.context().close();
   step("/me shows the causes you lead and what needs you (a win waiting, a co-lead invite), each linking to the right place");
+
+  // 17. Deliver the petition (#74). Priya starts a campaign, Sam and Alex sign, she downloads it and logs the delivery.
+  await go(priyaLeads, `/causes/${park}`);
+  await priyaLeads.getByText("+ Start a campaign").click();
+  await priyaLeads.getByLabel("Who can fix this?").fill("Spadina Property Management");
+  await priyaLeads.getByLabel("What exactly are you asking for?").fill("Withdraw the above-guideline rent increase application for 3 buildings on Spadina.");
+  await priyaLeads.getByRole("button", { name: "Start campaign" }).click();
+  await priyaLeads.getByTestId("deliver").waitFor({ timeout: 30000 });
+  for (const who of [page, alex]) {
+    await go(who, `/causes/${park}`);
+    assert.match(await who.locator("#ask").innerText(), /Your name and rough area .* go on the petition/, "signers are told what goes on the petition");
+    await who.locator("#ask").getByLabel("Why this matters to you").fill(who === page ? '=1+1 "my rent" went up' : "");
+    await who.locator("#ask").getByRole("button", { name: "Add my name" }).click();
+    await who.getByText("✓ You've signed this campaign").waitFor({ timeout: 30000 });
+  }
+  assert.equal(await page.getByTestId("deliver").count(), 0, "members don't see the download");
+  const pdfHref = await priyaLeads.getByRole("link", { name: "Download PDF" }).getAttribute("href");
+  const csvHref = await priyaLeads.getByRole("link", { name: "Download spreadsheet (CSV)" }).getAttribute("href");
+  assert.equal((await page.request.get(`${BASE}${csvHref}`)).status(), 404, "a member can't download the petition");
+  const csvRes = await priyaLeads.request.get(`${BASE}${csvHref}`);
+  assert.match(csvRes.headers()["content-disposition"], /attachment; filename="petition-withdraw-the-above-guideline.*\.csv"/);
+  const csvText = await csvRes.text();
+  const csvLines = csvText.trim().split(/\r\n/);
+  assert.equal(csvLines[0].replace(/^﻿/, ""), "Name,Area,Signed on,Note");
+  assert.deepEqual([...(await csvRes.body()).subarray(0, 3)], [0xef, 0xbb, 0xbf], "starts with a BOM so Excel reads accents right");
+  assert.equal(csvLines.length, 4, "a header and the three signatures (Priya signed when she started it)");
+  assert.match(csvText, /Sam[^,]*,"90046, USA",\d{4}-\d\d-\d\d,"'=1\+1 ""my rent"" went up"/, "Sam's row, with the note made safe for spreadsheets");
+  assert.doesNotMatch(csvText, /@/, "no emails");
+  const pdf = await priyaLeads.request.get(`${BASE}${pdfHref}`);
+  assert.equal(pdf.headers()["content-type"], "application/pdf");
+  const pdfBytes = await pdf.body();
+  assert.equal(pdfBytes.subarray(0, 5).toString(), "%PDF-");
+  assert.ok(pdfBytes.length > 1500, "the PDF has content");
+  step("Signers are told; a leader downloads the petition as a PDF and a spreadsheet (3 signatures, no emails); members can't");
+
+  const deliver = priyaLeads.getByTestId("deliver");
+  await deliver.getByText("📬 We delivered it").click();
+  await deliver.getByLabel("How?").selectOption("in_person");
+  await deliver.getByLabel("Anything to add? (optional)").fill("Handed to the property manager at the front office.");
+  await deliver.getByRole("button", { name: "Add to timeline" }).click();
+  await priyaLeads.locator("#timeline").getByText("Petition delivered to Spadina Property Management in person, with 3 signatures").waitFor({ timeout: 30000 });
+  assert.match(await priyaLeads.locator("[aria-label^='Stage:']").getAttribute("aria-label"), /Taking action/);
+  await priyaLeads.context().close();
+  step("'We delivered it' logs the delivery on the timeline and the cause is Taking action");
 
   await alex.context().close();
   await page.context().close();

@@ -128,6 +128,12 @@ What everyone sees first:
 
 Type your name (and the recipient's email if you have it). The app writes a polite letter that includes the cause, the exact ask, how many neighbours signed, and a link back. **Open in email** opens your own email app with it filled in, or **Copy letter** copies it. Groundswell never sends these itself.
 
+- Under **Add my name**, signers are told that their name and rough area (like M5V, from their home area) go on the petition the organizers deliver, with their note if they add one. Never their email.
+- **Deliver the petition** (under each campaign, only for the people leading the cause):
+  - **Download PDF:** a clean petition to hand over or attach. It has the ask, who it's to, the cause and place, the count, then every signature (name, area, date, note), with page numbers.
+  - **Download spreadsheet (CSV):** the same columns. Notes starting with = + - @ are made safe, so a spreadsheet never runs them as formulas.
+  - People who deleted their account aren't on it: their signatures go when they do.
+  - **📬 We delivered it:** how (email, letter, meeting, in person) and when. It's logged on the timeline as *"Petition delivered to … in person, with 150 signatures"* and counts as taking action.
 - **+ Start a campaign** asks three things: who can fix this, what exactly you're asking for, and a signature goal (default 100).
 - **Find your representatives:** in Canada, type a full postal code to get your MP, provincial representative, councillor and mayor, with their emails. The code is passed to Open North's free "Represent" service and **not saved**. In the US, a link to usa.gov's official lookup.
 

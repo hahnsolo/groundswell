@@ -9,7 +9,8 @@ import { coLeadInviteOpen, leadsCause, MAX_CO_LEADERS } from "@/lib/leadership";
 import { MAX_LEADING_CAUSES } from "@/lib/leading-limit";
 import { isActive, leaderNext, type Stage } from "@/lib/stages";
 import { buttonStyles } from "@/components/styles";
-import { CloseCauseForm, LogContactForm, LogReplyForm, ProposeWinForm } from "@/components/stage-parts";
+import { CloseCauseForm, DeliveredForm, LogContactForm, LogReplyForm, ProposeWinForm } from "@/components/stage-parts";
+import { DELIVERED_HOW } from "@/lib/petition";
 import { db } from "@/lib/db";
 import { LEAD_OFFER_DAYS, offerOpen } from "@/lib/leadership";
 import { CoLeaderInviteForm, HandOverForm } from "@/components/handover";
@@ -85,7 +86,14 @@ async function About({ params }: Pick<PageProps<"/causes/[id]">, "params">) {
         ? { at: a.happenedAt, icon: "📨", text: `Contacted ${a.who} ${HOW[a.how ?? ""] ?? ""}`.trim(), note: a.note }
         : a.kind === "replied"
           ? { at: a.happenedAt, icon: "💬", text: "They replied", note: a.note }
-          : { at: a.happenedAt, icon: "🔁", text: `${displayName(a.createdBy)} confirmed it's still going`, note: null },
+          : a.kind === "delivered"
+            ? {
+                at: a.happenedAt,
+                icon: "📬",
+                text: `Petition delivered to ${a.who} ${DELIVERED_HOW[a.how ?? ""] ?? ""}${a.signatures != null ? `, with ${a.signatures} ${a.signatures === 1 ? "signature" : "signatures"}` : ""}`.replace(/ ,/, ","),
+                note: a.note,
+              }
+            : { at: a.happenedAt, icon: "🔁", text: `${displayName(a.createdBy)} confirmed it's still going`, note: null },
     ),
     ...cause.campaigns.map((c) => ({ at: c.createdAt, icon: "✍️", text: `Campaign started, asking ${c.target}`, note: null })),
     ...(cause.firstEvent ? [{ at: cause.firstEvent.startsAt, icon: "📅", text: `First meetup: ${cause.firstEvent.title}`, note: null }] : []),
@@ -177,6 +185,22 @@ async function About({ params }: Pick<PageProps<"/causes/[id]">, "params">) {
                       </li>
                     ))}
                   </ul>
+                )}
+                {leads && (
+                  // Delivering the petition (#74): only for the people leading it.
+                  <div className="space-y-2 rounded-md bg-sage/20 p-3 text-sm" data-testid="deliver">
+                    <p className="font-medium">Deliver the petition</p>
+                    <div className="flex flex-wrap gap-2">
+                      <a href={`/petition/${c.id}/pdf`} className={`${buttonStyles.secondary} !px-3 !py-1.5`}>
+                        Download PDF
+                      </a>
+                      <a href={`/petition/${c.id}/csv`} className={`${buttonStyles.secondary} !px-3 !py-1.5`}>
+                        Download spreadsheet (CSV)
+                      </a>
+                    </div>
+                    <p className="text-xs text-muted">Names, rough areas, dates and notes. Never emails or addresses.</p>
+                    {active && <DeliveredForm campaignId={c.id} target={c.target} />}
+                  </div>
                 )}
                 <details>
                   <summary className="cursor-pointer text-sm font-medium text-link">✉️ Write to {c.target}</summary>
