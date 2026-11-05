@@ -154,6 +154,8 @@ model Cause {
   removedAt     DateTime?
   removedById   String?
   removalReason String?
+  // Set when its author changes the title or description (shown as "edited").
+  editedAt      DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -189,6 +191,8 @@ model Comment {
   removedAt     DateTime?
   removedById   String?
   removalReason String?
+  // Set when its author fixes it within the edit window (shown as "edited").
+  editedAt      DateTime?
   createdAt     DateTime  @default(now())
   cause         Cause     @relation(fields: [causeId], references: [id], onDelete: Cascade)
   author        User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
@@ -212,6 +216,8 @@ model Meetup {
   capacity      Int?
   // Set when hosting passed to someone else (the host stepped down or left).
   hostChangedAt DateTime?
+  // Set when the host changes the details (shown as "edited").
+  editedAt      DateTime?
   createdAt     DateTime  @default(now())
   cause         Cause     @relation(fields: [causeId], references: [id], onDelete: Cascade)
   organizer     User      @relation(fields: [organizerId], references: [id], onDelete: Cascade)

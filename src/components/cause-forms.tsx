@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { addComment, createCampaign, createMeetup, signCampaign, unsignCampaign } from "@/app/actions/community";
+import { useState, useSyncExternalStore } from "react";
+import { addComment, createCampaign, createMeetup, editComment, editMeetup, signCampaign, unsignCampaign } from "@/app/actions/community";
 import { Field, FormError, SubmitButton, buttonStyles, inputStyles, useFormAction } from "./ui";
+import type { FormState } from "@/lib/forms";
 import { Honeypot } from "./bot-check";
 import { defaultEnd } from "@/lib/event-times";
 
@@ -30,35 +31,104 @@ export function CommentForm({ causeId }: { causeId: string }) {
   );
 }
 
+/** "Edit" on your own message (shown for 15 minutes after sending); opens it in place. */
+export function MessageEditor({ commentId, body, children }: { commentId: string; body: string; children: React.ReactNode }) {
+  const [editing, setEditing] = useState(false);
+  const [state, action] = useFormAction(async (prev: FormState, formData: FormData) => {
+    const result = await editComment(prev, formData);
+    if (result?.ok) setEditing(false);
+    return result;
+  });
+  if (!editing) {
+    return (
+      <>
+        {children}
+        <button type="button" onClick={() => setEditing(true)} className="ml-2 text-xs text-muted underline hover:text-foreground">
+          Edit
+        </button>
+      </>
+    );
+  }
+  return (
+    <form action={action} className="mt-1 w-full max-w-lg space-y-2 text-left">
+      <input type="hidden" name="commentId" value={commentId} />
+      <FormError message={state?.error} />
+      <textarea
+        name="body"
+        required
+        rows={3}
+        maxLength={3000}
+        defaultValue={state?.values?.body ?? body}
+        aria-label="Edit your message"
+        autoFocus
+        className={inputStyles}
+      />
+      <Honeypot />
+      <div className="flex items-center gap-2">
+        <SubmitButton pendingText="Saving…" className="!px-3 !py-1 text-xs">
+          Save
+        </SubmitButton>
+        <button type="button" onClick={() => setEditing(false)} className="text-xs text-muted underline hover:text-foreground">
+          Cancel
+        </button>
+      </div>
+    </form>
+  );
+}
+
 function toLocalInputValue(d: Date) {
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-export function MeetupForm({ causeId }: { causeId: string }) {
-  const [state, action] = useFormAction(createMeetup);
-  const [local, setLocal] = useState("");
-  const [localEnd, setLocalEnd] = useState("");
+/** An existing event, for editing. Times as ISO strings. */
+export type EditableEvent = {
+  id: string;
+  title: string;
+  description: string;
+  startsAt: string;
+  endsAt: string;
+  location: string;
+  isOnline: boolean;
+  capacity: number | null;
+};
+
+const noSubscribe = () => () => {};
+
+/** The host's "Edit event details" form. Rendered in the browser only, so times start in the host's time zone. */
+export function EditEventForm({ event }: { event: EditableEvent }) {
+  const inBrowser = useSyncExternalStore(noSubscribe, () => true, () => false);
+  return inBrowser ? <MeetupForm event={event} /> : null;
+}
+
+/** Organize a new event for a cause, or (given `event`) let its host change the details. */
+export function MeetupForm({ causeId, event }: { causeId?: string; event?: EditableEvent }) {
+  const [state, action] = useFormAction(event ? editMeetup : createMeetup);
+  // An event's times are in the host's own time zone, which only the browser knows
+  // (so EditEventForm only renders this in the browser).
+  const [local, setLocal] = useState(() => (event ? toLocalInputValue(new Date(event.startsAt)) : ""));
+  const [localEnd, setLocalEnd] = useState(() => (event ? toLocalInputValue(new Date(event.endsAt)) : ""));
   // The end follows the start (2 hours later) until the organizer picks one themselves.
-  const [endTouched, setEndTouched] = useState(false);
-  const [online, setOnline] = useState(false);
+  const [endTouched, setEndTouched] = useState(!!event);
+  const [online, setOnline] = useState(event?.isOnline ?? false);
   const pickStart = (value: string) => {
     setLocal(value);
     if (!endTouched) setLocalEnd(value ? toLocalInputValue(defaultEnd(new Date(value))) : "");
   };
   // Lazy init: computed once in the browser's timezone; the server re-validates.
-  const [min] = useState(() => toLocalInputValue(new Date()));
+  // (An event that's already on keeps its start, so editing has no minimum.)
+  const [min] = useState(() => (event ? undefined : toLocalInputValue(new Date())));
   const e = state?.fieldErrors;
   const v = state?.values;
   return (
     <form action={action} className="space-y-4">
-      <input type="hidden" name="causeId" value={causeId} />
+      {event ? <input type="hidden" name="meetupId" value={event.id} /> : <input type="hidden" name="causeId" value={causeId} />}
       {/* Send an unambiguous UTC timestamp; the picker is in the organizer's own timezone. */}
       <input type="hidden" name="startsAt" value={local ? new Date(local).toISOString() : ""} />
       <input type="hidden" name="endsAt" value={localEnd ? new Date(localEnd).toISOString() : ""} />
       <FormError message={state?.error} />
       <Field label="Title" name="title" errors={e}>
-        <input name="title" required placeholder="Neighbourhood walk-through" defaultValue={v?.title} className={inputStyles} />
+        <input name="title" required placeholder="Neighbourhood walk-through" defaultValue={v?.title ?? event?.title} className={inputStyles} />
       </Field>
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="Starts" name="startsAt" errors={e}>
@@ -88,18 +158,25 @@ export function MeetupForm({ causeId }: { causeId: string }) {
           name="location"
           required
           placeholder={online ? "https://meet…" : "Central Library, room 2"}
-          defaultValue={v?.location}
+          defaultValue={v?.location ?? event?.location}
           className={inputStyles}
         />
       </Field>
       <Field label="What's the plan? (optional)" name="description" errors={e}>
-        <textarea name="description" rows={3} defaultValue={v?.description} className={inputStyles} />
+        <textarea name="description" rows={3} defaultValue={v?.description ?? event?.description} className={inputStyles} />
       </Field>
       <Field label="Capacity (optional)" name="capacity" errors={e}>
-        <input name="capacity" type="number" min={2} defaultValue={v?.capacity} className={`${inputStyles} w-32`} />
+        <input name="capacity" type="number" min={2} defaultValue={v?.capacity ?? event?.capacity ?? undefined} className={`${inputStyles} w-32`} />
       </Field>
       <Honeypot />
-      <SubmitButton pendingText="Creating…">Create meetup</SubmitButton>
+      <div className="flex items-center gap-3">
+        {event ? (
+          <SubmitButton pendingText="Saving…">Save changes</SubmitButton>
+        ) : (
+          <SubmitButton pendingText="Creating…">Create meetup</SubmitButton>
+        )}
+        {event && state?.ok && <span className="text-sm text-muted">Saved.</span>}
+      </div>
     </form>
   );
 }

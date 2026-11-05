@@ -8,7 +8,8 @@ import { displayName } from "@/lib/accounts";
 import { peopleLine } from "@/lib/momentum";
 import { stepDownAsHost, toggleRsvp } from "@/app/actions/community";
 import { LocalTimeRange } from "@/components/local-time";
-import { ShareButton } from "@/components/cause-forms";
+import { EditEventForm, ShareButton } from "@/components/cause-forms";
+import { canEditEvent } from "@/lib/editing";
 import { Panel, SignInPrompt } from "@/components/cause-parts";
 import { buttonStyles } from "@/components/styles";
 
@@ -50,6 +51,7 @@ async function Event({ params }: Pick<PageProps<"/events/[id]">, "params">) {
         <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">
           Event · {e.cause.placeName}
           {e.over ? " · this has happened" : !e.upcoming ? " · happening now" : ""}
+          {e.editedAt && " · edited"}
         </p>
         <h1 className="mt-2 text-3xl font-semibold leading-tight sm:text-4xl">{e.title}</h1>
       </header>
@@ -148,6 +150,26 @@ async function Event({ params }: Pick<PageProps<"/events/[id]">, "params">) {
           {e.capacity ? ` · ${Math.max(0, e.capacity - e._count.rsvps)} of ${e.capacity} places left` : ""}
         </span>
       </section>
+
+      {canEditEvent(e, user?.id) && (
+        <details className="mt-6 border-t border-border pt-4 text-sm">
+          <summary className="cursor-pointer text-muted hover:text-foreground">Edit event details</summary>
+          <div className="mt-3 max-w-xl">
+            <EditEventForm
+              event={{
+                id: e.id,
+                title: e.title,
+                description: e.description,
+                startsAt: e.startsAt.toISOString(),
+                endsAt: e.endsAt.toISOString(),
+                location: e.location,
+                isOnline: e.isOnline,
+                capacity: e.capacity,
+              }}
+            />
+          </div>
+        </details>
+      )}
 
       {hosting && e.upcoming && (
         <details className="mt-6 border-t border-border pt-4 text-sm">

@@ -9,6 +9,8 @@ import { LocalTime } from "@/components/local-time";
 import { CampaignForm, LetterBuilder, RepLookup, SignForm } from "@/components/cause-forms";
 import { Panel, SignInPrompt } from "@/components/cause-parts";
 import { FixerChangeForm } from "@/components/fixer-field";
+import { EditCauseForm } from "@/components/cause-form";
+import { canEditCause } from "@/lib/editing";
 import { campaignTargetFor } from "@/lib/fixers";
 
 // The cause's holding page: what it's about, the ask, and what's coming up.
@@ -151,6 +153,7 @@ async function About({ params }: Pick<PageProps<"/causes/[id]">, "params">) {
             ))}
           </form>
           <FixerChangeForm causeId={cause.id} country={cause.country} fixer={cause.fixer} fixerOther={cause.fixerOther} />
+          {canEditCause(cause, user?.id) && <EditCauseForm causeId={cause.id} title={cause.title} description={cause.description} />}
           </div>
         ) : (
           user?.emailVerified && (

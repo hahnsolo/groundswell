@@ -104,6 +104,17 @@ let CAUSE;
   assert.equal(await alex.evaluate(() => window.__notReloaded), true, "Alex's page reloaded instead of updating in place");
   step(`Another member sees the message without reloading (${((Date.now() - sentAt) / 1000).toFixed(1)}s, ${live ? "live" : "checking every 10s"})`);
   await alex.context().close();
+
+  // Sam fixes a typo in the message he just sent.
+  const mine = page.locator("li", { hasText: "Counted 4 near-misses this morning" });
+  await mine.getByRole("button", { name: "Edit" }).click();
+  await page.getByLabel("Edit your message").fill("Counted 5 near-misses this morning.");
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+  await waitText(page, /Counted 5 near-misses this morning/);
+  assert.match(await page.locator("li", { hasText: "Counted 5 near-misses" }).innerText(), /edited/);
+  assert.equal(await page.locator("li", { hasText: "I emailed the city" }).getByRole("button", { name: "Edit" }).count(), 0, "could edit someone else's message");
+  step("You can fix your own message (shown as edited), not anyone else's");
+
   await go(page, `/causes/${CAUSE}`);
   assert.match(await text(page), /✓ Joined/);
   assert.match(await text(page), /2\s+of 150 signed/);
@@ -210,6 +221,15 @@ let CAUSE;
   await waitText(page, /Asking: the province/);
   step("Campaigns start from who should fix it, and the leader can change it");
 
+  // The person who started it fixes the title.
+  const editCause = page.locator("details", { hasText: "Edit title and description" });
+  await editCause.getByText("Edit title and description").click();
+  await editCause.getByLabel("What's the cause?").fill("Broken bench outside the Spadina Road library");
+  await editCause.getByRole("button", { name: "Save changes" }).click();
+  await page.locator("h1", { hasText: "Spadina Road library" }).waitFor({ timeout: 30000 });
+  assert.match(await page.locator("main article header:visible").first().innerText(), /edited/i);
+  step("The person who started a cause can edit it (shown as edited)");
+
   // 7. An event with an end time: the end follows the start until changed; the page and calendar file use it.
   const causePath = new URL(page.url()).pathname;
   await go(page, `${causePath}/events`);
@@ -233,6 +253,15 @@ let CAUSE;
   const expectedEnd = await page.evaluate((local) => new Date(local).toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, ""), `${ymd}T19:30`);
   assert.equal(dtend, expectedEnd);
   step(`An event shows its time range (${range}) and the calendar file ends when it does`);
+
+  // The host changes the event's details.
+  const editEvent = page.locator("details", { hasText: "Edit event details" });
+  await editEvent.getByText("Edit event details").click();
+  await editEvent.getByLabel("Title").fill("Bench measuring walk (bring a tape measure)");
+  await editEvent.getByRole("button", { name: "Save changes" }).click();
+  await page.locator("h1", { hasText: "bring a tape measure" }).waitFor({ timeout: 30000 });
+  assert.match(await page.locator("main article header:visible").first().innerText(), /edited/i);
+  step("The host can edit an event (shown as edited)");
   await page.context().close();
 }
 
