@@ -18,7 +18,7 @@ export type Momentum =
 
 export function momentum(
   c: {
-    status: string;
+    stage: string;
     resolvedAt?: Date | null;
     createdAt: Date;
     nextMeetup?: { startsAt: Date } | null;
@@ -27,7 +27,7 @@ export function momentum(
   },
   now = new Date(),
 ): Momentum {
-  if (c.status === "resolved") return { kind: "won", at: c.resolvedAt ?? null };
+  if (c.stage === "won") return { kind: "won", at: c.resolvedAt ?? null };
   if (c.nextMeetup && c.nextMeetup.startsAt.getTime() - now.getTime() < MEETING_SOON_DAYS * DAY) {
     return { kind: "meeting", startsAt: c.nextMeetup.startsAt };
   }

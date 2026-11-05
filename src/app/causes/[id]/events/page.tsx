@@ -99,7 +99,9 @@ async function Events({ params }: Pick<PageProps<"/causes/[id]/events">, "params
       )}
 
       <Panel>
-        {user ? (
+        {cause.stage === "closed" ? (
+          <p className="text-sm text-muted">This cause is closed, so no new events can be organized.</p>
+        ) : user ? (
           <details>
             <summary className="cursor-pointer font-medium text-link">+ Organize an event</summary>
             <div className="mt-4">
