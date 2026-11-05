@@ -3,7 +3,8 @@
 import { refresh } from "next/cache";
 import { cookies } from "next/headers";
 import { after } from "next/server";
-import { readSource, sourceCookie } from "@/lib/sources";
+import { inviteCodeIn, readSource, sourceCookie } from "@/lib/sources";
+import { findInviteCode } from "@/lib/spread";
 import { notifyWinCheck, notifyWon } from "@/lib/notify";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -525,7 +526,12 @@ export async function toggleMembership(formData: FormData) {
     await db.causeMember.delete({ where: key });
     await db.coLeader.deleteMany({ where: { causeId, userId: user.id } }); // co-leading needs membership
   } else {
-    await db.causeMember.create({ data: { causeId, userId: user.id, source: await arrivedFrom(causeId) } });
+    // Through someone's invite link (#68): counts toward "joined from your invite" for them (not for inviting yourself).
+    const tag = (await cookies()).get(sourceCookie(causeId))?.value;
+    const code = inviteCodeIn(tag);
+    const inviter = code ? await findInviteCode(code) : null;
+    const invitedById = inviter && inviter.causeId === causeId && inviter.userId !== user.id ? inviter.userId : null;
+    await db.causeMember.create({ data: { causeId, userId: user.id, source: readSource(tag), invitedById } });
     await refreshStage(causeId); // the fifth member moves it to Gathering
   }
   refresh();

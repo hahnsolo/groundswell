@@ -12,6 +12,8 @@ export const SOURCES = {
   email: { label: "email", short: "em" },
   text: { label: "text messages", short: "tx" },
   link: { label: "a shared link", short: "ln" },
+  // A leader's personal invite link (#68). The tag carries their code: "invite.k7m2qp".
+  invite: { label: "invites", short: "" },
 } as const;
 
 export type Source = keyof typeof SOURCES;
@@ -21,11 +23,29 @@ export const SHARE_PLACES: Source[] = ["whatsapp", "instagram", "facebook", "ema
 
 /** A tag from a link (`?src=whatsapp`) or a short path (`/go/k7m2qp/wa`), or null if it isn't one of ours. */
 export function readSource(value: string | null | undefined): Source | null {
+  const tag = readTag(value);
+  return tag ? (tag.startsWith("invite.") ? "invite" : (tag as Source)) : null;
+}
+
+/**
+ * The whole tag, as it's kept in the cookie: a source ("whatsapp"), or an invite
+ * with the leader's code ("invite.k7m2qp"). Null if it isn't one of ours.
+ */
+export function readTag(value: string | null | undefined): string | null {
   if (!value) return null;
   const v = value.trim().toLowerCase().slice(0, 20);
-  if (v in SOURCES) return v as Source;
+  const invite = v.match(/^invite\.(.+)$/);
+  if (invite) return isShortCode(invite[1]) ? v : null;
+  if (v === "invite") return null; // an invite always names whose
+  if (v in SOURCES) return v;
   const byShort = (Object.keys(SOURCES) as Source[]).find((k) => SOURCES[k].short && SOURCES[k].short === v);
   return byShort ?? null;
+}
+
+/** The leader's invite code in a tag ("invite.k7m2qp" → "k7m2qp"), or null. */
+export function inviteCodeIn(value: string | null | undefined) {
+  const tag = readTag(value);
+  return tag?.startsWith("invite.") ? tag.slice("invite.".length) : null;
 }
 
 /** The cookie that remembers how someone arrived at a cause or event (one per page, so they don't mix). */
@@ -33,9 +53,12 @@ export const sourceCookie = (id: string) => `gs_src_${id}`;
 export const SOURCE_COOKIE_DAYS = 30;
 
 /** The first tag wins: someone who saw the flyer and later got a WhatsApp link came from the flyer. */
-export function keepFirst(existing: string | null | undefined, incoming: string | null | undefined): Source | null {
-  return readSource(existing) ?? readSource(incoming);
+export function keepFirst(existing: string | null | undefined, incoming: string | null | undefined): string | null {
+  return readTag(existing) ?? readTag(incoming);
 }
+
+/** A leader's personal invite link, e.g. groundswell.hahnsolo.ca/i/k7m2qp (#68). */
+export const inviteUrl = (appUrl: string, code: string) => `${appUrl.replace(/\/+$/, "")}/i/${code}`;
 
 /** A page link tagged for where it's being shared. */
 export function taggedUrl(pageUrl: string, source: Source) {
@@ -69,7 +92,8 @@ export function isShortCode(value: string) {
 export function sourceSummary(rows: { source: string | null; count: number }[], verb = "came") {
   const counts = new Map<Source, number>();
   for (const r of rows) {
-    const s = readSource(r.source);
+    // Saved on memberships as just the source ("invite", without whose).
+    const s = r.source && r.source in SOURCES ? (r.source as Source) : readSource(r.source);
     if (s && r.count > 0) counts.set(s, (counts.get(s) ?? 0) + r.count);
   }
   const sorted = [...counts].sort((a, b) => b[1] - a[1]);

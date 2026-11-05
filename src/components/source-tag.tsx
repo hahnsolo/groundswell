@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { keepFirst, readSource, SOURCE_COOKIE_DAYS, sourceCookie } from "@/lib/sources";
+import { keepFirst, readTag, SOURCE_COOKIE_DAYS, sourceCookie } from "@/lib/sources";
 
 // Remembers how someone arrived (#67): a link tagged ?src=flyer saves "flyer"
 // for this cause (and event) for 30 days, so joining later — even after
@@ -11,7 +11,8 @@ export function SourceTag({ ids }: { ids: string[] }) {
   const key = ids.join(",");
   useEffect(() => {
     const url = new URL(window.location.href);
-    const source = readSource(url.searchParams.get("src"));
+    // A source ("flyer"), or a leader's invite ("invite.k7m2qp", #68).
+    const source = readTag(url.searchParams.get("src"));
     if (!url.searchParams.has("src")) return;
     if (source) {
       for (const id of key.split(",")) {

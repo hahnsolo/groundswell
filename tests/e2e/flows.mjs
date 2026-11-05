@@ -603,8 +603,48 @@ let CAUSE;
   assert.match(await text(priyaLeads), /Where people came from: 1 person came from the flyer/);
   await go(page, `/causes/${park}`);
   assert.doesNotMatch(await text(page), /Where people came from/, "only the people leading it see where people came from");
-  await priyaLeads.context().close();
   step("Someone who comes from the flyer's QR code and joins counts once as from the flyer, for the leaders to see");
+
+  // 14. Bring your group over (#68). Priya's own invite link, ready-written messages, and her contact list read on her device only.
+  assert.equal(await page.locator("details#invite").count(), 0, "members don't get an invite panel");
+  await go(priyaLeads, `/causes/${park}`);
+  const invite = priyaLeads.locator("details#invite");
+  await invite.locator("summary").click();
+  const inviteLink = (await invite.locator("code").first().innerText()).trim();
+  assert.match(inviteLink, /\/i\/[a-z2-9]{6}$/, "Priya gets a personal invite link");
+  assert.match(await invite.innerText(), /Nobody has joined from your invite yet/);
+  const wa = await invite.getByRole("link", { name: "Share to WhatsApp" }).getAttribute("href");
+  assert.ok(wa.startsWith("https://wa.me/?text=") && decodeURIComponent(wa).includes(inviteLink), "WhatsApp opens with the message and the link");
+  assert.match(await invite.getByRole("link", { name: "Email", exact: true }).getAttribute("href"), /^mailto:\?subject=/);
+  // Her contact list: nothing about it may leave the browser.
+  const sent = [];
+  priyaLeads.on("request", (r) => sent.push(`${r.url()} ${r.postData() ?? ""}`));
+  const csv = "First name,Last name,Email,Mobile\nMaya,Chen,maya.list@example.com,(416) 555-0101\nDev,Shah,,416-555-0102\nRosa,,rosa.list@example.com,\nNo,Contact,,\n";
+  await invite.getByLabel("Choose a contact list spreadsheet").setInputFiles({ name: "my-group.csv", mimeType: "text/csv", buffer: Buffer.from(csv) });
+  await invite.getByRole("status").filter({ hasText: "my-group.csv" }).waitFor({ timeout: 30000 });
+  assert.match(await invite.innerText(), /3 people \(2 with email, 2 with a phone number\); 1 rows had neither/);
+  const bcc = await invite.getByRole("link", { name: "Open in my email" }).getAttribute("href");
+  assert.match(decodeURIComponent(bcc), /^mailto:\?bcc=maya\.list@example\.com,rosa\.list@example\.com&subject=/);
+  const devWa = await invite.locator("li", { hasText: "Dev Shah" }).getByRole("link", { name: "WhatsApp" }).getAttribute("href");
+  assert.match(devWa, /^https:\/\/wa\.me\/14165550102\?text=Hi%20Dev!/, "each phone number gets its own message, with their name");
+  await invite.locator("li", { hasText: "Dev Shah" }).getByRole("checkbox").check();
+  assert.match(await invite.innerText(), /Phone \(1 of 2 sent\)/);
+  await priyaLeads.waitForTimeout(1000);
+  assert.ok(!sent.some((s) => /maya\.list|rosa\.list|555-0101|5550101|my-group/.test(s)), `the contact list must never leave the browser: ${sent.filter((s) => /list|555/.test(s)).join(" | ")}`);
+  step("A leader's invite panel: own link, ready-written messages, and a contact list that never leaves the browser");
+
+  // Alex follows Priya's invite link and joins: it counts for her.
+  await go(alex, new URL(inviteLink).pathname);
+  assert.match(alex.url(), new RegExp(`/causes/${park}`), "the invite link opens the cause");
+  await alex.waitForFunction(() => !location.search.includes("src="), null, { timeout: 30000 });
+  await alex.locator("main").getByRole("button", { name: "Join this cause" }).first().click();
+  await alex.getByText("✓ Joined").first().waitFor({ timeout: 30000 });
+  await go(priyaLeads, `/causes/${park}`);
+  assert.match(await text(priyaLeads), /Where people came from: 1 person came from the flyer, 1 from invites/);
+  await priyaLeads.locator("details#invite summary").click();
+  assert.match(await priyaLeads.getByTestId("invite-count").innerText(), /1 person has joined from your invite/);
+  await priyaLeads.context().close();
+  step("Someone who joins through a leader's invite link counts toward 'joined from your invite'");
 
   await alex.context().close();
   await page.context().close();
