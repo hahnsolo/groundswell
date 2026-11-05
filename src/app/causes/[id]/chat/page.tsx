@@ -28,11 +28,10 @@ async function Chat({ params }: Pick<PageProps<"/causes/[id]/chat">, "params">) 
   const cause = await getCauseDetail(id, user?.id ?? null);
   if (!cause || cause.removedAt || (cause.hidden && cause.authorId !== user?.id)) return null; // the layout explains
 
-  const isAuthor = user?.id === cause.authorId;
   const access = chatAccess({
     signedIn: !!user,
     isAdmin: user?.isAdmin,
-    isAuthor,
+    isLeader: user?.id === cause.leaderId,
     joinedAt: cause.viewerJoinedAt,
     emailVerified: user?.emailVerified,
   });
@@ -85,7 +84,11 @@ async function Chat({ params }: Pick<PageProps<"/causes/[id]/chat">, "params">) 
               <div className={`max-w-[85%] sm:max-w-[75%] ${mine ? "text-right" : ""}`}>
                 <p className="mb-1 text-xs text-muted">
                   <span className={`font-semibold ${c.author.deactivatedAt ? "" : "text-foreground"}`}>{mine ? "You" : displayName(c.author)}</span>
-                  {c.author.id === cause.authorId && !mine && <span className="ml-1">· started this</span>}
+                  {c.author.id === cause.leaderId && !mine ? (
+                    <span className="ml-1">· leads this</span>
+                  ) : (
+                    c.author.id === cause.authorId && !mine && <span className="ml-1">· started this</span>
+                  )}
                   <span className="ml-1.5">
                     <LocalTime iso={c.createdAt.toISOString()} options={{ month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }} />
                   </span>

@@ -35,16 +35,19 @@ model User {
   deactivatedAt DateTime?
   anonymizedAt  DateTime?
 
-  sessions    Session[]
-  accounts    Account[]
-  causes      Cause[]
-  memberships CauseMember[]
-  comments    Comment[]
-  meetups     Meetup[]
-  rsvps       Rsvp[]
-  campaigns   Campaign[]
-  signatures  Signature[]
-  reports     Report[]
+  sessions           Session[]
+  accounts           Account[]
+  causes             Cause[]       @relation("CausesStarted")
+  leading            Cause[]       @relation("CausesLed")
+  leadOffersMade     LeadOffer[]   @relation("LeadOffersMade")
+  leadOffersReceived LeadOffer[]   @relation("LeadOffersReceived")
+  memberships        CauseMember[]
+  comments           Comment[]
+  meetups            Meetup[]
+  rsvps              Rsvp[]
+  campaigns          Campaign[]
+  signatures         Signature[]
+  reports            Report[]
 }
 
 model Session {
@@ -151,27 +154,51 @@ model Cause {
   region        String
   lat           Float
   lng           Float
+  // Who started it (keeps the credit) and who leads it now (edits it, moves it
+  // forward). The same person until the lead is handed over (src/lib/leadership.ts).
   authorId      String
+  leaderId      String
   hidden        Boolean   @default(false)
   // Set when a moderator removes it (hidden is set too). Only the author can
   // still see it, and it's deleted for good after a week (src/lib/moderation.ts).
   removedAt     DateTime?
   removedById   String?
   removalReason String?
-  // Set when its author changes the title or description (shown as "edited").
+  // Set when its leader changes the title or description (shown as "edited").
   editedAt      DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  author    User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
-  members   CauseMember[]
-  comments  Comment[]
-  meetups   Meetup[]
-  campaigns Campaign[]
+  author     User          @relation("CausesStarted", fields: [authorId], references: [id], onDelete: Cascade)
+  leader     User          @relation("CausesLed", fields: [leaderId], references: [id], onDelete: Cascade)
+  members    CauseMember[]
+  comments   Comment[]
+  meetups    Meetup[]
+  campaigns  Campaign[]
+  leadOffers LeadOffer[]
 
   @@index([country, lat, lng])
   @@index([authorId])
+  @@index([leaderId])
   @@index([removedAt])
+}
+
+// The leader of a cause offering to hand it to a member (#41). Open until
+// answered or 7 days old; at most one open offer per cause.
+model LeadOffer {
+  id         String    @id @default(cuid())
+  causeId    String
+  fromUserId String
+  toUserId   String
+  createdAt  DateTime  @default(now())
+  answeredAt DateTime?
+  accepted   Boolean?
+  cause      Cause     @relation(fields: [causeId], references: [id], onDelete: Cascade)
+  from       User      @relation("LeadOffersMade", fields: [fromUserId], references: [id], onDelete: Cascade)
+  to         User      @relation("LeadOffersReceived", fields: [toUserId], references: [id], onDelete: Cascade)
+
+  @@index([causeId])
+  @@index([toUserId])
 }
 
 model CauseMember {

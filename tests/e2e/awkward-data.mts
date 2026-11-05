@@ -25,6 +25,7 @@ const awkward = await db.cause.create({
     description: `First paragraph about the road, which has been crumbling for years and keeps getting patched badly.\n\nSecond paragraph with an unbroken link: ${longUrl}\n\nThird paragraph: ${"Very long sentence that goes on and on without stopping. ".repeat(12)}`,
     category: "transit",
     authorId: people[0].id,
+    leaderId: people[0].id,
     createdAt: ago(20),
     members: { create: [people[0], ...people.slice(1), alex].map((p, i) => ({ userId: p.id, createdAt: ago(10 - (i % 9)) })) },
     comments: {
@@ -81,6 +82,7 @@ for (let i = 0; i < 12; i++) {
       category: ["safety", "housing", "parks", "environment", "health"][i % 5],
       status: i === 4 ? "in_progress" : "open",
       authorId: people[(i + 1) % people.length].id,
+      leaderId: people[(i + 1) % people.length].id,
       createdAt: ago(i),
       members: { create: people.slice(0, (i % 6) + 1).map((p) => ({ userId: p.id, createdAt: ago(i % 9) })) },
     },

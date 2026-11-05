@@ -153,6 +153,31 @@ let CAUSE;
   await page.context().close();
 }
 
+// 4b. Alex hands the crossing cause to Priya (a member since step 1); she accepts from the notice.
+{
+  const alex = await signIn(browser, "alex@demo.test", opts);
+  await go(alex, `/causes/${CAUSE}`);
+  const handOver = alex.locator("details", { hasText: "Hand over leading this cause" });
+  await handOver.getByText("Hand over leading this cause").click();
+  await handOver.getByLabel("Who should take over").selectOption({ label: "Priya" });
+  await handOver.getByRole("button", { name: "Offer the lead" }).click();
+  await handOver.getByText(/Waiting for Priya to accept/).waitFor({ timeout: 30000 });
+  step("The leader offers the lead to a member");
+
+  const priya = await signIn(browser, "priya@demo.test", opts);
+  await go(priya, `/causes/${CAUSE}`);
+  await priya.getByText(/Alex has asked you to lead this cause/).waitFor({ timeout: 30000 });
+  await priya.getByRole("button", { name: "Accept" }).click();
+  await priya.locator("main article header:visible").first().getByText(/led by Priya/i).waitFor({ timeout: 30000 });
+  assert.match(await priya.locator("main article header:visible").first().innerText(), /started by Alex/i);
+  assert.equal(await priya.getByText("Edit title and description").count(), 1, "the new leader should get the leader tools");
+  await go(alex, `/causes/${CAUSE}`);
+  assert.equal(await alex.getByText("Edit title and description").count(), 0, "the old leader still has the leader tools");
+  step("The member accepts: the cause shows who started it and who leads it, and the tools move over");
+  await alex.context().close();
+  await priya.context().close();
+}
+
 // 5. Priya deletes her account; wrong password is refused; signing back in restores it.
 {
   const page = await signIn(browser, "priya@demo.test", opts);

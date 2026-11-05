@@ -6,8 +6,8 @@ const minutesAgo = (n: number) => new Date(NOW - n * 60 * 1000);
 const hoursFromNow = (n: number) => new Date(NOW + n * 60 * 60 * 1000);
 
 describe("editing a cause", () => {
-  const cause = { authorId: "maya", removedAt: null };
-  it("is for the person who started it", () => {
+  const cause = { leaderId: "maya", removedAt: null };
+  it("is for the person leading it", () => {
     expect(canEditCause(cause, "maya")).toBe(true);
     expect(canEditCause(cause, "dev")).toBe(false);
     expect(canEditCause(cause, null)).toBe(false);

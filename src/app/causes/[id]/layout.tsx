@@ -4,12 +4,13 @@ import { Suspense } from "react";
 import { getCurrentUser } from "@/lib/auth";
 import { getCategory } from "@/lib/categories";
 import { askingWhom, fixerEmoji } from "@/lib/fixers";
+import { leadershipLine, offerOpen } from "@/lib/leadership";
 import { areaHref } from "@/lib/countries";
 import { getCauseDetail } from "@/lib/queries";
 import { displayName } from "@/lib/accounts";
 import { peopleLine } from "@/lib/momentum";
 import { canReadChat, chatAccess } from "@/lib/chat-rules";
-import { leaveCauseAction, toggleMembership } from "@/app/actions/community";
+import { answerLeadOffer, leaveCauseAction, toggleMembership } from "@/app/actions/community";
 import { RelativeTime } from "@/components/local-time";
 import { ShareButton } from "@/components/cause-forms";
 import { CauseTabs } from "@/components/cause-tabs";
@@ -57,12 +58,14 @@ async function CauseHeader({ params, children }: { params: LayoutProps<"/causes/
   const access = chatAccess({
     signedIn: !!user,
     isAdmin: user?.isAdmin,
-    isAuthor: user?.id === cause.authorId,
+    isLeader: user?.id === cause.leaderId,
     joinedAt: cause.viewerJoinedAt,
     emailVerified: user?.emailVerified,
   });
   const upcomingEvents = cause.meetups.filter((m) => m.upcoming).length;
   const asking = askingWhom(cause.fixer, cause.fixerOther, cause.country);
+  const latestOffer = cause.leadOffers[0];
+  const offerForMe = user && latestOffer?.toUserId === user.id && offerOpen(latestOffer) ? latestOffer : null;
 
   return (
     <article>
@@ -76,9 +79,26 @@ async function CauseHeader({ params, children }: { params: LayoutProps<"/causes/
         </p>
       )}
 
+      {offerForMe && (
+        <form action={answerLeadOffer} className="mt-4 flex flex-wrap items-center gap-3 rounded-md border-[1.5px] border-ink bg-mustard/25 p-3 text-sm">
+          <input type="hidden" name="offerId" value={offerForMe.id} />
+          <span className="min-w-0 flex-1">
+            <strong>{offerForMe.from.name}</strong> has asked you to lead this cause. You&apos;d be able to edit it, move it forward and
+            organize around it.
+          </span>
+          <button name="answer" value="accept" className={`${buttonStyles.primary} !px-3 !py-1.5`}>
+            Accept
+          </button>
+          <button name="answer" value="decline" className={`${buttonStyles.secondary} !px-3 !py-1.5`}>
+            Decline
+          </button>
+        </form>
+      )}
+
       <header className="mt-4">
         <p className="text-[11px] uppercase tracking-wide text-muted">
-          {cat.emoji} {cat.label} · {cause.placeName} · started by {displayName(cause.author)} ·{" "}
+          {cat.emoji} {cat.label} · {cause.placeName} ·{" "}
+          {leadershipLine(displayName(cause.author), displayName(cause.leader), cause.authorId === cause.leaderId)} ·{" "}
           <RelativeTime iso={cause.createdAt.toISOString()} />
           {cause.editedAt && " · edited"}
           {cause.status === "resolved" && <span className="ml-2 rounded-full bg-sage/30 px-2 py-0.5 font-semibold text-foreground">✓ Won</span>}

@@ -18,6 +18,8 @@ import { descriptionProblem } from "@/lib/words";
 import { FIXER_IDS, FIXER_OTHER_MAX, type FixerId } from "@/lib/fixers";
 import { endProblem } from "@/lib/event-times";
 import { canEditCause, canEditEvent, canEditMessage, MESSAGE_EDIT_MINUTES } from "@/lib/editing";
+import { canOfferLead, LEAD_OFFER_DAYS, offerOpen } from "@/lib/leadership";
+import { appUrl, sendEmail } from "@/lib/mail";
 import { fromZodError, type FormState } from "@/lib/forms";
 
 const id = z.string().min(1).max(40);
@@ -118,6 +120,7 @@ export async function createCause(_prev: FormState, formData: FormData): Promise
       lat: place.lat,
       lng: place.lng,
       authorId: user.id,
+      leaderId: user.id,
       // The author obviously cares about it.
       members: { create: { userId: user.id } },
     },
@@ -132,7 +135,7 @@ export async function setCauseStatus(formData: FormData) {
     .safeParse(Object.fromEntries(formData));
   if (!parsed.success) return;
   const { causeId, status } = parsed.data;
-  const where = { id: causeId, authorId: user.id };
+  const where = { id: causeId, leaderId: user.id };
   // Remember when it was won (first time only); clear it if reopened.
   if (status === "resolved") {
     await db.cause.updateMany({ where: { ...where, status: { not: "resolved" } }, data: { status, resolvedAt: new Date() } });
@@ -147,8 +150,8 @@ export async function editCause(_prev: FormState, formData: FormData): Promise<F
   const user = await requireUser();
   const parsed = causeSchema.pick({ title: true, description: true }).extend({ causeId: id }).safeParse(Object.fromEntries(formData));
   if (!parsed.success) return fromZodError(parsed.error);
-  const cause = await db.cause.findUnique({ where: { id: parsed.data.causeId }, select: { authorId: true, removedAt: true } });
-  if (!cause || !canEditCause(cause, user.id)) return { error: "Only the person who started this cause can change it." };
+  const cause = await db.cause.findUnique({ where: { id: parsed.data.causeId }, select: { leaderId: true, removedAt: true } });
+  if (!cause || !canEditCause(cause, user.id)) return { error: "Only the person leading this cause can change it." };
   const problem = editCheck(user, formData, parsed.data.title, parsed.data.description);
   if (problem) return problem;
   await db.cause.update({
@@ -174,8 +177,8 @@ export async function setCauseContact(_prev: FormState, formData: FormData): Pro
     })
     .safeParse(Object.fromEntries(formData));
   if (!parsed.success) return fromZodError(parsed.error);
-  const cause = await db.cause.findUnique({ where: { id: parsed.data.causeId }, select: { authorId: true, removedAt: true } });
-  if (!cause || !canEditCause(cause, user.id)) return { error: "Only the person who started this cause can change this." };
+  const cause = await db.cause.findUnique({ where: { id: parsed.data.causeId }, select: { leaderId: true, removedAt: true } });
+  if (!cause || !canEditCause(cause, user.id)) return { error: "Only the person leading this cause can change this." };
   const { contactName, contactRole, contactEmail } = parsed.data;
   const problem = editCheck(user, formData, contactName, contactRole);
   if (problem) return problem;
@@ -187,7 +190,84 @@ export async function setCauseContact(_prev: FormState, formData: FormData): Pro
   return { ok: true };
 }
 
-/** The person who raised a cause can change who they think should fix it. */
+// ---------- Handing over the lead ----------
+
+/** The leader offers the lead to a member. Replaces any offer still waiting for an answer. */
+export async function offerLead(_prev: FormState, formData: FormData): Promise<FormState> {
+  const user = await requireUser();
+  const parsed = z.object({ causeId: id, toUserId: id }).safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { error: "Pick who should take over." };
+  const { causeId, toUserId } = parsed.data;
+  const [cause, membership] = await Promise.all([
+    db.cause.findUnique({ where: { id: causeId }, select: { leaderId: true, removedAt: true, title: true } }),
+    db.causeMember.findUnique({
+      where: { causeId_userId: { causeId, userId: toUserId } },
+      select: { user: { select: { name: true, email: true, deactivatedAt: true } } },
+    }),
+  ]);
+  if (!cause) return CAUSE_GONE;
+  const problem = canOfferLead(cause, user.id, { userId: toUserId, isMember: !!membership && !membership.user.deactivatedAt });
+  if (problem || !membership) return { error: problem ?? "You can only hand a cause to someone who has joined it." };
+  await db.$transaction([
+    db.leadOffer.updateMany({ where: { causeId, answeredAt: null }, data: { answeredAt: new Date(), accepted: false } }),
+    db.leadOffer.create({ data: { causeId, fromUserId: user.id, toUserId } }),
+  ]);
+  try {
+    await sendEmail({
+      to: membership.user.email,
+      subject: `${user.name} would like you to lead "${cause.title}"`,
+      text: `Hi ${membership.user.name},\n\n${user.name} has asked you to take over leading "${cause.title}" on Groundswell. You'd be able to edit it, move it forward and organize around it; ${user.name} stays on as a member.\n\nAccept or decline here (the offer is open for ${LEAD_OFFER_DAYS} days):\n${appUrl(`/causes/${causeId}`)}\n\nThanks for caring about your neighbourhood!`,
+    });
+  } catch (e) {
+    console.warn("Lead offer email failed:", (e as Error).message); // the offer still shows on the cause
+  }
+  refresh();
+  return { ok: true };
+}
+
+/** The leader takes back an offer nobody has answered yet. */
+export async function withdrawLeadOffer(formData: FormData) {
+  const user = await requireUser();
+  const offerId = id.parse(formData.get("offerId"));
+  await db.leadOffer.updateMany({ where: { id: offerId, fromUserId: user.id, answeredAt: null }, data: { answeredAt: new Date(), accepted: false } });
+  refresh();
+}
+
+/** The person offered the lead accepts or declines. */
+export async function answerLeadOffer(formData: FormData) {
+  const user = await requireUser();
+  const parsed = z.object({ offerId: id, answer: z.enum(["accept", "decline"]) }).safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return;
+  const offer = await db.leadOffer.findUnique({
+    where: { id: parsed.data.offerId },
+    include: { cause: { select: { title: true, leaderId: true, removedAt: true } }, from: { select: { name: true, email: true } } },
+  });
+  if (!offer || offer.toUserId !== user.id || !offerOpen(offer)) return;
+  const accept = parsed.data.answer === "accept";
+  if (accept) {
+    // Only if nothing changed meanwhile: they're still a member, and the person who offered still leads it.
+    const stillMember = await db.causeMember.findUnique({ where: { causeId_userId: { causeId: offer.causeId, userId: user.id } } });
+    if (!stillMember || offer.cause.leaderId !== offer.fromUserId || offer.cause.removedAt) return;
+  }
+  await db.$transaction([
+    db.leadOffer.update({ where: { id: offer.id }, data: { answeredAt: new Date(), accepted: accept } }),
+    ...(accept ? [db.cause.update({ where: { id: offer.causeId }, data: { leaderId: user.id } })] : []),
+  ]);
+  try {
+    await sendEmail({
+      to: offer.from.email,
+      subject: accept ? `${user.name} now leads "${offer.cause.title}"` : `${user.name} can't take over "${offer.cause.title}"`,
+      text: accept
+        ? `Hi ${offer.from.name},\n\n${user.name} accepted and now leads "${offer.cause.title}". You're still a member.\n\n${appUrl(`/causes/${offer.causeId}`)}`
+        : `Hi ${offer.from.name},\n\n${user.name} isn't able to lead "${offer.cause.title}" right now. You still lead it, and you can offer it to someone else:\n${appUrl(`/causes/${offer.causeId}`)}`,
+    });
+  } catch (e) {
+    console.warn("Lead answer email failed:", (e as Error).message);
+  }
+  refresh();
+}
+
+/** The person leading a cause can change who they think should fix it. */
 export async function setCauseFixer(_prev: FormState, formData: FormData): Promise<FormState> {
   const user = await requireUser();
   const parsed = z.object({ causeId: id, ...fixerFields }).safeParse(Object.fromEntries(formData));
@@ -195,7 +275,7 @@ export async function setCauseFixer(_prev: FormState, formData: FormData): Promi
   if (fixerOtherMissing(parsed.data)) return FIXER_OTHER_MISSING;
   const links = linkError(user, parsed.data.fixerOther);
   if (links) return { error: links };
-  await db.cause.updateMany({ where: { id: parsed.data.causeId, authorId: user.id, removedAt: null }, data: fixerData(parsed.data) });
+  await db.cause.updateMany({ where: { id: parsed.data.causeId, leaderId: user.id, removedAt: null }, data: fixerData(parsed.data) });
   refresh();
   return { ok: true };
 }
@@ -225,13 +305,13 @@ export async function addComment(_prev: FormState, formData: FormData): Promise<
   if (!(await causeOpen(parsed.data.causeId))) return CAUSE_GONE;
   // The chat is for members, and new members read along for a day first.
   const [cause, membership] = await Promise.all([
-    db.cause.findUnique({ where: { id: parsed.data.causeId }, select: { authorId: true } }),
+    db.cause.findUnique({ where: { id: parsed.data.causeId }, select: { leaderId: true } }),
     db.causeMember.findUnique({ where: { causeId_userId: { causeId: parsed.data.causeId, userId: user.id } }, select: { createdAt: true } }),
   ]);
   const access = chatAccess({
     signedIn: true,
     isAdmin: user.isAdmin,
-    isAuthor: cause?.authorId === user.id,
+    isLeader: cause?.leaderId === user.id,
     joinedAt: membership?.createdAt ?? null,
     emailVerified: user.emailVerified,
   });

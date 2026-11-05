@@ -101,6 +101,14 @@ export const getCauseDetail = cache(async (id: string, viewerId: string | null) 
     where: { id },
     include: {
       author: { select: { id: true, name: true, deactivatedAt: true } },
+      leader: { select: { id: true, name: true, deactivatedAt: true } },
+      // The latest unanswered handover offer, if any (it lapses after 7 days; see src/lib/leadership.ts).
+      leadOffers: {
+        where: { answeredAt: null },
+        orderBy: { createdAt: "desc" },
+        take: 1,
+        include: { to: { select: { id: true, name: true } }, from: { select: { id: true, name: true } } },
+      },
       _count: { select: { members: true, comments: { where: { hidden: false } } } },
       members: {
         orderBy: { createdAt: "asc" },

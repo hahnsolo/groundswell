@@ -4,7 +4,10 @@ import { getCurrentUser } from "@/lib/auth";
 import { STATUSES } from "@/lib/categories";
 import { getCauseDetail } from "@/lib/queries";
 import { displayName } from "@/lib/accounts";
-import { reportContent, setCauseStatus } from "@/app/actions/community";
+import { reportContent, setCauseStatus, withdrawLeadOffer } from "@/app/actions/community";
+import { db } from "@/lib/db";
+import { LEAD_OFFER_DAYS, offerOpen } from "@/lib/leadership";
+import { HandOverForm } from "@/components/handover";
 import { LocalTime } from "@/components/local-time";
 import { CampaignForm, LetterBuilder, SignForm } from "@/components/cause-forms";
 import { WhoCanFix } from "@/components/who-can-fix";
@@ -34,7 +37,20 @@ async function About({ params }: Pick<PageProps<"/causes/[id]">, "params">) {
   const appUrl = process.env.APP_URL ?? "http://localhost:3000";
   const causeUrl = `${appUrl}/causes/${cause.id}`;
   const place = `${cause.placeName}, ${cause.region}`;
-  const isAuthor = user?.id === cause.authorId;
+  const isLeader = user?.id === cause.leaderId;
+  // Handing over: an offer still waiting for an answer, and the members the lead could go to.
+  const latestOffer = cause.leadOffers[0];
+  const pendingOffer = isLeader && latestOffer && offerOpen(latestOffer) ? latestOffer : null;
+  const pendingOfferUntil = pendingOffer ? new Date(pendingOffer.createdAt.getTime() + LEAD_OFFER_DAYS * 24 * 60 * 60 * 1000) : null;
+  const handOverTo = isLeader
+    ? (
+        await db.causeMember.findMany({
+          where: { causeId: cause.id, userId: { not: cause.leaderId }, user: { deactivatedAt: null } },
+          orderBy: { createdAt: "asc" },
+          select: { user: { select: { id: true, name: true } } },
+        })
+      ).map((m) => m.user)
+    : [];
   const next = cause.meetups.find((m) => m.upcoming);
   // Saved per area; the first visit to a new area looks them up (a second or two).
   const areaReps = await getAreaReps(cause);
@@ -143,7 +159,7 @@ async function About({ params }: Pick<PageProps<"/causes/[id]">, "params">) {
       </Panel>
 
       <div className="flex flex-wrap items-center gap-3 text-sm">
-        {isAuthor ? (
+        {isLeader ? (
           <div className="w-full space-y-3">
           <form action={setCauseStatus} className="flex flex-wrap items-center gap-2">
             <input type="hidden" name="causeId" value={cause.id} />
@@ -161,6 +177,24 @@ async function About({ params }: Pick<PageProps<"/causes/[id]">, "params">) {
           </form>
           <FixerChangeForm causeId={cause.id} country={cause.country} fixer={cause.fixer} fixerOther={cause.fixerOther} />
           {canEditCause(cause, user?.id) && <EditCauseForm causeId={cause.id} title={cause.title} description={cause.description} />}
+          <details className="text-sm" open={!!pendingOffer}>
+            <summary className="cursor-pointer text-muted hover:text-foreground">Hand over leading this cause</summary>
+            <div className="mt-3 max-w-xl space-y-3">
+              {pendingOffer ? (
+                <form action={withdrawLeadOffer} className="flex flex-wrap items-center gap-3">
+                  <input type="hidden" name="offerId" value={pendingOffer.id} />
+                  <span>
+                    Waiting for <strong>{pendingOffer.to.name}</strong> to accept (until{" "}
+                    <LocalTime iso={pendingOfferUntil!.toISOString()} options={{ month: "short", day: "numeric" }} />
+                    ).
+                  </span>
+                  <button className="text-xs text-muted underline hover:text-foreground">Withdraw the offer</button>
+                </form>
+              ) : (
+                <HandOverForm causeId={cause.id} members={handOverTo} />
+              )}
+            </div>
+          </details>
           </div>
         ) : (
           user?.emailVerified && (

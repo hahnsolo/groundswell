@@ -31,7 +31,7 @@ describe("cause chat access", () => {
   });
 
   it("lets the person who raised the cause post straight away", () => {
-    expect(chatAccess({ ...member, isAuthor: true, joinedAt: hoursAgo(0) }, now)).toEqual({ kind: "post" });
+    expect(chatAccess({ ...member, isLeader: true, joinedAt: hoursAgo(0) }, now)).toEqual({ kind: "post" });
   });
 
   it("still needs a confirmed email to post", () => {
