@@ -36,7 +36,7 @@ Free-plan limits change from time to time. The numbers below are approximate as 
 
 - **What it does:** stores everything: accounts, Causes, comments, meetups, campaigns, reports, and the rate-limit counters.
 - **Region:** AWS US East 2 (Ohio).
-- **Branches:** `main` is the live site's data. `dev` is a separate copy for your PC, filled with demo data. Changing or wiping `dev` can never affect the live site.
+- **Branches:** `production` is the live site's data. `dev` is a separate copy for your PC, filled with demo data. `preview` is for the private preview sites Vercel builds for each pull request (a copy of `dev`, never live data). Changing or wiping `dev` can never affect the live site.
 - **Plan:** Free. It includes a small amount of storage per project (about 0.5 GB, which is a lot of text posts) and a monthly allowance of compute time. The database **goes to sleep after a few minutes of no visitors** and wakes on the next visit. That's how it stays free; see [Troubleshooting](troubleshooting.md#the-first-page-load-after-a-quiet-spell-is-slow).
 - **Would cost money:** outgrowing the storage, or having steady traffic all day and night so it never sleeps. Neon's Launch plan is usage-based (starting around $5–20 USD/month for a small site). The free plan stops rather than billing you.
 

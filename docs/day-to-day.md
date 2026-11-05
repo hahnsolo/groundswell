@@ -96,7 +96,7 @@ Admins can see the moderation queue at `/admin/reports`. There's deliberately no
 
 1. The person signs up on the live site and confirms their email.
 2. Go to Neon → project → **SQL Editor**.
-3. **At the top, pick the `main` branch** (the live data). The editor remembers the last branch you used, so check it every time.
+3. **At the top, pick the `production` branch** (the live data). The editor remembers the last branch you used, so check it every time.
 4. Run (with their real email):
 
    ```sql
@@ -150,7 +150,7 @@ Members delete their own account from `/me` → **Delete my account…** (they c
 - **For 30 days:** signing back in restores the account (they see a "Welcome back" note). Removed signatures and RSVPs don't come back.
 - **After 30 days:** the daily job erases their name, email, password, home area and sign-in links. Their posts stay, credited to "Former member", and their email becomes free to sign up again.
 
-**If someone emails asking to be deleted** and can't do it themselves, look them up in Neon's SQL Editor (main branch) and set the date. The daily job does the rest after 30 days:
+**If someone emails asking to be deleted** and can't do it themselves, look them up in Neon's SQL Editor (`production` branch) and set the date. The daily job does the rest after 30 days:
 
 ```sql
 UPDATE "User" SET "deactivatedAt" = now() WHERE email = 'person@example.com';
