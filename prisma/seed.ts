@@ -174,7 +174,7 @@ async function main() {
       description: "The park washrooms have been locked for three weeks. Families and seniors are going without. Any update from Parks?",
       category: "parks",
       fixer: "city",
-      status: "in_progress",
+      stage: "organizing",
       authorId: priya.id,
       leaderId: priya.id,
       createdAt: new Date(Date.now() - 12 * day),
@@ -190,7 +190,7 @@ async function main() {
       description:
         "Four streetlights between King and Adelaide were out for over a month. After neighbours reported them together and wrote to the councillor, the city repaired all four.",
       category: "safety",
-      status: "resolved",
+      stage: "won",
       resolvedAt: new Date(Date.now() - 4 * day),
       authorId: sam.id,
       leaderId: sam.id,

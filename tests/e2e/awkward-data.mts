@@ -80,7 +80,7 @@ for (let i = 0; i < 12; i++) {
       title: i % 3 === 0 ? `Short one ${i}` : `Cause number ${i + 1} about something on a street nearby that people care about a great deal`,
       description: "Details. ".repeat(30),
       category: ["safety", "housing", "parks", "environment", "health"][i % 5],
-      status: i === 4 ? "in_progress" : "open",
+      stage: i === 4 ? "organizing" : "raised",
       authorId: people[(i + 1) % people.length].id,
       leaderId: people[(i + 1) % people.length].id,
       createdAt: ago(i),

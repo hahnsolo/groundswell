@@ -48,7 +48,7 @@ async function HomeContent() {
   });
   const pulse = await getAreaPulse(causes);
   const winIds = new Set(pulse.wins.map((w) => w.id));
-  const board = causes.filter((i) => !winIds.has(i.id) && i.status !== "resolved").slice(0, 5);
+  const board = causes.filter((i) => !winIds.has(i.id) && i.stage !== "won").slice(0, 5);
   const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
   const areaLink = areaHref(place.country, place.postalCode);
 

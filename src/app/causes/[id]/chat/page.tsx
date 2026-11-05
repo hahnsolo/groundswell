@@ -125,7 +125,9 @@ async function Chat({ params }: Pick<PageProps<"/causes/[id]/chat">, "params">) 
       </ol>
 
       <div className="mt-6 border-t border-border pt-4">
-        {access.kind === "post" ? (
+        {cause.stage === "closed" ? (
+          <p className="text-sm text-muted">This cause is closed, so the chat is read-only.</p>
+        ) : access.kind === "post" ? (
           <CommentForm causeId={cause.id} />
         ) : access.kind === "verify-email" ? (
           <p className="text-sm text-muted">Confirm your email address to post. Check your inbox for the link.</p>
