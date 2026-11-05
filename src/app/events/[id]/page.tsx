@@ -17,6 +17,10 @@ import { eventShare } from "@/lib/share-meta";
 import { leadsCause } from "@/lib/leadership";
 import { removeCover } from "@/app/actions/media";
 import { CoverPicker } from "@/components/cover-picker";
+import { SourceTag } from "@/components/source-tag";
+import { SpreadTheWord } from "@/components/spread-the-word";
+import { eventSources } from "@/lib/spread";
+import { taggedUrl } from "@/lib/sources";
 
 // The tab title and the preview card when the link is shared (the image is opengraph-image.tsx).
 export async function generateMetadata({ params }: PageProps<"/events/[id]">): Promise<Metadata> {
@@ -59,9 +63,13 @@ async function Event({ params }: Pick<PageProps<"/events/[id]">, "params">) {
   const full = !!e.capacity && e._count.rsvps >= e.capacity;
   const appUrl = process.env.APP_URL ?? "http://localhost:3000";
   const here = `/events/${e.id}`;
+  // The host and the people leading the cause see where people came from (#67).
+  const sources = canChangeCover ? await eventSources(e.id) : null;
 
   return (
     <article>
+      {/* A flyer or post brings people here tagged; remember it for this event and its cause. */}
+      <SourceTag ids={[e.id, e.cause.id]} />
       <Link href={`/causes/${e.cause.id}/events`} className="text-sm text-muted hover:text-foreground">
         ← Part of <span className="underline underline-offset-2">{e.cause.title}</span>
       </Link>
@@ -151,7 +159,7 @@ async function Event({ params }: Pick<PageProps<"/events/[id]">, "params">) {
               <a href={`/events/${e.id}/calendar.ics`} className={`${buttonStyles.secondary} !px-3 !py-1.5`}>
                 Add to calendar
               </a>
-              <ShareButton url={`${appUrl}${here}`} title={e.title} />
+              <ShareButton url={taggedUrl(`${appUrl}${here}`, "link")} title={e.title} />
             </div>
           </div>
         )}
@@ -183,6 +191,21 @@ async function Event({ params }: Pick<PageProps<"/events/[id]">, "params">) {
           {e.capacity ? ` · ${Math.max(0, e.capacity - e._count.rsvps)} of ${e.capacity} places left` : ""}
         </span>
       </section>
+
+      {sources && (
+        <p className="mt-6 rounded-md bg-sage/25 p-2 text-sm">
+          <strong>Where people came from:</strong> {sources}.
+        </p>
+      )}
+
+      {!e.over && (
+        <details className="mt-6 border-t border-border pt-4 text-sm" id="spread">
+          <summary className="cursor-pointer font-medium hover:text-foreground">📣 Spread the word: print a flyer, post an image</summary>
+          <div className="mt-3">
+            <SpreadTheWord kind="event" id={e.id} pageUrl={`${appUrl}${here}`} title={e.title} />
+          </div>
+        </details>
+      )}
 
       {canEditEvent(e, user?.id) && (
         <details className="mt-6 border-t border-border pt-4 text-sm">

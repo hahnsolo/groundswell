@@ -190,6 +190,8 @@ model Cause {
   coverUrl      String?
   coverThumbUrl String?
   coverAlt      String?
+  // Short link for flyers and posts (#67): /go/<shortCode>. Made the first time it's needed.
+  shortCode     String?   @unique
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
@@ -252,6 +254,8 @@ model CauseMember {
   createdAt DateTime @default(now())
   // No notification emails about this cause (#18).
   muted     Boolean  @default(false)
+  // How they found it (#67): flyer, whatsapp, instagram… (src/lib/sources.ts). Null when unknown.
+  source    String?
   cause     Cause    @relation(fields: [causeId], references: [id], onDelete: Cascade)
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -314,6 +318,8 @@ model Meetup {
   coverUrl       String?
   coverThumbUrl  String?
   coverAlt       String?
+  // As on Cause (#67).
+  shortCode      String?      @unique
   createdAt      DateTime     @default(now())
   cause          Cause        @relation(fields: [causeId], references: [id], onDelete: Cascade)
   organizer      User         @relation(fields: [organizerId], references: [id], onDelete: Cascade)
@@ -348,6 +354,8 @@ model Rsvp {
   meetupId  String
   userId    String
   createdAt DateTime @default(now())
+  // As on CauseMember (#67).
+  source    String?
   meetup    Meetup   @relation(fields: [meetupId], references: [id], onDelete: Cascade)
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 

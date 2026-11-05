@@ -27,6 +27,7 @@
     "@vercel/blob": "^2.8.2",
     "better-auth": "1.7.15",
     "next": "16.4.3",
+    "qrcode": "^1.5.4",
     "react": "19.3.1",
     "react-dom": "19.3.1",
     "server-only": "^0.0.1",
@@ -35,6 +36,7 @@
   "devDependencies": {
     "@tailwindcss/turbopack": "^4",
     "@types/node": "^20",
+    "@types/qrcode": "^1.5.5",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",

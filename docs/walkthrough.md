@@ -147,6 +147,15 @@ Type your name (and the recipient's email if you have it). The app writes a poli
     - Events get covers the same way, from the event page; the host or the cause's leaders can set one.
     - Admins see **Remove image (moderator)** under any cover. New accounts can't add images on their first day.
   - Everyone else sees **Report this cause** there instead.
+- **📣 Spread the word** (on About for any open cause, and on every upcoming event; anyone can use it):
+  - **Print a flyer:** one page (Letter or A4) with:
+    - the cover image and the title in big type;
+    - a big QR code and a short link to type (`groundswell.hahnsolo.ca/go/k7m2qp`);
+    - for events, the day, time, place and the host's first name. Online events never show the video link.
+    - Tick **Tear-off strips** for a row of small QR codes along the bottom.
+  - **Share images:** a square post, a story and a wide card, each with the QR code and short link. Download one, or tap **Share** on a phone to post it straight from the share sheet.
+  - **Where are you posting it?** tags the images and the link (Instagram, WhatsApp, Facebook, email, text…).
+  - The people leading the cause, and an event's host, see **Where people came from**, like *"9 people came from the flyer, 14 from WhatsApp"*. Each person counts once, from the first tagged link they used.
 
 **Rules:** signing and starting a campaign need a confirmed email; campaigns are limited to 5 an hour (1 for new accounts).
 

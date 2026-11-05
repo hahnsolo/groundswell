@@ -51,7 +51,9 @@ export default function PrivacyPage() {
           </li>
           <li>
             <strong>Cookies:</strong> one to keep you signed in, and one that remembers the neighbourhood you last looked at (the area
-            only). No advertising or tracking cookies, and no analytics.
+            only). When you arrive from a flyer or a shared post, one more remembers just where from (like &ldquo;flyer&rdquo; or
+            &ldquo;WhatsApp&rdquo;) for 30 days; if you join, that word is saved with your membership so the people leading it can see
+            how many came from each place. No advertising or tracking cookies, and no analytics.
           </li>
           <li>
             <strong>Finding your representatives:</strong> if you type your full postal code to find your representatives, it&apos;s

@@ -563,6 +563,49 @@ let CAUSE;
   await page.waitForFunction(() => ![...document.querySelectorAll("main article figure img")].some((i) => i.offsetParent), null, { timeout: 30000 });
   step("Replacing a cover deletes the old file; removing it takes it down");
 
+  // 13. Flyers and share images (#67). Sam prints a flyer for an event; Priya's cause gets a member from its flyer.
+  await go(page, `/causes/${trail}/events`);
+  const eventHref = await page.locator('main a[href^="/events/"]').first().getAttribute("href");
+  await go(page, eventHref);
+  const spread = page.locator("details#spread");
+  await spread.locator("summary").click();
+  await spread.getByRole("link", { name: /Print a flyer/ }).click();
+  const sheet = page.getByRole("article", { name: "Flyer" });
+  await sheet.waitFor({ timeout: 60000 });
+  const flyerText = await sheet.innerText();
+  assert.match(flyerText, /Hosted by \S+ ·/, "the flyer should name the host by first name");
+  assert.match(flyerText, /Runyon Canyon trailhead gate/, "the flyer should say where");
+  assert.equal(await sheet.locator("[data-qr] svg").count(), 1, "the flyer should have a QR code");
+  assert.match(flyerText, /\/go\/[a-z2-9]{6}/, "the flyer should have a short link to type");
+  await page.getByLabel("Tear-off strips along the bottom").check();
+  assert.equal(await sheet.locator("[data-qr] svg").count(), 8, "tear-off strips each carry the QR code");
+  step("An event flyer has the title, place, host's first name, a QR code and tear-off strips");
+
+  for (const [format, w, h] of [["card", 1200, 630], ["square", 1080, 1080], ["story", 1080, 1920]]) {
+    const img = await page.request.get(`${BASE}${eventHref.replace("/events/", "/share/event/")}/${format}?src=instagram`);
+    assert.equal(img.status(), 200, `${format} image`);
+    const png = await img.body();
+    assert.deepEqual([png.readUInt32BE(16), png.readUInt32BE(20)], [w, h], `${format} should be ${w}×${h}`);
+  }
+  step("Share images come in three sizes: card, square post and story");
+
+  const priyaLeads = await signIn(browser, "priya@demo.test", opts);
+  const park = await findCause(priyaLeads, "/area/ca/M5V", "Rent increases above guideline");
+  await go(priyaLeads, `/flyer/cause/${park}`);
+  const code = (await priyaLeads.getByRole("article", { name: "Flyer" }).innerText()).match(/\/go\/([a-z2-9]{6})/)[1];
+  // Sam scans the flyer's QR code and joins.
+  await go(page, `/go/${code}`);
+  assert.match(page.url(), new RegExp(`/causes/${park}`), "the short link should open the cause");
+  await page.waitForFunction(() => !location.search.includes("src="), null, { timeout: 30000 });
+  await page.locator("main").getByRole("button", { name: "Join this cause" }).first().click();
+  await page.getByText("✓ Joined").first().waitFor({ timeout: 30000 });
+  await go(priyaLeads, `/causes/${park}`);
+  assert.match(await text(priyaLeads), /Where people came from: 1 person came from the flyer/);
+  await go(page, `/causes/${park}`);
+  assert.doesNotMatch(await text(page), /Where people came from/, "only the people leading it see where people came from");
+  await priyaLeads.context().close();
+  step("Someone who comes from the flyer's QR code and joins counts once as from the flyer, for the leaders to see");
+
   await alex.context().close();
   await page.context().close();
 }
