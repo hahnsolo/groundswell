@@ -14,6 +14,9 @@ import { Panel, SignInPrompt } from "@/components/cause-parts";
 import { buttonStyles } from "@/components/styles";
 import { getEventForShare } from "@/lib/queries";
 import { eventShare } from "@/lib/share-meta";
+import { leadsCause } from "@/lib/leadership";
+import { removeCover } from "@/app/actions/media";
+import { CoverPicker } from "@/components/cover-picker";
 
 // The tab title and the preview card when the link is shared (the image is opengraph-image.tsx).
 export async function generateMetadata({ params }: PageProps<"/events/[id]">): Promise<Metadata> {
@@ -51,6 +54,8 @@ async function Event({ params }: Pick<PageProps<"/events/[id]">, "params">) {
   if (!e || e.cause.removedAt || (e.cause.hidden && e.cause.authorId !== user?.id)) notFound();
 
   const hosting = user?.id === e.organizerId;
+  // The host, or the people leading its cause, can set the event's cover image.
+  const canChangeCover = !!user && (hosting || leadsCause(e.cause, user.id));
   const full = !!e.capacity && e._count.rsvps >= e.capacity;
   const appUrl = process.env.APP_URL ?? "http://localhost:3000";
   const here = `/events/${e.id}`;
@@ -69,6 +74,20 @@ async function Event({ params }: Pick<PageProps<"/events/[id]">, "params">) {
         </p>
         <h1 className="mt-2 text-3xl font-semibold leading-tight sm:text-4xl">{e.title}</h1>
       </header>
+
+      {e.coverUrl && (
+        <figure className="mt-5">
+          {/* eslint-disable-next-line @next/next/no-img-element -- already resized; served straight from storage */}
+          <img src={e.coverUrl} alt={e.coverAlt ?? `Cover image for ${e.title}`} className="aspect-video max-h-80 w-full rounded-md border-[1.5px] border-ink object-cover" />
+          {user?.isAdmin && !canChangeCover && (
+            <form action={removeCover} className="mt-1 text-right">
+              <input type="hidden" name="target" value="event" />
+              <input type="hidden" name="id" value={e.id} />
+              <button className="text-xs text-muted underline hover:text-red-600">Remove image (moderator)</button>
+            </form>
+          )}
+        </figure>
+      )}
 
       <div className="mt-6 grid gap-6 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
         <dl className="space-y-2 text-[15px]">
@@ -181,6 +200,15 @@ async function Event({ params }: Pick<PageProps<"/events/[id]">, "params">) {
                 capacity: e.capacity,
               }}
             />
+          </div>
+        </details>
+      )}
+
+      {canChangeCover && (
+        <details className="mt-6 border-t border-border pt-4 text-sm">
+          <summary className="cursor-pointer text-muted hover:text-foreground">{e.coverUrl ? "Change the cover image" : "Add a cover image"}</summary>
+          <div className="mt-3 max-w-xl">
+            <CoverPicker target="event" id={e.id} current={e.coverUrl} currentAlt={e.coverAlt} label="Choose a cover image for this event" />
           </div>
         </details>
       )}

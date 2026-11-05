@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getCauseForShare } from "@/lib/queries";
 import { causeShare } from "@/lib/share-meta";
+import { removeCover } from "@/app/actions/media";
 import { Suspense } from "react";
 import { getCurrentUser } from "@/lib/auth";
 import { getCategory } from "@/lib/categories";
@@ -213,6 +214,25 @@ async function CauseHeader({ params, children }: { params: LayoutProps<"/causes/
             </span>
           </div>
         </div>
+      )}
+
+      {cause.coverUrl && (
+        <figure className="mt-4">
+          {/* eslint-disable-next-line @next/next/no-img-element -- already resized; served straight from storage */}
+          <img
+            src={cause.coverUrl}
+            alt={cause.coverAlt ?? `Cover image for ${cause.title}`}
+            className="aspect-video max-h-80 w-full rounded-md border-[1.5px] border-ink object-cover"
+          />
+          {user?.isAdmin && !leads && (
+            // Moderators can take down any image; the people leading it change it on About.
+            <form action={removeCover} className="mt-1 text-right">
+              <input type="hidden" name="target" value="cause" />
+              <input type="hidden" name="id" value={cause.id} />
+              <button className="text-xs text-muted underline hover:text-red-600">Remove image (moderator)</button>
+            </form>
+          )}
+        </figure>
       )}
 
       <header className="mt-4">

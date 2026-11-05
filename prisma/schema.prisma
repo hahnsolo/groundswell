@@ -61,6 +61,7 @@ model User {
   campaigns          Campaign[]
   signatures         Signature[]
   reports            Report[]
+  uploads            MediaAsset[]
 }
 
 model Session {
@@ -185,9 +186,14 @@ model Cause {
   removalReason String?
   // Set when its leader changes the title or description (shown as "edited").
   editedAt      DateTime?
+  // Cover image (#66): a wide one for the page and previews, a small one for cards.
+  coverUrl      String?
+  coverThumbUrl String?
+  coverAlt      String?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
+  media        MediaAsset[]
   author       User          @relation("CausesStarted", fields: [authorId], references: [id], onDelete: Cascade)
   leader       User          @relation("CausesLed", fields: [leaderId], references: [id], onDelete: Cascade)
   members      CauseMember[]
@@ -286,7 +292,7 @@ model Comment {
 }
 
 model Meetup {
-  id             String    @id @default(cuid())
+  id             String       @id @default(cuid())
   causeId        String
   organizerId    String
   title          String
@@ -296,7 +302,7 @@ model Meetup {
   endsAt         DateTime
   // Free-text venue ("Library, room 2") or a video link when online.
   location       String
-  isOnline       Boolean   @default(false)
+  isOnline       Boolean      @default(false)
   capacity       Int?
   // Set when hosting passed to someone else (the host stepped down or left).
   hostChangedAt  DateTime?
@@ -304,12 +310,38 @@ model Meetup {
   editedAt       DateTime?
   // Set when the day-before reminders went out (#18), so they go once.
   reminderSentAt DateTime?
-  createdAt      DateTime  @default(now())
-  cause          Cause     @relation(fields: [causeId], references: [id], onDelete: Cascade)
-  organizer      User      @relation(fields: [organizerId], references: [id], onDelete: Cascade)
+  // Cover image (#66), as on Cause.
+  coverUrl       String?
+  coverThumbUrl  String?
+  coverAlt       String?
+  createdAt      DateTime     @default(now())
+  cause          Cause        @relation(fields: [causeId], references: [id], onDelete: Cascade)
+  organizer      User         @relation(fields: [organizerId], references: [id], onDelete: Cascade)
   rsvps          Rsvp[]
+  media          MediaAsset[]
 
   @@index([causeId, startsAt])
+}
+
+// Every uploaded file (#66), so we know how much storage is used (and pause
+// uploads before the free limit) and can delete files from storage. A file
+// whose cause or event is gone, or that was replaced, is detached (causeId and
+// meetupId null) and the daily job deletes it from storage.
+model MediaAsset {
+  id           String   @id @default(cuid())
+  url          String   @unique
+  bytes        Int
+  kind         String // cover | cover_thumb
+  causeId      String?
+  meetupId     String?
+  uploadedById String?
+  createdAt    DateTime @default(now())
+  cause        Cause?   @relation(fields: [causeId], references: [id], onDelete: SetNull)
+  meetup       Meetup?  @relation(fields: [meetupId], references: [id], onDelete: SetNull)
+  uploadedBy   User?    @relation(fields: [uploadedById], references: [id], onDelete: SetNull)
+
+  @@index([causeId])
+  @@index([meetupId])
 }
 
 model Rsvp {

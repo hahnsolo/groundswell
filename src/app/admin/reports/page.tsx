@@ -8,6 +8,8 @@ import { RelativeTime } from "@/components/local-time";
 import { buttonStyles, inputStyles } from "@/components/styles";
 import { displayName } from "@/lib/accounts";
 import { MAX_REMOVAL_REASON, permanentDeletionDate, purgeCutoff, REMOVAL_RETENTION_DAYS } from "@/lib/moderation";
+import { storageUsed } from "@/lib/covers";
+import { STORAGE_STOP_BYTES, storageState } from "@/lib/media-rules";
 
 // No title: the static shell shouldn't hint at what this page is.
 export const metadata: Metadata = { robots: { index: false } };
@@ -56,6 +58,10 @@ async function Queue() {
   const [causes, comments] = await Promise.all([loadCauses(ids("cause")), loadComments(ids("comment"))]);
   const causeById = new Map(causes.map((i) => [i.id, i]));
   const commentById = new Map(comments.map((c) => [c.id, c]));
+  // Image storage (#66): free up to 1 GB on Vercel Blob; uploads pause at 850 MB.
+  const used = await storageUsed();
+  const storage = storageState(used);
+  const mb = (b: number) => Math.round(b / (1024 * 1024));
 
   return (
     <>
@@ -63,6 +69,13 @@ async function Queue() {
       <p className="mb-6 mt-1 text-sm text-muted">
         Content reported by the community. Items with 3+ reports are already hidden until you decide.
       </p>
+      {storage !== "ok" && (
+        <p role="status" className="mb-6 rounded-md border-[1.5px] border-ink bg-mustard/25 p-3 text-sm">
+          <strong>Image storage is {storage === "full" ? "full: new uploads are paused" : "nearly full"}</strong> ({mb(used)} MB of{" "}
+          {mb(STORAGE_STOP_BYTES)} MB). Removing unwanted images frees room; moving to Cloudflare R2 (#77) gives 10 GB free.
+        </p>
+      )}
+      <p className="mb-6 text-xs text-muted">Images stored: {mb(used)} MB of {mb(STORAGE_STOP_BYTES)} MB before uploads pause.</p>
       {list.length === 0 ? (
         <p className="rounded-xl border border-dashed border-border bg-surface p-10 text-center text-muted">All clear — nothing to review.</p>
       ) : (

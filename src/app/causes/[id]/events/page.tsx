@@ -33,6 +33,15 @@ async function Events({ params }: Pick<PageProps<"/causes/[id]/events">, "params
         const hosting = user?.id === m.organizerId;
         return (
           <section key={m.id} id={`meetup-${m.id}`} className="scroll-mt-20 rounded-md border-[1.5px] border-ink bg-surface p-5">
+            {m.coverThumbUrl && (
+              // eslint-disable-next-line @next/next/no-img-element -- already resized; served straight from storage
+              <img
+                src={m.coverThumbUrl}
+                alt={m.coverAlt ?? ""}
+                loading="lazy"
+                className="-mx-5 -mt-5 mb-4 aspect-[16/6] w-[calc(100%+2.5rem)] max-w-none rounded-t-[5px] border-b-[1.5px] border-ink object-cover"
+              />
+            )}
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div className="min-w-0">
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">

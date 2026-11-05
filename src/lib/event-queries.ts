@@ -31,6 +31,9 @@ export const getEventDetail = cache(async (id: string, viewerId: string | null) 
           region: true,
           country: true,
           postalCode: true,
+          // Who leads the cause: they can change the event's cover too (#66).
+          leaderId: true,
+          coLeaders: { select: { userId: true, acceptedAt: true, createdAt: true } },
         },
       },
       _count: { select: { rsvps: true } },

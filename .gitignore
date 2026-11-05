@@ -50,3 +50,6 @@ next-env.d.ts
 # local SQLite database
 /prisma/*.db
 /prisma/*.db-journal
+
+# Images uploaded while developing locally (the live site uses Vercel Blob)
+/public/dev-uploads/

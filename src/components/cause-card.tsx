@@ -25,6 +25,15 @@ export function CauseCard({ cause }: { cause: NearbyCause }) {
       href={`/causes/${cause.id}`}
       className="group block rounded-md border-[1.5px] border-ink bg-surface p-4 transition hover:-translate-x-px hover:-translate-y-px hover:shadow-[3px_3px_0_var(--ink)]"
     >
+      {cause.coverThumbUrl && (
+        // eslint-disable-next-line @next/next/no-img-element -- already resized to 480px; served straight from storage
+        <img
+          src={cause.coverThumbUrl}
+          alt={cause.coverAlt ?? ""}
+          loading="lazy"
+          className="-mx-4 -mt-4 mb-3 aspect-[16/7] w-[calc(100%+2rem)] max-w-none rounded-t-[5px] border-b-[1.5px] border-ink object-cover"
+        />
+      )}
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-[11px] uppercase tracking-wide text-muted">
         <span>
           {cat.emoji} {cat.label} · {cause.placeName} · {cause.distanceKm < 1 ? "<1" : Math.round(cause.distanceKm)} km

@@ -220,6 +220,7 @@ export const getCauseForShare = cache(async (id: string) => {
       stage: true,
       hidden: true,
       removedAt: true,
+      coverUrl: true,
       campaigns: { orderBy: { createdAt: "desc" }, take: 1, select: { ask: true } },
       _count: { select: { members: true } },
     },
@@ -236,8 +237,9 @@ export const getEventForShare = cache(async (id: string) => {
       startsAt: true,
       location: true,
       isOnline: true,
+      coverUrl: true,
       _count: { select: { rsvps: true } },
-      cause: { select: { title: true, placeName: true, region: true, country: true, hidden: true, removedAt: true } },
+      cause: { select: { title: true, placeName: true, region: true, country: true, hidden: true, removedAt: true, coverUrl: true } },
     },
   });
   return e ? { ...e, going: e._count.rsvps } : null;

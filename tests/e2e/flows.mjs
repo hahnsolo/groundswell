@@ -494,6 +494,75 @@ let CAUSE;
   await host.getByRole("button", { name: "Unsubscribe" }).click();
   await host.getByText(/That link didn.t work/).waitFor({ timeout: 30000 });
   step("A forged unsubscribe link changes nothing");
+
+  // 12. Cover images (#66). A test photo, drawn in the browser (wide, so it can slide left and right).
+  const photo = async (p, colour) =>
+    Buffer.from(
+      (
+        await p.evaluate((c) => {
+          const canvas = Object.assign(document.createElement("canvas"), { width: 2400, height: 1000 });
+          const ctx = canvas.getContext("2d");
+          ctx.fillStyle = c;
+          ctx.fillRect(0, 0, 2400, 1000);
+          ctx.fillStyle = "#fff";
+          ctx.fillRect(1100, 400, 200, 200);
+          return canvas.toDataURL("image/png");
+        }, colour)
+      ).split(",")[1],
+      "base64",
+    );
+  const coverImg = (p) => p.locator("main article figure:visible img").first();
+
+  await go(page, `/causes/${trail}`);
+  const coverTool = page.locator("details", { hasText: "Add a cover image" });
+  await coverTool.locator("summary").click();
+  await coverTool.getByLabel("Choose a cover image for this cause").setInputFiles({ name: "trail.png", mimeType: "image/png", buffer: await photo(page, "#2d6a4f") });
+  await coverTool.getByLabel("Preview of the cover image").waitFor({ timeout: 30000 });
+  assert.equal(await coverTool.getByText("Slide left or right").count(), 1, "a wide photo should slide left and right");
+  await coverTool.getByLabel(/Describe the image/).fill("The trailhead gate with litter along the fence");
+  await coverTool.getByRole("button", { name: "Use this image" }).click();
+  await coverImg(page).waitFor({ timeout: 60000 });
+  assert.equal(await coverImg(page).getAttribute("alt"), "The trailhead gate with litter along the fence");
+  assert.ok(await coverImg(page).evaluate((i) => i.complete && i.naturalWidth === 1600), "the cover should be stored at 1600px wide");
+  const first = await coverImg(page).getAttribute("src");
+  // JPEG, because link previews (and our preview cards) can't show WebP.
+  const stored = await page.request.get(first.startsWith("http") ? first : `${BASE}${first}`);
+  assert.equal((await stored.body()).subarray(0, 2).toString("hex"), "ffd8", "the full-size cover should be a JPEG");
+  step("A leader adds a cover image: positioned, described, resized to 1600px");
+
+  const og = await page.request.get(`${BASE}/causes/${trail}/opengraph-image`);
+  assert.equal(og.status(), 200);
+  await go(page, "/area/us/90046?radius=25");
+  const card = page.locator("a", { hasText: "Runyon Canyon trailhead" }).first();
+  assert.ok(await card.locator("img").evaluate((i) => i.naturalWidth === 480), "the card should use the 480px thumbnail");
+  step("The cover shows on the cause, on its card (small version) and in its link preview");
+
+  // Someone who doesn't lead it can't set it, even by calling the upload directly.
+  const outsider = await signIn(browser, "priya@demo.test", opts);
+  const sneaky = await outsider.request.post(`${BASE}/api/media/cover`, {
+    multipart: { target: "cause", id: trail, alt: "", full: { name: "a.webp", mimeType: "image/webp", buffer: Buffer.from("RIFF0000WEBPVP8 ") }, thumb: { name: "b.webp", mimeType: "image/webp", buffer: Buffer.from("RIFF0000WEBPVP8 ") } },
+  });
+  assert.equal(sneaky.status(), 403);
+  await go(outsider, `/causes/${trail}`);
+  assert.equal(await outsider.getByText("Add a cover image").count() + (await outsider.getByText("Change the cover image").count()), 0);
+  await outsider.context().close();
+  step("Someone who doesn't lead the cause can't change its image");
+
+  await go(page, `/causes/${trail}`);
+  const change = page.locator("details", { hasText: "Change the cover image" });
+  await change.locator("summary").click();
+  await change.getByLabel("Choose a cover image for this cause").setInputFiles({ name: "trail2.png", mimeType: "image/png", buffer: await photo(page, "#9d0208") });
+  await change.getByRole("button", { name: "Use this image" }).click();
+  await page.waitForFunction((old) => {
+    const img = [...document.querySelectorAll("main article figure img")].find((i) => i.offsetParent);
+    return img && img.getAttribute("src") !== old;
+  }, first, { timeout: 60000 });
+  const gone = await page.request.get(first.startsWith("http") ? first : `${BASE}${first}`);
+  assert.equal(gone.status(), 404, "the replaced image should be deleted from storage");
+  await page.locator("details", { hasText: "Change the cover image" }).getByRole("button", { name: "Remove image" }).click();
+  await page.waitForFunction(() => ![...document.querySelectorAll("main article figure img")].some((i) => i.offsetParent), null, { timeout: 30000 });
+  step("Replacing a cover deletes the old file; removing it takes it down");
+
   await alex.context().close();
   await page.context().close();
 }
