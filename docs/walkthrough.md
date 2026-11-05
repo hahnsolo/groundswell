@@ -81,12 +81,12 @@ The screenshots come from the **dev site with demo data** (Alex, Sam and Priya a
 
 | Label | When |
 |---|---|
-| **✓ Won** | The person who raised it marked it resolved |
+| **✓ Won** | Members confirmed the leader's "it's fixed" |
 | **Meeting Wed, Oct 28** | A meetup is coming up in the next two weeks (shown in your time zone) |
 | **Asking · 48 of 150 signed** | It has a campaign |
 | **3 joined this week** | New people cared in the last 7 days |
 | **New** | Raised in the last week |
-| **Being worked on** | Its author set that status and none of the above applies |
+| **Gathering / Organizing / Taking action** | Its stage (below), when none of the above applies |
 
 Under the title: the first few people's initials and a line like *"Priya, Sam and 12 neighbours care,"* plus how many messages it has. People who've deleted their account are counted but never named.
 
@@ -107,7 +107,9 @@ Each cause (we still call them "causes" in the app for now) is a small space of 
 
 ![A cause's About tab, signed in as a member](images/walkthrough/07-issue-signed-in.webp)
 
-- **The small line on top:** topic, place, who started it and when, plus **✓ Won** once it's resolved.
+- **The small line on top:** topic, place, who started it, who leads it, and when.
+- **The stage tracker:** Raised → Gathering (5+ members) → Organizing (first event held) → Taking action (a campaign, or the leader logged contacting someone) → Won, with the next step in plain words. Stages are milestones, not gates: a cause moves forward on its own as things happen, and can skip stages.
+- **Banners:** *"Alex says it's fixed"* with **Yes, it's fixed** for members (see Winning below); *"Closed: …"* for a closed cause, with **Reopen** for its leader for 30 days; and, for the leader of a cause that's been quiet for 90 days, *"Is this cause still going?"* If nobody answers within 14 days, it closes as "went quiet".
 - **Who's in:** the first few people's initials and *"Alex and Sam have joined."* People who've deleted their account are counted but never named.
 - **Join this cause** (red) is the one big action. Joining is what used to be "I care": it adds you to the count, unlocks the chat, and starts your 24-hour chat clock (below). It doesn't need a confirmed email. Signed-out visitors are sent to sign in first.
 - Once you've joined, you see **✓ Joined** and a small **Leave** link. Leaving removes your support, your RSVPs to its upcoming events and your campaign signatures, and you lose access to the chat. Your messages stay. Events you host pass to the next person going.
@@ -131,7 +133,13 @@ Type your name (and the recipient's email if you have it). The app writes a poli
 
 ![Representative lookup for a Toronto postal code](images/walkthrough/12-rep-lookup.webp)
 
-- **At the bottom:** the person who raised it can set *Open*, *Being worked on* or *Won / resolved*. Marking it won records the date, and it shows in **Recent wins** on the neighbourhood pages for 30 days. Everyone else sees **Report this cause** there instead.
+- **Timeline:** what's been done, newest first: 📨 contacted (who, how, when), 💬 they replied, ✍️ campaigns, 📅 the first meetup, 🎉 won, 🔒 closed.
+- **At the bottom, for the leader:**
+  - **It's fixed: propose a win.** Members are asked to confirm: 2 of them, or 1 if the cause has 3 or fewer members, within 7 days. Once confirmed it's **Won**, the date is recorded, and it shows in **Recent wins** on the neighbourhood pages for 30 days.
+  - **Add to the timeline:** *we contacted someone* (moves it to Taking action) and *they replied*.
+  - **Close this cause**, with a reason, for one that's stopped without a win. It stays readable; the chat becomes read-only and nobody can join or add events.
+  - **Hand over leading this cause** to a member, who accepts or declines.
+  - Everyone else sees **Report this cause** there instead.
 
 **Rules:** signing and starting a campaign need a confirmed email; campaigns are limited to 5 an hour (1 for new accounts).
 
@@ -210,6 +218,8 @@ Every upcoming event for causes around your neighbourhood, split into **This wee
 - **Start this cause** creates it, makes the author its first member, and opens the new cause's page.
 
 **Rules:** confirmed email needed; 10 causes an hour (2 for new accounts); new accounts can't include links.
+
+**Leading at most 3:** each person can lead up to 3 active causes at once (`MAX_LEADING_CAUSES` in `src/lib/leading-limit.ts`). Won and closed causes don't count. At the limit, this page explains why and lists their causes, with the ways out: mark one won, close one, or hand one over. The same limit applies to accepting a hand-over and to reopening a closed cause. Nobody loses causes they already lead; admins aren't limited.
 
 ---
 
