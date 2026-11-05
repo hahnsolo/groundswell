@@ -18,6 +18,10 @@ import { descriptionProblem } from "@/lib/words";
 import { FIXER_IDS, FIXER_OTHER_MAX, type FixerId } from "@/lib/fixers";
 import { endProblem } from "@/lib/event-times";
 import { canEditCause, canEditEvent, canEditMessage, MESSAGE_EDIT_MINUTES } from "@/lib/editing";
+import { canOfferLead, LEAD_OFFER_DAYS, offerOpen } from "@/lib/leadership";
+import { canReopen, confirmationsNeeded, isActive, proposalOpen } from "@/lib/stages";
+import { refreshStage } from "@/lib/cause-stage";
+import { appUrl, sendEmail } from "@/lib/mail";
 import { fromZodError, type FormState } from "@/lib/forms";
 
 const id = z.string().min(1).max(40);
@@ -54,8 +58,9 @@ function editCheck(user: CurrentUser, formData: FormData, ...texts: (string | un
 
 /** Comments, meetups and campaigns can only be added to causes a moderator hasn't removed. */
 async function causeOpen(causeId: string) {
-  const cause = await db.cause.findUnique({ where: { id: causeId }, select: { removedAt: true } });
-  return !!cause && !cause.removedAt;
+  // Removed by a moderator, or closed by its leader: read-only from then on.
+  const cause = await db.cause.findUnique({ where: { id: causeId }, select: { removedAt: true, stage: true } });
+  return !!cause && !cause.removedAt && cause.stage !== "closed";
 }
 
 // ---------- Causes ----------
@@ -118,6 +123,7 @@ export async function createCause(_prev: FormState, formData: FormData): Promise
       lat: place.lat,
       lng: place.lng,
       authorId: user.id,
+      leaderId: user.id,
       // The author obviously cares about it.
       members: { create: { userId: user.id } },
     },
@@ -125,20 +131,142 @@ export async function createCause(_prev: FormState, formData: FormData): Promise
   redirect(`/causes/${cause.id}`);
 }
 
-export async function setCauseStatus(formData: FormData) {
+// ---------- Stages: winning, closing, the timeline (#24) ----------
+// Stages move forward on their own (src/lib/stages.ts). The leader can only
+// propose a win (members confirm it), close the cause, or log what they did.
+
+/** The leader of an active cause, or null. */
+async function leadingActiveCause(causeId: string, userId: string) {
+  const cause = await db.cause.findUnique({ where: { id: causeId }, select: { leaderId: true, stage: true, removedAt: true, title: true } });
+  return cause && cause.leaderId === userId && !cause.removedAt && isActive(cause.stage) ? cause : null;
+}
+
+/** "It's fixed": the leader proposes a win for members to confirm. */
+export async function proposeWin(_prev: FormState, formData: FormData): Promise<FormState> {
   const user = await requireUser();
   const parsed = z
-    .object({ causeId: id, status: z.enum(["open", "in_progress", "resolved"]) })
+    .object({ causeId: id, note: z.string().trim().min(10, "Say what happened, so members can check (10+ characters).").max(500) })
     .safeParse(Object.fromEntries(formData));
-  if (!parsed.success) return;
-  const { causeId, status } = parsed.data;
-  const where = { id: causeId, authorId: user.id };
-  // Remember when it was won (first time only); clear it if reopened.
-  if (status === "resolved") {
-    await db.cause.updateMany({ where: { ...where, status: { not: "resolved" } }, data: { status, resolvedAt: new Date() } });
-  } else {
-    await db.cause.updateMany({ where, data: { status, resolvedAt: null } });
+  if (!parsed.success) return fromZodError(parsed.error);
+  if (!(await leadingActiveCause(parsed.data.causeId, user.id))) return { error: "Only the person leading this cause can propose a win." };
+  const problem = editCheck(user, formData, parsed.data.note);
+  if (problem) return problem;
+  await db.$transaction([
+    db.winProposal.updateMany({ where: { causeId: parsed.data.causeId, resolvedAt: null }, data: { resolvedAt: new Date(), outcome: "withdrawn" } }),
+    db.winProposal.create({ data: { causeId: parsed.data.causeId, proposedById: user.id, note: parsed.data.note } }),
+  ]);
+  refresh();
+  return { ok: true };
+}
+
+export async function withdrawWin(formData: FormData) {
+  const user = await requireUser();
+  const proposalId = id.parse(formData.get("proposalId"));
+  await db.winProposal.updateMany({ where: { id: proposalId, proposedById: user.id, resolvedAt: null }, data: { resolvedAt: new Date(), outcome: "withdrawn" } });
+  refresh();
+}
+
+/** A member (not the leader) confirms "yes, it's fixed". Enough confirmations make it Won. */
+export async function confirmWin(formData: FormData) {
+  const user = await requireUser();
+  const proposalId = id.parse(formData.get("proposalId"));
+  const proposal = await db.winProposal.findUnique({ where: { id: proposalId }, include: { cause: { select: { id: true, stage: true } } } });
+  if (!proposal || !proposalOpen(proposal) || proposal.proposedById === user.id || !isActive(proposal.cause.stage)) return;
+  const member = await db.causeMember.findUnique({ where: { causeId_userId: { causeId: proposal.causeId, userId: user.id } } });
+  if (!member) return;
+  await db.winConfirmation.upsert({ where: { proposalId_userId: { proposalId, userId: user.id } }, create: { proposalId, userId: user.id }, update: {} });
+  const [confirmed, members] = await Promise.all([
+    db.winConfirmation.count({ where: { proposalId } }),
+    db.causeMember.count({ where: { causeId: proposal.causeId } }),
+  ]);
+  if (confirmed >= confirmationsNeeded(members)) {
+    await db.$transaction([
+      db.winProposal.update({ where: { id: proposalId }, data: { resolvedAt: new Date(), outcome: "won" } }),
+      db.cause.update({ where: { id: proposal.causeId }, data: { stage: "won", resolvedAt: new Date() } }),
+    ]);
   }
+  refresh();
+}
+
+/** The leader closes a cause that's stopped, with a reason. */
+export async function closeCause(_prev: FormState, formData: FormData): Promise<FormState> {
+  const user = await requireUser();
+  const parsed = z
+    .object({ causeId: id, reason: z.string().trim().min(5, "Say why, in a few words, so members know.").max(300) })
+    .safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return fromZodError(parsed.error);
+  if (!(await leadingActiveCause(parsed.data.causeId, user.id))) return { error: "Only the person leading this cause can close it." };
+  const problem = editCheck(user, formData, parsed.data.reason);
+  if (problem) return problem;
+  await db.$transaction([
+    db.winProposal.updateMany({ where: { causeId: parsed.data.causeId, resolvedAt: null }, data: { resolvedAt: new Date(), outcome: "withdrawn" } }),
+    db.cause.update({ where: { id: parsed.data.causeId }, data: { stage: "closed", closedAt: new Date(), closedReason: parsed.data.reason } }),
+  ]);
+  refresh();
+  return { ok: true };
+}
+
+/** The leader reopens a closed cause within 30 days. It picks up from what's happened. */
+export async function reopenCause(formData: FormData) {
+  const user = await requireUser();
+  const causeId = id.parse(formData.get("causeId"));
+  const cause = await db.cause.findUnique({ where: { id: causeId }, select: { leaderId: true, stage: true, closedAt: true, removedAt: true } });
+  if (!cause || cause.leaderId !== user.id || cause.stage !== "closed" || cause.removedAt || !canReopen(cause.closedAt)) return;
+  await db.cause.update({ where: { id: causeId }, data: { stage: "raised", closedAt: null, closedReason: null, quietAskedAt: null } });
+  await refreshStage(causeId);
+  refresh();
+}
+
+const HOW = ["letter", "email", "call", "meeting"] as const;
+
+/** The leader logs contacting whoever should fix it. Moves the cause to Taking action. */
+export async function logContact(_prev: FormState, formData: FormData): Promise<FormState> {
+  const user = await requireUser();
+  const parsed = z
+    .object({
+      causeId: id,
+      who: z.string().trim().min(2, "Who did you contact?").max(120),
+      how: z.enum(HOW, { errorMap: () => ({ message: "How did you contact them?" }) }),
+      happenedAt: z.coerce.date({ errorMap: () => ({ message: "When was it?" }) }),
+      note: z.string().trim().max(500).default(""),
+    })
+    .safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return fromZodError(parsed.error);
+  if (!(await leadingActiveCause(parsed.data.causeId, user.id))) return { error: "Only the person leading this cause can add to its timeline." };
+  if (parsed.data.happenedAt.getTime() > Date.now() + 60 * 60 * 1000) return { fieldErrors: { happenedAt: ["That's in the future."] } };
+  const problem = editCheck(user, formData, parsed.data.who, parsed.data.note);
+  if (problem) return problem;
+  const { causeId, note, ...rest } = parsed.data;
+  await db.causeAction.create({ data: { causeId, createdById: user.id, kind: "contacted", note: note || null, ...rest } });
+  await refreshStage(causeId);
+  refresh();
+  return { ok: true };
+}
+
+/** The leader notes that whoever they contacted replied. */
+export async function logReply(_prev: FormState, formData: FormData): Promise<FormState> {
+  const user = await requireUser();
+  const parsed = z
+    .object({ causeId: id, note: z.string().trim().min(3, "What did they say, in a few words?").max(500) })
+    .safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return fromZodError(parsed.error);
+  if (!(await leadingActiveCause(parsed.data.causeId, user.id))) return { error: "Only the person leading this cause can add to its timeline." };
+  const problem = editCheck(user, formData, parsed.data.note);
+  if (problem) return problem;
+  await db.causeAction.create({ data: { causeId: parsed.data.causeId, createdById: user.id, kind: "replied", note: parsed.data.note } });
+  refresh();
+  return { ok: true };
+}
+
+/** "Yes, it's still going": answers the 90-day check-in. */
+export async function stillGoing(formData: FormData) {
+  const user = await requireUser();
+  const causeId = id.parse(formData.get("causeId"));
+  if (!(await leadingActiveCause(causeId, user.id))) return;
+  await db.$transaction([
+    db.causeAction.create({ data: { causeId, createdById: user.id, kind: "still_going" } }),
+    db.cause.update({ where: { id: causeId }, data: { quietAskedAt: null } }),
+  ]);
   refresh();
 }
 
@@ -147,8 +275,8 @@ export async function editCause(_prev: FormState, formData: FormData): Promise<F
   const user = await requireUser();
   const parsed = causeSchema.pick({ title: true, description: true }).extend({ causeId: id }).safeParse(Object.fromEntries(formData));
   if (!parsed.success) return fromZodError(parsed.error);
-  const cause = await db.cause.findUnique({ where: { id: parsed.data.causeId }, select: { authorId: true, removedAt: true } });
-  if (!cause || !canEditCause(cause, user.id)) return { error: "Only the person who started this cause can change it." };
+  const cause = await db.cause.findUnique({ where: { id: parsed.data.causeId }, select: { leaderId: true, removedAt: true } });
+  if (!cause || !canEditCause(cause, user.id)) return { error: "Only the person leading this cause can change it." };
   const problem = editCheck(user, formData, parsed.data.title, parsed.data.description);
   if (problem) return problem;
   await db.cause.update({
@@ -174,8 +302,8 @@ export async function setCauseContact(_prev: FormState, formData: FormData): Pro
     })
     .safeParse(Object.fromEntries(formData));
   if (!parsed.success) return fromZodError(parsed.error);
-  const cause = await db.cause.findUnique({ where: { id: parsed.data.causeId }, select: { authorId: true, removedAt: true } });
-  if (!cause || !canEditCause(cause, user.id)) return { error: "Only the person who started this cause can change this." };
+  const cause = await db.cause.findUnique({ where: { id: parsed.data.causeId }, select: { leaderId: true, removedAt: true } });
+  if (!cause || !canEditCause(cause, user.id)) return { error: "Only the person leading this cause can change this." };
   const { contactName, contactRole, contactEmail } = parsed.data;
   const problem = editCheck(user, formData, contactName, contactRole);
   if (problem) return problem;
@@ -187,7 +315,84 @@ export async function setCauseContact(_prev: FormState, formData: FormData): Pro
   return { ok: true };
 }
 
-/** The person who raised a cause can change who they think should fix it. */
+// ---------- Handing over the lead ----------
+
+/** The leader offers the lead to a member. Replaces any offer still waiting for an answer. */
+export async function offerLead(_prev: FormState, formData: FormData): Promise<FormState> {
+  const user = await requireUser();
+  const parsed = z.object({ causeId: id, toUserId: id }).safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { error: "Pick who should take over." };
+  const { causeId, toUserId } = parsed.data;
+  const [cause, membership] = await Promise.all([
+    db.cause.findUnique({ where: { id: causeId }, select: { leaderId: true, removedAt: true, title: true } }),
+    db.causeMember.findUnique({
+      where: { causeId_userId: { causeId, userId: toUserId } },
+      select: { user: { select: { name: true, email: true, deactivatedAt: true } } },
+    }),
+  ]);
+  if (!cause) return CAUSE_GONE;
+  const problem = canOfferLead(cause, user.id, { userId: toUserId, isMember: !!membership && !membership.user.deactivatedAt });
+  if (problem || !membership) return { error: problem ?? "You can only hand a cause to someone who has joined it." };
+  await db.$transaction([
+    db.leadOffer.updateMany({ where: { causeId, answeredAt: null }, data: { answeredAt: new Date(), accepted: false } }),
+    db.leadOffer.create({ data: { causeId, fromUserId: user.id, toUserId } }),
+  ]);
+  try {
+    await sendEmail({
+      to: membership.user.email,
+      subject: `${user.name} would like you to lead "${cause.title}"`,
+      text: `Hi ${membership.user.name},\n\n${user.name} has asked you to take over leading "${cause.title}" on Groundswell. You'd be able to edit it, move it forward and organize around it; ${user.name} stays on as a member.\n\nAccept or decline here (the offer is open for ${LEAD_OFFER_DAYS} days):\n${appUrl(`/causes/${causeId}`)}\n\nThanks for caring about your neighbourhood!`,
+    });
+  } catch (e) {
+    console.warn("Lead offer email failed:", (e as Error).message); // the offer still shows on the cause
+  }
+  refresh();
+  return { ok: true };
+}
+
+/** The leader takes back an offer nobody has answered yet. */
+export async function withdrawLeadOffer(formData: FormData) {
+  const user = await requireUser();
+  const offerId = id.parse(formData.get("offerId"));
+  await db.leadOffer.updateMany({ where: { id: offerId, fromUserId: user.id, answeredAt: null }, data: { answeredAt: new Date(), accepted: false } });
+  refresh();
+}
+
+/** The person offered the lead accepts or declines. */
+export async function answerLeadOffer(formData: FormData) {
+  const user = await requireUser();
+  const parsed = z.object({ offerId: id, answer: z.enum(["accept", "decline"]) }).safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return;
+  const offer = await db.leadOffer.findUnique({
+    where: { id: parsed.data.offerId },
+    include: { cause: { select: { title: true, leaderId: true, removedAt: true } }, from: { select: { name: true, email: true } } },
+  });
+  if (!offer || offer.toUserId !== user.id || !offerOpen(offer)) return;
+  const accept = parsed.data.answer === "accept";
+  if (accept) {
+    // Only if nothing changed meanwhile: they're still a member, and the person who offered still leads it.
+    const stillMember = await db.causeMember.findUnique({ where: { causeId_userId: { causeId: offer.causeId, userId: user.id } } });
+    if (!stillMember || offer.cause.leaderId !== offer.fromUserId || offer.cause.removedAt) return;
+  }
+  await db.$transaction([
+    db.leadOffer.update({ where: { id: offer.id }, data: { answeredAt: new Date(), accepted: accept } }),
+    ...(accept ? [db.cause.update({ where: { id: offer.causeId }, data: { leaderId: user.id } })] : []),
+  ]);
+  try {
+    await sendEmail({
+      to: offer.from.email,
+      subject: accept ? `${user.name} now leads "${offer.cause.title}"` : `${user.name} can't take over "${offer.cause.title}"`,
+      text: accept
+        ? `Hi ${offer.from.name},\n\n${user.name} accepted and now leads "${offer.cause.title}". You're still a member.\n\n${appUrl(`/causes/${offer.causeId}`)}`
+        : `Hi ${offer.from.name},\n\n${user.name} isn't able to lead "${offer.cause.title}" right now. You still lead it, and you can offer it to someone else:\n${appUrl(`/causes/${offer.causeId}`)}`,
+    });
+  } catch (e) {
+    console.warn("Lead answer email failed:", (e as Error).message);
+  }
+  refresh();
+}
+
+/** The person leading a cause can change who they think should fix it. */
 export async function setCauseFixer(_prev: FormState, formData: FormData): Promise<FormState> {
   const user = await requireUser();
   const parsed = z.object({ causeId: id, ...fixerFields }).safeParse(Object.fromEntries(formData));
@@ -195,7 +400,7 @@ export async function setCauseFixer(_prev: FormState, formData: FormData): Promi
   if (fixerOtherMissing(parsed.data)) return FIXER_OTHER_MISSING;
   const links = linkError(user, parsed.data.fixerOther);
   if (links) return { error: links };
-  await db.cause.updateMany({ where: { id: parsed.data.causeId, authorId: user.id, removedAt: null }, data: fixerData(parsed.data) });
+  await db.cause.updateMany({ where: { id: parsed.data.causeId, leaderId: user.id, removedAt: null }, data: fixerData(parsed.data) });
   refresh();
   return { ok: true };
 }
@@ -206,7 +411,10 @@ export async function toggleMembership(formData: FormData) {
   const key = { causeId_userId: { causeId, userId: user.id } };
   const existing = await db.causeMember.findUnique({ where: key });
   if (existing) await db.causeMember.delete({ where: key });
-  else await db.causeMember.create({ data: { causeId, userId: user.id } });
+  else {
+    await db.causeMember.create({ data: { causeId, userId: user.id } });
+    await refreshStage(causeId); // the fifth member moves it to Gathering
+  }
   refresh();
 }
 
@@ -225,13 +433,13 @@ export async function addComment(_prev: FormState, formData: FormData): Promise<
   if (!(await causeOpen(parsed.data.causeId))) return CAUSE_GONE;
   // The chat is for members, and new members read along for a day first.
   const [cause, membership] = await Promise.all([
-    db.cause.findUnique({ where: { id: parsed.data.causeId }, select: { authorId: true } }),
+    db.cause.findUnique({ where: { id: parsed.data.causeId }, select: { leaderId: true } }),
     db.causeMember.findUnique({ where: { causeId_userId: { causeId: parsed.data.causeId, userId: user.id } }, select: { createdAt: true } }),
   ]);
   const access = chatAccess({
     signedIn: true,
     isAdmin: user.isAdmin,
-    isAuthor: cause?.authorId === user.id,
+    isLeader: cause?.leaderId === user.id,
     joinedAt: membership?.createdAt ?? null,
     emailVerified: user.emailVerified,
   });
@@ -401,6 +609,7 @@ export async function createCampaign(_prev: FormState, formData: FormData): Prom
   await db.campaign.create({
     data: { ...parsed.data, creatorId: user.id, signatures: { create: { userId: user.id } } },
   });
+  await refreshStage(parsed.data.causeId); // a campaign means Taking action
   refresh();
   return { ok: true };
 }

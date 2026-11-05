@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { purgeCutoff } from "@/lib/moderation";
 import { anonymizeExpiredAccounts } from "@/lib/leaving";
 import { refreshStaleAreaReps } from "@/lib/area-reps";
+import { dailyStageHousekeeping } from "@/lib/cause-stage";
 
 // Daily housekeeping (see vercel.json). Vercel calls this with
 // "Authorization: Bearer <CRON_SECRET>".
@@ -11,6 +12,8 @@ import { refreshStaleAreaReps } from "@/lib/area-reps";
 //     (deleting a cause also deletes its comments, meetups and campaigns).
 //  2. Anonymizes accounts deleted more than 30 days ago.
 //  3. Re-checks saved representatives that are over 30 days old.
+//  4. Cause stages: lapses unconfirmed win proposals, moves causes forward,
+//     asks about causes quiet for 90 days and closes them 14 days later.
 export async function GET(request: NextRequest) {
   const secret = process.env.CRON_SECRET;
   if (!secret) {
@@ -25,10 +28,11 @@ export async function GET(request: NextRequest) {
   const [causes, comments] = await db.$transaction([db.cause.deleteMany({ where }), db.comment.deleteMany({ where })]);
   const accounts = await anonymizeExpiredAccounts();
   const reps = await refreshStaleAreaReps();
+  const stages = await dailyStageHousekeeping();
   console.log(
-    `Daily clean-up: purged ${causes.count} removed cause(s) and ${comments.count} removed comment(s); anonymized ${accounts} deleted account(s); re-checked representatives for ${reps} area(s).`,
+    `Daily clean-up: purged ${causes.count} removed cause(s) and ${comments.count} removed comment(s); anonymized ${accounts} deleted account(s); re-checked representatives for ${reps} area(s); stages: ${stages.moved} moved forward, ${stages.lapsed} win proposal(s) lapsed, ${stages.asked} quiet cause(s) asked, ${stages.closed} closed as quiet.`,
   );
-  return Response.json({ causes: causes.count, comments: comments.count, accounts, reps });
+  return Response.json({ causes: causes.count, comments: comments.count, accounts, reps, stages });
 }
 
 /** Constant-time comparison, so the secret can't be guessed from response timing. */

@@ -163,6 +163,31 @@ let CAUSE;
   await page.context().close();
 }
 
+// 4b. Alex hands the crossing cause to Priya (a member since step 1); she accepts from the notice.
+{
+  const alex = await signIn(browser, "alex@demo.test", opts);
+  await go(alex, `/causes/${CAUSE}`);
+  const handOver = alex.locator("details", { hasText: "Hand over leading this cause" });
+  await handOver.getByText("Hand over leading this cause").click();
+  await handOver.getByLabel("Who should take over").selectOption({ label: "Priya" });
+  await handOver.getByRole("button", { name: "Offer the lead" }).click();
+  await handOver.getByText(/Waiting for Priya to accept/).waitFor({ timeout: 30000 });
+  step("The leader offers the lead to a member");
+
+  const priya = await signIn(browser, "priya@demo.test", opts);
+  await go(priya, `/causes/${CAUSE}`);
+  await priya.getByText(/Alex has asked you to lead this cause/).waitFor({ timeout: 30000 });
+  await priya.getByRole("button", { name: "Accept" }).click();
+  await priya.locator("main article header:visible").first().getByText(/led by Priya/i).waitFor({ timeout: 30000 });
+  assert.match(await priya.locator("main article header:visible").first().innerText(), /started by Alex/i);
+  assert.equal(await priya.getByText("Edit title and description").count(), 1, "the new leader should get the leader tools");
+  await go(alex, `/causes/${CAUSE}`);
+  assert.equal(await alex.getByText("Edit title and description").count(), 0, "the old leader still has the leader tools");
+  step("The member accepts: the cause shows who started it and who leads it, and the tools move over");
+  await alex.context().close();
+  await priya.context().close();
+}
+
 // 5. Priya deletes her account; wrong password is refused; signing back in restores it.
 {
   const page = await signIn(browser, "priya@demo.test", opts);
@@ -290,6 +315,61 @@ let CAUSE;
   await page.locator("h1", { hasText: "bring a tape measure" }).waitFor({ timeout: 30000 });
   assert.match(await page.locator("main article header:visible").first().innerText(), /edited/i);
   step("The host can edit an event (shown as edited)");
+
+  // 8. Stages are milestones, not gates: a one-person cause skips straight to Taking action
+  //    by logging a contact, then a member confirms the win.
+  const currentStage = (p) => p.locator('main [aria-current="step"]:visible').first().innerText();
+  await go(page, causePath);
+  assert.equal(await currentStage(page), "Raised");
+  const contact = page.locator("details", { hasText: "we contacted someone" });
+  await contact.getByText("Add to the timeline: we contacted someone").click();
+  await contact.getByLabel("Who?").fill("Councillor for Spadina");
+  await contact.getByLabel("How?").selectOption("letter");
+  await contact.getByLabel("Anything to add? (optional)").fill("Dropped off a letter at city hall.");
+  await contact.getByRole("button", { name: "Add to timeline" }).click();
+  await page.locator("#timeline").getByText("Contacted Councillor for Spadina by letter").waitFor({ timeout: 30000 });
+  assert.equal(await currentStage(page), "Taking action");
+  step("Logging a contact skips a new cause straight to Taking action, on the timeline");
+
+  const propose = page.locator("details", { hasText: "propose a win" });
+  await propose.getByText("It's fixed: propose a win").click();
+  await propose.getByLabel("What happened?").fill("The city replaced the bench this morning.");
+  await propose.getByRole("button", { name: "Ask members to confirm" }).click();
+  await page.getByText(/You proposed a win: 0 of 1 confirmations/).waitFor({ timeout: 30000 });
+  assert.equal(await page.getByRole("button", { name: "Yes, it's fixed" }).count(), 0, "the leader can confirm their own win");
+
+  const sam = await signIn(browser, "sam@demo.test", opts);
+  await go(sam, causePath);
+  await sam.locator("main").getByRole("button", { name: "Join this cause" }).first().click();
+  await sam.getByRole("button", { name: "Yes, it's fixed" }).waitFor({ timeout: 30000 });
+  assert.match(await sam.locator("#win").innerText(), /Alex says it.s fixed/);
+  await sam.getByRole("button", { name: "Yes, it's fixed" }).click();
+  await sam.locator('main [aria-current="step"]:visible', { hasText: "Won" }).waitFor({ timeout: 30000 });
+  assert.match(await sam.locator("#timeline").innerText(), /Won, confirmed by members/);
+  step("A member confirms the leader's win (1 needed for a small cause) and it's Won");
+  await sam.context().close();
+  await page.context().close();
+}
+
+// 9. Sam closes the trail cause he leads: the chat goes read-only and the notice offers Reopen.
+{
+  const page = await signIn(browser, "sam@demo.test", opts);
+  const trail = await findCause(page, "/area/us/90046?radius=25", "Runyon Canyon trailhead");
+  await go(page, `/causes/${trail}`);
+  const close = page.locator("details", { hasText: "Close this cause" });
+  await close.getByText("Close this cause").click();
+  await close.getByLabel("Why are you closing it?").fill("The parks department took it over.");
+  await close.getByRole("button", { name: "Close the cause" }).click();
+  await page.getByText(/The parks department took it over\. You can still read everything here/).waitFor({ timeout: 30000 });
+  assert.equal(await page.locator("main").getByRole("button", { name: "Join this cause" }).count(), 0);
+  await go(page, `/causes/${trail}/chat`);
+  assert.match(await text(page), /This cause is closed, so the chat is read-only/);
+  step("Closing a cause shows why, and the chat becomes read-only");
+
+  await page.getByRole("button", { name: "Reopen" }).click();
+  await page.getByLabel("Your message").waitFor({ timeout: 30000 });
+  assert.doesNotMatch(await text(page), /This cause is closed/);
+  step("The leader can reopen it");
   await page.context().close();
 }
 

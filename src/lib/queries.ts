@@ -1,7 +1,8 @@
 import "server-only";
 import { db } from "./db";
 import { cache } from "react";
-import { connection } from "next/server";
+import { after, connection } from "next/server";
+import { advance, confirmationsNeeded, proposalOpen, type Stage } from "./stages";
 import { boundingBox, distanceKm } from "./geo";
 import { isRecentWin } from "./momentum";
 
@@ -22,6 +23,8 @@ export async function getNearbyCauses(opts: {
     where: {
       country: opts.country,
       hidden: false,
+      // Closed causes leave the board; won ones stay so the wins strip can show them.
+      stage: { not: "closed" },
       lat: { gte: box.minLat, lte: box.maxLat },
       lng: { gte: box.minLng, lte: box.maxLng },
       ...(opts.category ? { category: opts.category } : {}),
@@ -61,8 +64,8 @@ export async function getNearbyCauses(opts: {
     .sort((a, b) =>
       opts.sort === "new"
         ? b.createdAt.getTime() - a.createdAt.getTime()
-        : // Resolved causes sink; otherwise most-supported first.
-          Number(a.status === "resolved") - Number(b.status === "resolved") ||
+        : // Won causes sink; otherwise most-supported first.
+          Number(a.stage === "won") - Number(b.stage === "won") ||
           b._count.members - a._count.members ||
           b.createdAt.getTime() - a.createdAt.getTime(),
     );
@@ -101,6 +104,14 @@ export const getCauseDetail = cache(async (id: string, viewerId: string | null) 
     where: { id },
     include: {
       author: { select: { id: true, name: true, deactivatedAt: true } },
+      leader: { select: { id: true, name: true, deactivatedAt: true } },
+      // The latest unanswered handover offer, if any (it lapses after 7 days; see src/lib/leadership.ts).
+      leadOffers: {
+        where: { answeredAt: null },
+        orderBy: { createdAt: "desc" },
+        take: 1,
+        include: { to: { select: { id: true, name: true } }, from: { select: { id: true, name: true } } },
+      },
       _count: { select: { members: true, comments: { where: { hidden: false } } } },
       members: {
         orderBy: { createdAt: "asc" },
@@ -135,9 +146,27 @@ export const getCauseDetail = cache(async (id: string, viewerId: string | null) 
           },
         },
       },
+      // The leader's latest "it's fixed" waiting for members to confirm (#24).
+      winProposals: {
+        where: { resolvedAt: null },
+        orderBy: { createdAt: "desc" },
+        take: 1,
+        include: { proposedBy: { select: { id: true, name: true } }, confirmations: { select: { userId: true } } },
+      },
+      // The timeline: contacts, replies, check-ins.
+      actions: { orderBy: { happenedAt: "desc" }, take: 50, include: { createdBy: { select: { name: true, deactivatedAt: true } } } },
     },
   });
   if (!cause) return null;
+
+  // Stages move forward on their own; some milestones (an event starting) just happen with time.
+  const firstEvent = await db.meetup.findFirst({ where: { causeId: id, startsAt: { lte: new Date() } }, orderBy: { startsAt: "asc" }, select: { startsAt: true, title: true } });
+  const stage = advance(cause.stage as Stage, {
+    members: cause._count.members,
+    heldEvent: !!firstEvent,
+    tookAction: cause.campaigns.length > 0 || cause.actions.some((a) => a.kind === "contacted"),
+  });
+  if (stage !== cause.stage) after(() => db.cause.updateMany({ where: { id, stage: cause.stage }, data: { stage } }));
 
   const [supported, signedIds] = viewerId
     ? await Promise.all([
@@ -150,9 +179,20 @@ export const getCauseDetail = cache(async (id: string, viewerId: string | null) 
     : [null, []];
 
   const now = Date.now();
-  const { members, ...rest } = cause;
+  const { members, winProposals, ...rest } = cause;
+  const proposal = winProposals[0] && proposalOpen(winProposals[0]) ? winProposals[0] : null;
   return {
     ...rest,
+    stage,
+    firstEvent,
+    winProposal: proposal
+      ? {
+          ...proposal,
+          confirmed: proposal.confirmations.length,
+          needed: confirmationsNeeded(cause._count.members),
+          viewerConfirmed: !!viewerId && proposal.confirmations.some((c) => c.userId === viewerId),
+        }
+      : null,
     memberNames: members.filter((s) => !s.user.deactivatedAt).map((s) => s.user.name),
     // The list includes meetups that are on right now; only ones still to come can change host.
     meetups: cause.meetups.map((m) => ({ ...m, upcoming: m.startsAt.getTime() > now })),

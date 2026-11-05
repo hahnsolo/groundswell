@@ -84,7 +84,8 @@ async function AreaContent({
 
   const pulse = await getAreaPulse(causes);
   const winIds = new Set(pulse.wins.map((w) => w.id));
-  const board = causes.filter((i) => !winIds.has(i.id));
+  // Won causes leave the board (recent ones are in the wins strip above).
+  const board = causes.filter((i) => !winIds.has(i.id) && i.stage !== "won");
   const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
   const pulseLine = [
     plural(pulse.people, "neighbour") + " involved",

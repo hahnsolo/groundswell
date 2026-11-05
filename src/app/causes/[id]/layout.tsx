@@ -4,12 +4,15 @@ import { Suspense } from "react";
 import { getCurrentUser } from "@/lib/auth";
 import { getCategory } from "@/lib/categories";
 import { askingWhom, fixerEmoji } from "@/lib/fixers";
+import { leadershipLine, offerOpen } from "@/lib/leadership";
 import { areaHref } from "@/lib/countries";
 import { getCauseDetail } from "@/lib/queries";
 import { displayName } from "@/lib/accounts";
 import { peopleLine } from "@/lib/momentum";
 import { canReadChat, chatAccess } from "@/lib/chat-rules";
-import { leaveCauseAction, toggleMembership } from "@/app/actions/community";
+import { answerLeadOffer, confirmWin, leaveCauseAction, reopenCause, stillGoing, toggleMembership } from "@/app/actions/community";
+import { canReopen, isActive } from "@/lib/stages";
+import { StageTracker } from "@/components/stage-tracker";
 import { RelativeTime } from "@/components/local-time";
 import { ShareButton } from "@/components/cause-forms";
 import { CauseTabs } from "@/components/cause-tabs";
@@ -57,12 +60,15 @@ async function CauseHeader({ params, children }: { params: LayoutProps<"/causes/
   const access = chatAccess({
     signedIn: !!user,
     isAdmin: user?.isAdmin,
-    isAuthor: user?.id === cause.authorId,
+    isLeader: user?.id === cause.leaderId,
     joinedAt: cause.viewerJoinedAt,
     emailVerified: user?.emailVerified,
   });
   const upcomingEvents = cause.meetups.filter((m) => m.upcoming).length;
   const asking = askingWhom(cause.fixer, cause.fixerOther, cause.country);
+  const latestOffer = cause.leadOffers[0];
+  const offerForMe = user && latestOffer?.toUserId === user.id && offerOpen(latestOffer) ? latestOffer : null;
+  const isLeader = user?.id === cause.leaderId;
 
   return (
     <article>
@@ -76,12 +82,81 @@ async function CauseHeader({ params, children }: { params: LayoutProps<"/causes/
         </p>
       )}
 
+      {offerForMe && (
+        <form action={answerLeadOffer} className="mt-4 flex flex-wrap items-center gap-3 rounded-md border-[1.5px] border-ink bg-mustard/25 p-3 text-sm">
+          <input type="hidden" name="offerId" value={offerForMe.id} />
+          <span className="min-w-0 flex-1">
+            <strong>{offerForMe.from.name}</strong> has asked you to lead this cause. You&apos;d be able to edit it, move it forward and
+            organize around it.
+          </span>
+          <button name="answer" value="accept" className={`${buttonStyles.primary} !px-3 !py-1.5`}>
+            Accept
+          </button>
+          <button name="answer" value="decline" className={`${buttonStyles.secondary} !px-3 !py-1.5`}>
+            Decline
+          </button>
+        </form>
+      )}
+
+      {cause.stage === "closed" && (
+        <div className="mt-4 flex flex-wrap items-center gap-3 rounded-md border-[1.5px] border-dashed border-ink p-3 text-sm">
+          <span className="min-w-0 flex-1">
+            <strong>Closed</strong>
+            {cause.closedAt && (
+              <>
+                {" "}
+                <RelativeTime iso={cause.closedAt.toISOString()} />
+              </>
+            )}
+            {cause.closedReason && <>: {cause.closedReason.replace(/[.!\s]+$/, "")}</>}. You can still read everything here.
+          </span>
+          {isLeader && canReopen(cause.closedAt) && (
+            <form action={reopenCause}>
+              <input type="hidden" name="causeId" value={cause.id} />
+              <button className={`${buttonStyles.secondary} !px-3 !py-1.5`}>Reopen</button>
+            </form>
+          )}
+        </div>
+      )}
+
+      {isLeader && cause.quietAskedAt && isActive(cause.stage) && (
+        <form action={stillGoing} className="mt-4 flex flex-wrap items-center gap-3 rounded-md border-[1.5px] border-ink bg-mustard/25 p-3 text-sm">
+          <input type="hidden" name="causeId" value={cause.id} />
+          <span className="min-w-0 flex-1">
+            It&apos;s been quiet here for a while. <strong>Is this cause still going?</strong> If nobody answers within two weeks, it closes
+            as &quot;went quiet&quot;.
+          </span>
+          <button className={`${buttonStyles.primary} !px-3 !py-1.5`}>Yes, still going</button>
+        </form>
+      )}
+
+      {cause.winProposal && isActive(cause.stage) && (
+        <div className="mt-4 rounded-md border-[1.5px] border-ink bg-sage/25 p-3 text-sm" id="win">
+          <p>
+            <strong>{cause.winProposal.proposedBy.name}</strong> says it&apos;s fixed: &ldquo;{cause.winProposal.note}&rdquo;
+          </p>
+          <div className="mt-2 flex flex-wrap items-center gap-3">
+            {cause.viewerIsMember && user?.id !== cause.winProposal.proposedById && !cause.winProposal.viewerConfirmed ? (
+              <form action={confirmWin}>
+                <input type="hidden" name="proposalId" value={cause.winProposal.id} />
+                <button className={`${buttonStyles.primary} !px-3 !py-1.5`}>Yes, it&apos;s fixed</button>
+              </form>
+            ) : cause.winProposal.viewerConfirmed ? (
+              <span className="font-medium">✓ You confirmed</span>
+            ) : null}
+            <span className="text-muted">
+              {cause.winProposal.confirmed} of {cause.winProposal.needed} confirmations from members
+            </span>
+          </div>
+        </div>
+      )}
+
       <header className="mt-4">
         <p className="text-[11px] uppercase tracking-wide text-muted">
-          {cat.emoji} {cat.label} · {cause.placeName} · started by {displayName(cause.author)} ·{" "}
+          {cat.emoji} {cat.label} · {cause.placeName} ·{" "}
+          {leadershipLine(displayName(cause.author), displayName(cause.leader), cause.authorId === cause.leaderId)} ·{" "}
           <RelativeTime iso={cause.createdAt.toISOString()} />
           {cause.editedAt && " · edited"}
-          {cause.status === "resolved" && <span className="ml-2 rounded-full bg-sage/30 px-2 py-0.5 font-semibold text-foreground">✓ Won</span>}
         </p>
         <h1 className="mt-2 text-3xl font-semibold leading-tight sm:text-4xl">{cause.title}</h1>
         <p className="mt-2 text-sm">
@@ -94,6 +169,7 @@ async function CauseHeader({ params, children }: { params: LayoutProps<"/causes/
             <span className="text-muted">Who should fix it? Not sure yet. Know who? Tell the group in the chat.</span>
           )}
         </p>
+        <StageTracker stage={cause.stage} members={cause._count.members} />
 
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
           <p className="flex items-center gap-2 text-sm">
@@ -115,9 +191,11 @@ async function CauseHeader({ params, children }: { params: LayoutProps<"/causes/
           </p>
           <div className="flex flex-wrap items-center gap-2">
             {!user ? (
-              <Link href={`/signin?next=${encodeURIComponent(`/causes/${cause.id}`)}`} className={buttonStyles.primary}>
-                Join this cause
-              </Link>
+              cause.stage === "closed" ? null : (
+                <Link href={`/signin?next=${encodeURIComponent(`/causes/${cause.id}`)}`} className={buttonStyles.primary}>
+                  Join this cause
+                </Link>
+              )
             ) : cause.viewerIsMember ? (
               <>
                 <span className={buttonStyles.selected}>✓ Joined</span>
@@ -136,7 +214,7 @@ async function CauseHeader({ params, children }: { params: LayoutProps<"/causes/
                   </form>
                 </details>
               </>
-            ) : (
+            ) : cause.stage === "closed" ? null : (
               <form action={toggleMembership}>
                 <input type="hidden" name="causeId" value={cause.id} />
                 <button className={buttonStyles.primary}>Join this cause</button>

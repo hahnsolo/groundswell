@@ -8,9 +8,9 @@ export const MESSAGE_EDIT_MINUTES = 15;
 
 type Removable = { removedAt: Date | null };
 
-/** The person who started a cause can edit its title and description, unless a moderator removed it. */
-export function canEditCause(cause: Removable & { authorId: string }, viewerId: string | null | undefined) {
-  return !!viewerId && cause.authorId === viewerId && !cause.removedAt;
+/** The person leading a cause can edit it, unless a moderator removed it. */
+export function canEditCause(cause: Removable & { leaderId: string }, viewerId: string | null | undefined) {
+  return !!viewerId && cause.leaderId === viewerId && !cause.removedAt;
 }
 
 /** The host can edit an event until it's over, unless its cause was removed. */

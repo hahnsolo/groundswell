@@ -1,10 +1,14 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { getCurrentUser } from "@/lib/auth";
-import { STATUSES } from "@/lib/categories";
 import { getCauseDetail } from "@/lib/queries";
 import { displayName } from "@/lib/accounts";
-import { reportContent, setCauseStatus } from "@/app/actions/community";
+import { reportContent, withdrawLeadOffer, withdrawWin } from "@/app/actions/community";
+import { isActive } from "@/lib/stages";
+import { CloseCauseForm, LogContactForm, LogReplyForm, ProposeWinForm } from "@/components/stage-parts";
+import { db } from "@/lib/db";
+import { LEAD_OFFER_DAYS, offerOpen } from "@/lib/leadership";
+import { HandOverForm } from "@/components/handover";
 import { LocalTime } from "@/components/local-time";
 import { CampaignForm, LetterBuilder, SignForm } from "@/components/cause-forms";
 import { WhoCanFix } from "@/components/who-can-fix";
@@ -34,8 +38,37 @@ async function About({ params }: Pick<PageProps<"/causes/[id]">, "params">) {
   const appUrl = process.env.APP_URL ?? "http://localhost:3000";
   const causeUrl = `${appUrl}/causes/${cause.id}`;
   const place = `${cause.placeName}, ${cause.region}`;
-  const isAuthor = user?.id === cause.authorId;
+  const isLeader = user?.id === cause.leaderId;
+  // Handing over: an offer still waiting for an answer, and the members the lead could go to.
+  const latestOffer = cause.leadOffers[0];
+  const pendingOffer = isLeader && latestOffer && offerOpen(latestOffer) ? latestOffer : null;
+  const pendingOfferUntil = pendingOffer ? new Date(pendingOffer.createdAt.getTime() + LEAD_OFFER_DAYS * 24 * 60 * 60 * 1000) : null;
+  const handOverTo = isLeader
+    ? (
+        await db.causeMember.findMany({
+          where: { causeId: cause.id, userId: { not: cause.leaderId }, user: { deactivatedAt: null } },
+          orderBy: { createdAt: "asc" },
+          select: { user: { select: { id: true, name: true } } },
+        })
+      ).map((m) => m.user)
+    : [];
   const next = cause.meetups.find((m) => m.upcoming);
+  const active = isActive(cause.stage);
+  // What's been done, newest first: logged contacts and replies, campaigns, the first meetup, the outcome.
+  const HOW: Record<string, string> = { letter: "by letter", email: "by email", call: "by phone", meeting: "in a meeting" };
+  const timeline = [
+    ...cause.actions.map((a) =>
+      a.kind === "contacted"
+        ? { at: a.happenedAt, icon: "📨", text: `Contacted ${a.who} ${HOW[a.how ?? ""] ?? ""}`.trim(), note: a.note }
+        : a.kind === "replied"
+          ? { at: a.happenedAt, icon: "💬", text: "They replied", note: a.note }
+          : { at: a.happenedAt, icon: "🔁", text: `${displayName(a.createdBy)} confirmed it's still going`, note: null },
+    ),
+    ...cause.campaigns.map((c) => ({ at: c.createdAt, icon: "✍️", text: `Campaign started, asking ${c.target}`, note: null })),
+    ...(cause.firstEvent ? [{ at: cause.firstEvent.startsAt, icon: "📅", text: `First meetup: ${cause.firstEvent.title}`, note: null }] : []),
+    ...(cause.stage === "won" && cause.resolvedAt ? [{ at: cause.resolvedAt, icon: "🎉", text: "Won, confirmed by members", note: null }] : []),
+    ...(cause.stage === "closed" && cause.closedAt ? [{ at: cause.closedAt, icon: "🔒", text: "Closed", note: cause.closedReason }] : []),
+  ].sort((a, b) => b.at.getTime() - a.at.getTime());
   // Saved per area; the first visit to a new area looks them up (a second or two).
   const areaReps = await getAreaReps(cause);
   // A campaign starts out addressed to the actual person when we know them.
@@ -127,7 +160,7 @@ async function About({ params }: Pick<PageProps<"/causes/[id]">, "params">) {
             </p>
           )}
 
-          {user ? (
+          {!active ? null : user ? (
             <details className="border-t border-border pt-4">
               <summary className="cursor-pointer text-sm font-medium text-link">
                 + {cause.campaigns.length ? "Start another campaign" : "Start a campaign"}
@@ -142,25 +175,68 @@ async function About({ params }: Pick<PageProps<"/causes/[id]">, "params">) {
         </div>
       </Panel>
 
-      <div className="flex flex-wrap items-center gap-3 text-sm">
-        {isAuthor ? (
-          <div className="w-full space-y-3">
-          <form action={setCauseStatus} className="flex flex-wrap items-center gap-2">
-            <input type="hidden" name="causeId" value={cause.id} />
-            <span className="text-muted">Where it stands:</span>
-            {Object.entries(STATUSES).map(([key, s]) => (
-              <button
-                key={key}
-                name="status"
-                value={key}
-                className={`rounded-full px-2.5 py-1 text-xs font-medium ${key === cause.status ? s.className : "border border-border text-muted hover:border-ink"}`}
-              >
-                {key === "resolved" ? "Won / resolved" : s.label}
-              </button>
+      {timeline.length > 0 && (
+        <Panel title="Timeline" id="timeline">
+          <ol className="space-y-3 text-sm">
+            {timeline.map((t, i) => (
+              <li key={i} className="flex gap-3">
+                <span aria-hidden="true" className="w-5 shrink-0 text-center">
+                  {t.icon}
+                </span>
+                <span className="min-w-0">
+                  <span className="block">{t.text}</span>
+                  {t.note && <span className="block text-muted">&ldquo;{t.note}&rdquo;</span>}
+                  <span className="block text-xs text-muted">
+                    <LocalTime iso={t.at.toISOString()} options={{ month: "short", day: "numeric", year: "numeric" }} />
+                  </span>
+                </span>
+              </li>
             ))}
-          </form>
+          </ol>
+        </Panel>
+      )}
+
+      <div className="flex flex-wrap items-center gap-3 text-sm">
+        {isLeader ? (
+          <div className="w-full space-y-3">
+          {active && (
+            <>
+              {cause.winProposal ? (
+                <form action={withdrawWin} className="flex flex-wrap items-center gap-3">
+                  <input type="hidden" name="proposalId" value={cause.winProposal.id} />
+                  <span>
+                    You proposed a win: {cause.winProposal.confirmed} of {cause.winProposal.needed} confirmations so far.
+                  </span>
+                  <button className="text-xs text-muted underline hover:text-foreground">Withdraw it</button>
+                </form>
+              ) : (
+                <ProposeWinForm causeId={cause.id} />
+              )}
+              <LogContactForm causeId={cause.id} suggestedWho={campaignTarget} />
+              {cause.actions.some((a) => a.kind === "contacted") && <LogReplyForm causeId={cause.id} />}
+              <CloseCauseForm causeId={cause.id} />
+            </>
+          )}
           <FixerChangeForm causeId={cause.id} country={cause.country} fixer={cause.fixer} fixerOther={cause.fixerOther} />
           {canEditCause(cause, user?.id) && <EditCauseForm causeId={cause.id} title={cause.title} description={cause.description} />}
+          <details className="text-sm" open={!!pendingOffer}>
+            <summary className="cursor-pointer text-muted hover:text-foreground">Hand over leading this cause</summary>
+            <div className="mt-3 max-w-xl space-y-3">
+              {pendingOffer ? (
+                <form action={withdrawLeadOffer} className="flex flex-wrap items-center gap-3">
+                  <input type="hidden" name="offerId" value={pendingOffer.id} />
+                  <span>
+                    Waiting for <strong>{pendingOffer.to.name}</strong> to accept (until{" "}
+                    <LocalTime iso={pendingOfferUntil!.toISOString()} options={{ month: "short", day: "numeric" }} />
+                    ).
+                  </span>
+                  <button className="text-xs text-muted underline hover:text-foreground">Withdraw the offer</button>
+                </form>
+              ) : (
+                <HandOverForm causeId={cause.id} members={handOverTo} />
+              )}
+            </div>
+          </details>
           </div>
         ) : (
           user?.emailVerified && (

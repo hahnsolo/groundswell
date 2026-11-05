@@ -4,11 +4,11 @@ import { isRecentWin, momentum, peopleLine } from "@/lib/momentum";
 const DAY = 24 * 60 * 60 * 1000;
 const now = new Date("2026-10-20T12:00:00Z");
 const daysFromNow = (n: number) => new Date(now.getTime() + n * DAY);
-const base = { status: "open", createdAt: daysFromNow(-30), joinedThisWeek: 0 };
+const base = { stage: "raised", createdAt: daysFromNow(-30), joinedThisWeek: 0 };
 
 describe("momentum label on a cause", () => {
   it("a win beats everything", () => {
-    const m = momentum({ ...base, status: "resolved", resolvedAt: daysFromNow(-2), nextMeetup: { startsAt: daysFromNow(1) } }, now);
+    const m = momentum({ ...base, stage: "won", resolvedAt: daysFromNow(-2), nextMeetup: { startsAt: daysFromNow(1) } }, now);
     expect(m).toEqual({ kind: "won", at: daysFromNow(-2) });
   });
 

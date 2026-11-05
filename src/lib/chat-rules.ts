@@ -4,7 +4,7 @@
 //  - You join a cause to see its chat (admins can always look, to moderate).
 //  - For the first 24 hours after joining you can read but not post: time to
 //    get a feel for the conversation, and it slows down bots that join and spam.
-//  - The person who raised the cause can post straight away.
+//  - The person leading the cause can post straight away.
 //  - Posting also needs a confirmed email, like everything else people post.
 
 const HOUR = 60 * 60 * 1000;
@@ -22,15 +22,15 @@ export function chatAccess(
   v: {
     signedIn: boolean;
     isAdmin?: boolean;
-    isAuthor?: boolean;
+    isLeader?: boolean;
     joinedAt: Date | null;
     emailVerified?: boolean;
   },
   now = new Date(),
 ): ChatAccess {
   if (!v.signedIn) return { kind: "sign-in" };
-  if (!v.joinedAt && !v.isAuthor) return v.isAdmin ? { kind: "read", canPostAt: new Date(8.64e15) } : { kind: "join" };
-  if (!v.isAuthor && v.joinedAt) {
+  if (!v.joinedAt && !v.isLeader) return v.isAdmin ? { kind: "read", canPostAt: new Date(8.64e15) } : { kind: "join" };
+  if (!v.isLeader && v.joinedAt) {
     const canPostAt = new Date(v.joinedAt.getTime() + CHAT_COOLING_OFF_HOURS * HOUR);
     if (canPostAt > now) return { kind: "read", canPostAt };
   }

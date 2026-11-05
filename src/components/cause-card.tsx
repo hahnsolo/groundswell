@@ -2,6 +2,7 @@ import Link from "next/link";
 import { getCategory } from "@/lib/categories";
 import { momentum, peopleLine, type Momentum } from "@/lib/momentum";
 import type { NearbyCause } from "@/lib/queries";
+import { STAGE_LABELS, type Stage } from "@/lib/stages";
 import { LocalTime } from "./local-time";
 
 // Fixed light fills (not theme colours), so the dark initials stay readable in dark mode too.
@@ -11,7 +12,7 @@ const AVATAR_COLOURS = ["bg-[#e9b44c]", "bg-[#a9c4b2]", "bg-[#f0c9b8]"];
 export function CauseCard({ cause }: { cause: NearbyCause }) {
   const cat = getCategory(cause.category);
   const m = momentum({
-    status: cause.status,
+    stage: cause.stage,
     resolvedAt: cause.resolvedAt,
     createdAt: cause.createdAt,
     nextMeetup: cause.nextMeetup,
@@ -28,7 +29,7 @@ export function CauseCard({ cause }: { cause: NearbyCause }) {
         <span>
           {cat.emoji} {cat.label} · {cause.placeName} · {cause.distanceKm < 1 ? "<1" : Math.round(cause.distanceKm)} km
         </span>
-        <MomentumLabel m={m} status={cause.status} />
+        <MomentumLabel m={m} stage={cause.stage} />
       </div>
       <h3 className="mt-1.5 text-lg font-semibold leading-snug group-hover:underline">{cause.title}</h3>
       <p className="mt-1 line-clamp-2 text-sm text-muted">{cause.description}</p>
@@ -58,9 +59,10 @@ export function CauseCard({ cause }: { cause: NearbyCause }) {
   );
 }
 
-function MomentumLabel({ m, status }: { m: Momentum; status: string }) {
+function MomentumLabel({ m, stage }: { m: Momentum; stage: string }) {
   const strong = "font-semibold normal-case tracking-normal text-foreground text-xs";
-  if (!m) return status === "in_progress" ? <span className={strong}>Being worked on</span> : null;
+  // Nothing new happening: say how far it has got (Raised says nothing).
+  if (!m) return stage !== "raised" ? <span className={strong}>{STAGE_LABELS[stage as Stage] ?? null}</span> : null;
   switch (m.kind) {
     case "won":
       return <span className={`${strong} rounded-full bg-sage/30 px-2 py-0.5`}>✓ Won</span>;
