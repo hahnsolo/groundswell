@@ -83,7 +83,8 @@ async function Chat({ params }: Pick<PageProps<"/causes/[id]/chat">, "params">) 
           return (
             <li key={c.id} className={`group flex ${mine ? "justify-end" : "justify-start"}`}>
               <div className={`max-w-[85%] sm:max-w-[75%] ${mine ? "text-right" : ""}`}>
-                <p className="mb-1 text-xs text-muted">
+                {/* A div, not a p: it holds the Report form, and a form can't sit inside a p. */}
+                <div className="mb-1 text-xs text-muted">
                   <span className={`font-semibold ${c.author.deactivatedAt ? "" : "text-foreground"}`}>{mine ? "You" : displayName(c.author)}</span>
                   {c.author.id === cause.leaderId && !mine ? (
                     <span className="ml-1">· leads this</span>
@@ -97,13 +98,17 @@ async function Chat({ params }: Pick<PageProps<"/causes/[id]/chat">, "params">) 
                   </span>
                   {c.editedAt && <span className="ml-1">· edited</span>}
                   {user?.emailVerified && !mine && (
-                    <form action={reportContent} className="ml-2 inline opacity-0 transition group-hover:opacity-100 focus-within:opacity-100">
+                    // Shown on hover with a mouse; always shown on touch screens, which can't hover.
+                    <form
+                      action={reportContent}
+                      className="ml-2 inline opacity-0 transition group-hover:opacity-100 focus-within:opacity-100 [@media(hover:none)]:opacity-100"
+                    >
                       <input type="hidden" name="targetType" value="comment" />
                       <input type="hidden" name="targetId" value={c.id} />
                       <button className="text-xs text-muted underline hover:text-red-600">Report</button>
                     </form>
                   )}
-                </p>
+                </div>
                 {canEditMessage({ ...c, authorId: c.author.id }, user?.id) ? (
                   <MessageEditor commentId={c.id} body={c.body}>
                     {bubble}
