@@ -52,21 +52,45 @@ export function advance(current: Stage, a: Activity): Stage {
   return PROGRESS.indexOf(next) > PROGRESS.indexOf(current) ? next : current;
 }
 
-/** The next step, in plain words, for a cause still in progress. */
-export function nextStep(stage: Stage, members: number) {
+/**
+ * The next step, in plain words, for a cause still in progress. The people
+ * leading it get it in "you" words (#76); everyone else as a description.
+ */
+export function nextStep(stage: Stage, members: number, forLeader = false) {
+  const more = Math.max(1, GATHERING_MEMBERS - members);
+  const neighbours = `${more} more ${more === 1 ? "neighbour" : "neighbours"}`;
   switch (stage) {
-    case "raised": {
-      const more = Math.max(1, GATHERING_MEMBERS - members);
-      return `${more} more ${more === 1 ? "neighbour" : "neighbours"} joining moves this to Gathering.`;
-    }
+    case "raised":
+      return forLeader ? `Get ${neighbours} to join and this moves to Gathering.` : `${neighbours[0].toUpperCase()}${neighbours.slice(1)} joining moves this to Gathering.`;
     case "gathering":
-      return "Holding a first meetup moves this to Organizing.";
+      return forLeader ? "You can hold a first meetup to move this to Organizing." : "Holding a first meetup moves this to Organizing.";
     case "organizing":
-      return "Starting a campaign, or contacting whoever should fix it, moves this to Taking action.";
+      return forLeader
+        ? "You can start a campaign, or log contacting whoever should fix it, to move this to Taking action."
+        : "Starting a campaign, or contacting whoever should fix it, moves this to Taking action.";
     case "taking_action":
-      return "When it's fixed, whoever leads it can propose a win for members to confirm.";
+      return forLeader ? "When it's fixed, you can propose a win for members to confirm." : "When it's fixed, whoever leads it can propose a win for members to confirm.";
     default:
       return null;
+  }
+}
+
+export type LeaderAction = "invite" | "event" | "campaign" | "win" | "waiting";
+
+/** The one thing to do next, first in the leader panel (#76). Null once it's won or closed. */
+export function leaderNext(stage: Stage, members: number, waitingOnWin = false): { text: string; action: LeaderAction } | null {
+  if (!isActive(stage)) return null;
+  if (waitingOnWin) return { text: "Your win is waiting for members to confirm it.", action: "waiting" };
+  const more = Math.max(1, GATHERING_MEMBERS - members);
+  switch (stage) {
+    case "raised":
+      return { text: `Next: get ${more} more ${more === 1 ? "neighbour" : "neighbours"} to join.`, action: "invite" };
+    case "gathering":
+      return { text: "Next: hold a first meetup.", action: "event" };
+    case "organizing":
+      return { text: "Next: start a campaign, or contact whoever should fix it.", action: "campaign" };
+    default:
+      return { text: "It's fixed? Propose a win.", action: "win" };
   }
 }
 

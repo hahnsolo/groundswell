@@ -134,7 +134,11 @@ Type your name (and the recipient's email if you have it). The app writes a poli
 ![Representative lookup for a Toronto postal code](images/walkthrough/12-rep-lookup.webp)
 
 - **Timeline:** what's been done, newest first: 📨 contacted (who, how, when), 💬 they replied, ✍️ campaigns, 📅 the first meetup, 🎉 won, 🔒 closed.
-- **At the bottom, for the leader:**
+- **🧭 Leading this cause** (at the top of About, only for the leader and co-leaders; members and visitors see none of it):
+  - **The next step first**, with a button: *"Next: get 3 more neighbours to join"* (**Invite your group**, and the invite tools start open), *"Next: hold a first meetup"* (**Organize an event**), *"Next: start a campaign, or contact whoever should fix it"*, *"It's fixed? Propose a win"*, or *"Your win is waiting for members to confirm it"*.
+  - Then the tools, in three groups: **Move it forward** (propose a win, log a contact or a reply, close), **People** (member count, where people came from, 👋 Bring your group over, co-leaders, hand over) and **The cause** (edit, who should fix it, cover image).
+  - The stage tracker in the header speaks to them in "you" words too (*"You can hold a first meetup to move this to Organizing"*).
+  - The tools:
   - **It's fixed: propose a win.** Members are asked to confirm: 2 of them, or 1 if the cause has 3 or fewer members, within 7 days. Once confirmed it's **Won**, the date is recorded, and it shows in **Recent wins** on the neighbourhood pages for 30 days.
   - **Add to the timeline:** *we contacted someone* (moves it to Taking action) and *they replied*.
   - **Close this cause**, with a reason, for one that's stopped without a win. It stays readable; the chat becomes read-only and nobody can join or add events.
@@ -146,7 +150,7 @@ Type your name (and the recipient's email if you have it). The app writes a poli
     - It shows across the top of the cause, on its card on the neighbourhood board, and as the picture when the link is shared.
     - Events get covers the same way, from the event page; the host or the cause's leaders can set one.
     - Admins see **Remove image (moderator)** under any cover. New accounts can't add images on their first day.
-  - Everyone else sees **Report this cause** there instead.
+- Everyone else sees **Report this cause** at the bottom of About.
 - **📣 Spread the word** (on About for any open cause, and on every upcoming event; anyone can use it):
   - **Print a flyer:** one page (Letter or A4) with:
     - the cover image and the title in big type;

@@ -257,7 +257,7 @@ async function CauseHeader({ params, children }: { params: LayoutProps<"/causes/
             <span className="text-muted">Who should fix it? Not sure yet. Know who? Tell the group in the chat.</span>
           )}
         </p>
-        <StageTracker stage={cause.stage} members={cause._count.members} />
+        <StageTracker stage={cause.stage} members={cause._count.members} forLeader={leads} />
 
         <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
           <p className="flex items-center gap-2 text-sm">

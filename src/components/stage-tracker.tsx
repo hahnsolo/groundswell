@@ -6,10 +6,10 @@ const TRACK: Stage[] = ["raised", "gathering", "organizing", "taking_action", "w
  * Where a cause has got to: Raised → Gathering → Organizing → Taking action → Won,
  * with the next step in plain words. Skipped stages are simply passed.
  */
-export function StageTracker({ stage, members }: { stage: Stage; members: number }) {
+export function StageTracker({ stage, members, forLeader = false }: { stage: Stage; members: number; forLeader?: boolean }) {
   if (stage === "closed") return null; // the closed notice says it
   const at = TRACK.indexOf(stage);
-  const step = nextStep(stage, members);
+  const step = nextStep(stage, members, forLeader);
   return (
     <div className="mt-4" aria-label={`Stage: ${STAGE_LABELS[stage]}`}>
       <ol className="flex flex-wrap items-center gap-1.5 text-xs">
