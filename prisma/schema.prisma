@@ -41,6 +41,8 @@ model User {
   leading            Cause[]           @relation("CausesLed")
   leadOffersMade     LeadOffer[]       @relation("LeadOffersMade")
   leadOffersReceived LeadOffer[]       @relation("LeadOffersReceived")
+  coLeading          CoLeader[]        @relation("CoLeading")
+  coLeadInvites      CoLeader[]        @relation("CoLeadInvites")
   winProposals       WinProposal[]
   winConfirmations   WinConfirmation[]
   causeActions       CauseAction[]
@@ -187,6 +189,7 @@ model Cause {
   leadOffers   LeadOffer[]
   winProposals WinProposal[]
   actions      CauseAction[]
+  coLeaders    CoLeader[]
 
   @@index([country, lat, lng])
   @@index([authorId])
@@ -210,6 +213,23 @@ model LeadOffer {
 
   @@index([causeId])
   @@index([toUserId])
+}
+
+// Members who share leading a cause with its leader (#42). An invite is open
+// until accepted (acceptedAt set) or 7 days old; declining deletes the row.
+// At most 2 per cause, counting open invites.
+model CoLeader {
+  causeId     String
+  userId      String
+  invitedById String
+  createdAt   DateTime  @default(now())
+  acceptedAt  DateTime?
+  cause       Cause     @relation(fields: [causeId], references: [id], onDelete: Cascade)
+  user        User      @relation("CoLeading", fields: [userId], references: [id], onDelete: Cascade)
+  invitedBy   User      @relation("CoLeadInvites", fields: [invitedById], references: [id], onDelete: Cascade)
+
+  @@id([causeId, userId])
+  @@index([userId])
 }
 
 model CauseMember {

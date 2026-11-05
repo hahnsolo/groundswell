@@ -113,6 +113,8 @@ export const getCauseDetail = cache(async (id: string, viewerId: string | null) 
         take: 1,
         include: { to: { select: { id: true, name: true } }, from: { select: { id: true, name: true } } },
       },
+      // Co-leaders and open invites (#42), oldest first.
+      coLeaders: { orderBy: { createdAt: "asc" }, include: { user: { select: { id: true, name: true, deactivatedAt: true } } } },
       _count: { select: { members: true, comments: { where: { hidden: false } } } },
       members: {
         orderBy: { createdAt: "asc" },
@@ -206,10 +208,10 @@ export const getCauseDetail = cache(async (id: string, viewerId: string | null) 
 
 export type CauseDetail = NonNullable<Awaited<ReturnType<typeof getCauseDetail>>>;
 
-/** The active causes someone leads, oldest first: what counts toward MAX_LEADING_CAUSES. */
+/** The active causes someone leads or co-leads, oldest first: what counts toward MAX_LEADING_CAUSES. */
 export async function getActiveLedCauses(userId: string) {
   const led = await db.cause.findMany({
-    where: { leaderId: userId, removedAt: null },
+    where: { removedAt: null, OR: [{ leaderId: userId }, { coLeaders: { some: { userId, acceptedAt: { not: null } } } }] },
     orderBy: { createdAt: "asc" },
     select: { id: true, title: true, stage: true, removedAt: true },
   });

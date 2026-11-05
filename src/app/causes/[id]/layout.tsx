@@ -4,14 +4,14 @@ import { Suspense } from "react";
 import { getCurrentUser } from "@/lib/auth";
 import { getCategory } from "@/lib/categories";
 import { askingWhom, fixerEmoji } from "@/lib/fixers";
-import { leadershipLine, offerOpen } from "@/lib/leadership";
+import { coLeadInviteOpen, leadershipLine, leadsCause, offerOpen } from "@/lib/leadership";
 import { areaHref } from "@/lib/countries";
 import { getActiveLedCauses, getCauseDetail } from "@/lib/queries";
 import { canLeadAnother, MAX_LEADING_CAUSES } from "@/lib/leading-limit";
 import { displayName } from "@/lib/accounts";
 import { peopleLine } from "@/lib/momentum";
 import { canReadChat, chatAccess } from "@/lib/chat-rules";
-import { answerLeadOffer, confirmWin, leaveCauseAction, reopenCause, stillGoing, toggleMembership } from "@/app/actions/community";
+import { answerCoLeadInvite, answerLeadOffer, confirmWin, leaveCauseAction, reopenCause, stillGoing, toggleMembership } from "@/app/actions/community";
 import { canReopen, isActive } from "@/lib/stages";
 import { StageTracker } from "@/components/stage-tracker";
 import { RelativeTime } from "@/components/local-time";
@@ -61,7 +61,7 @@ async function CauseHeader({ params, children }: { params: LayoutProps<"/causes/
   const access = chatAccess({
     signedIn: !!user,
     isAdmin: user?.isAdmin,
-    isLeader: user?.id === cause.leaderId,
+    isLeader: leadsCause(cause, user?.id),
     joinedAt: cause.viewerJoinedAt,
     emailVerified: user?.emailVerified,
   });
@@ -69,11 +69,17 @@ async function CauseHeader({ params, children }: { params: LayoutProps<"/causes/
   const asking = askingWhom(cause.fixer, cause.fixerOther, cause.country);
   const latestOffer = cause.leadOffers[0];
   const offerForMe = user && latestOffer?.toUserId === user.id && offerOpen(latestOffer) ? latestOffer : null;
-  const isLeader = user?.id === cause.leaderId;
-  // Accepting a hand-over or reopening adds an active cause, so both respect the leading limit.
-  const reopenable = isLeader && cause.stage === "closed" && canReopen(cause.closedAt);
+  const coLeadInvite = user ? cause.coLeaders.find((c) => c.userId === user.id && coLeadInviteOpen(c)) : undefined;
+  // The leader or a co-leader: they get the leader banners and tools.
+  const leads = leadsCause(cause, user?.id);
+  const coLeaderNames = cause.coLeaders.filter((c) => c.acceptedAt && !c.user.deactivatedAt).map((c) => c.user.name);
+  // Taking on a cause (a hand-over, a co-lead invite, reopening) respects the leading limit,
+  // unless it's one they already help lead.
+  const reopenable = leads && cause.stage === "closed" && canReopen(cause.closedAt);
   const atLimit =
-    user && (offerForMe || reopenable) ? !canLeadAnother((await getActiveLedCauses(user.id)).length, user.isAdmin) : false;
+    user && (offerForMe || coLeadInvite || reopenable) && !(leads && !reopenable)
+      ? !canLeadAnother((await getActiveLedCauses(user.id)).length, user.isAdmin)
+      : false;
 
   return (
     <article>
@@ -97,6 +103,30 @@ async function CauseHeader({ params, children }: { params: LayoutProps<"/causes/
               <span className="mt-1 block">
                 You&apos;re already leading {MAX_LEADING_CAUSES} active causes, the most at once. To accept, finish one first (mark it won,
                 close it, or hand it over), or decline.
+              </span>
+            )}
+          </span>
+          {!atLimit && (
+            <button name="answer" value="accept" className={`${buttonStyles.primary} !px-3 !py-1.5`}>
+              Accept
+            </button>
+          )}
+          <button name="answer" value="decline" className={`${buttonStyles.secondary} !px-3 !py-1.5`}>
+            Decline
+          </button>
+        </form>
+      )}
+
+      {coLeadInvite && (
+        <form action={answerCoLeadInvite} className="mt-4 flex flex-wrap items-center gap-3 rounded-md border-[1.5px] border-ink bg-mustard/25 p-3 text-sm">
+          <input type="hidden" name="causeId" value={cause.id} />
+          <span className="min-w-0 flex-1">
+            <strong>{displayName(cause.leader)}</strong> has asked you to co-lead this cause. You&apos;d share leading it: editing it,
+            moving it forward and organizing around it.
+            {atLimit && (
+              <span className="mt-1 block">
+                You&apos;re already leading {MAX_LEADING_CAUSES} active causes, the most at once (co-leading counts). To accept, finish one
+                first, or decline.
               </span>
             )}
           </span>
@@ -135,7 +165,7 @@ async function CauseHeader({ params, children }: { params: LayoutProps<"/causes/
         </div>
       )}
 
-      {isLeader && cause.quietAskedAt && isActive(cause.stage) && (
+      {leads && cause.quietAskedAt && isActive(cause.stage) && (
         <form action={stillGoing} className="mt-4 flex flex-wrap items-center gap-3 rounded-md border-[1.5px] border-ink bg-mustard/25 p-3 text-sm">
           <input type="hidden" name="causeId" value={cause.id} />
           <span className="min-w-0 flex-1">
@@ -170,7 +200,7 @@ async function CauseHeader({ params, children }: { params: LayoutProps<"/causes/
       <header className="mt-4">
         <p className="text-[11px] uppercase tracking-wide text-muted">
           {cat.emoji} {cat.label} · {cause.placeName} ·{" "}
-          {leadershipLine(displayName(cause.author), displayName(cause.leader), cause.authorId === cause.leaderId)} ·{" "}
+          {leadershipLine(displayName(cause.author), displayName(cause.leader), cause.authorId === cause.leaderId, coLeaderNames)} ·{" "}
           <RelativeTime iso={cause.createdAt.toISOString()} />
           {cause.editedAt && " · edited"}
         </p>

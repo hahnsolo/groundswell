@@ -1,6 +1,8 @@
 // Who can change what after posting. Pure, so the pages (which show the Edit
 // buttons) and the actions (which do the saving) agree, and it's easy to test.
 
+import { leadsCause } from "./leadership";
+
 const MINUTE = 60 * 1000;
 
 /** A chat message can be fixed for a short while; after that the conversation has moved on. */
@@ -8,9 +10,9 @@ export const MESSAGE_EDIT_MINUTES = 15;
 
 type Removable = { removedAt: Date | null };
 
-/** The person leading a cause can edit it, unless a moderator removed it. */
-export function canEditCause(cause: Removable & { leaderId: string }, viewerId: string | null | undefined) {
-  return !!viewerId && cause.leaderId === viewerId && !cause.removedAt;
+/** The people leading a cause (leader and co-leaders) can edit it, unless a moderator removed it. */
+export function canEditCause(cause: Removable & Parameters<typeof leadsCause>[0], viewerId: string | null | undefined) {
+  return leadsCause(cause, viewerId) && !cause.removedAt;
 }
 
 /** The host can edit an event until it's over, unless its cause was removed. */
