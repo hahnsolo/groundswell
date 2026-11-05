@@ -23,8 +23,8 @@
     "icons": "node scripts/generate-icons.mjs"
   },
   "dependencies": {
-    "@prisma/client": "^6.19.0",
-    "better-auth": "1.7.14",
+    "@prisma/client": "^6.19.3",
+    "better-auth": "1.7.15",
     "next": "16.4.3",
     "react": "19.3.1",
     "react-dom": "19.3.1",
@@ -39,7 +39,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.4.3",
     "playwright-core": "^1.64.1",
-    "prisma": "^6.19.0",
+    "prisma": "^6.19.3",
     "sharp": "^0.35.5",
     "tailwindcss": "^4",
     "tsx": "^4.23.15",
