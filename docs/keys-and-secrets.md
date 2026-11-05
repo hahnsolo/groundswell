@@ -17,8 +17,8 @@ After changing a variable in Vercel, you must **redeploy** for it to take effect
 
 | Variable | What it is | Secret? | Your PC (`.env`) | Vercel (live) |
 |---|---|---|---|---|
-| `DATABASE_URL` | Address + password for the database, via Neon's "pooler" (which handles lots of short connections) | **Secret** | Neon **dev** branch | Neon **main** branch |
-| `DIRECT_URL` | Same database, direct connection. Only used when changing the database structure. | **Secret** | Neon **dev** branch | Neon **main** branch |
+| `DATABASE_URL` | Address + password for the database, via Neon's "pooler" (which handles lots of short connections) | **Secret** | Neon **dev** branch | Neon **production** branch (previews: **preview** branch) |
+| `DIRECT_URL` | Same database, direct connection. Only used when changing the database structure. | **Secret** | Neon **dev** branch | Neon **production** branch (previews: **preview** branch) |
 | `ALLOW_DB_SEED` | Lets `npm run db:seed` wipe and refill the database with demo data | Config | `yes` | **Never set** |
 | `APP_URL` | The site's public address, used in emailed links, share links and sign-in callbacks | Config | `http://localhost:3000` | `https://groundswell.hahnsolo.ca` |
 | `BETTER_AUTH_SECRET` | Signs login sessions so they can't be forged | **Secret** | Its own random value | A **different** random value |
@@ -53,7 +53,7 @@ Why some settings have safety nets built into the code:
 General pattern: **make the new one → put it in Vercel → redeploy → check the site works → delete the old one.**
 
 ### Database (`DATABASE_URL`, `DIRECT_URL`)
-1. Neon → project → **Branches** → pick the branch (`main` for live, `dev` for your PC) → **Roles** → the database user → **Reset password**.
+1. Neon → project → **Branches** → pick the branch (`production` for live, `dev` for your PC, `preview` for preview sites) → **Roles** → the database user → **Reset password**.
 2. Neon → **Connect** → choose that same branch → copy the new pooled and direct strings. (**Check the branch picker!** See [Troubleshooting](troubleshooting.md#the-live-site-was-using-the-dev-database).) Add `&pgbouncer=true` to the end of the pooled one.
 3. For `main`: paste both into Vercel and redeploy. For `dev`: paste both into your `.env` and restart `npm run dev`.
 4. The old password stops working the moment you reset it, so the live site is briefly broken between steps 1 and 3. Have Vercel open and ready first.

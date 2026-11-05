@@ -18,6 +18,16 @@ let CAUSE;
   await go(page, `/issues/${CAUSE}/chat`);
   assert.equal(new URL(page.url()).pathname, `/causes/${CAUSE}/chat`);
   step("Old /issues/ links redirect to /causes/");
+
+  // The privacy policy, terms and code of conduct are linked from every page's footer and from sign-up.
+  for (const [label, heading] of [["Privacy", "Privacy policy"], ["Terms", "Terms of use"], ["Code of conduct", "Code of conduct"]]) {
+    await page.locator("footer").getByRole("link", { name: label, exact: true }).click();
+    await page.locator("h1", { hasText: heading }).waitFor({ timeout: 30000 });
+  }
+  await go(page, "/signup");
+  const agree = page.locator("form").getByText(/By joining you agree/);
+  for (const name of ["terms", "code of conduct", "privacy policy"]) assert.equal(await agree.getByRole("link", { name, exact: true }).count(), 1);
+  step("Privacy, terms and conduct are linked from the footer and from sign-up");
   await page.context().close();
 }
 

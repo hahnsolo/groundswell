@@ -135,6 +135,9 @@ let AWK;
   await sweep(page, "cause-signed-out", `/causes/${AWK}`);
   await sweep(page, "chat-locked", `/causes/${AWK}/chat`);
   await sweep(page, "goodbye", "/goodbye");
+  await sweep(page, "privacy", "/privacy");
+  await sweep(page, "terms", "/terms");
+  await sweep(page, "conduct", "/conduct");
   await page.context().close();
 }
 // Signed in as Alex (admin, member of the awkward cause)

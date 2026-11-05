@@ -81,6 +81,21 @@ export function SignUpForm({ next }: { next?: string }) {
       </fieldset>
       <Honeypot />
       {bot.widget}
+      <p className="text-xs text-muted">
+        By joining you agree to the{" "}
+        <Link href="/terms" className="underline hover:text-foreground">
+          terms
+        </Link>{" "}
+        and{" "}
+        <Link href="/conduct" className="underline hover:text-foreground">
+          code of conduct
+        </Link>
+        , and our{" "}
+        <Link href="/privacy" className="underline hover:text-foreground">
+          privacy policy
+        </Link>{" "}
+        explains what we keep.
+      </p>
       <SubmitButton className="w-full" pendingText="Creating account…" waitingFor={bot.passed ? undefined : CHECKING}>
         Create account
       </SubmitButton>
