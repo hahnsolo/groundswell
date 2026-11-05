@@ -256,7 +256,10 @@ Click your name in the top bar.
 - **Home area:** set or change your postal code. The top bar falls back to it when you haven't looked at another area.
 - **Upcoming meetups** you've RSVP'd to, with times in your time zone. **✕ Not going** cancels your RSVP. Meetups you host are tagged **Hosting**, with a **Manage** link to the meetup (stepping down is confirmed there).
 - **Causes you raised.** If a moderator hid or removed one, it shows an **Under review** or **Removed** tag here.
-- **Causes you support**, each with **✕ Stop supporting**.
+- **Causes you've joined**, each with **Mute emails** (no notification emails about that cause) and **✕ Leave**.
+- **Email** (`/me#email`): which notification emails you get. Defaults: **Event reminders** (the day before an event you're going to), **"Is it fixed?"** (a leader asks members to confirm a win), **Wins** (a cause you joined is won) and **New members** (daily, for causes you lead) are on; **Chat summary** (daily, new messages in your causes) is off. Requests to lead or co-lead, and sign-in emails, always come.
+- **Every notification email** ends with links to change these settings, to stop that kind, or to stop them all. The links are signed, so nobody can turn off someone else's emails, and the page asks before unsubscribing (mail apps' own one-click unsubscribe works too).
+- **Sending limits:** notifications get 60 of Resend's 100 free emails a day, so sign-in emails always have room. Past that, notifications are skipped until the next day (most useful first: reminders, then new members, then chat summaries). Reminders and summaries go out with the daily job at 09:00 UTC.
 - **Your account:** your sign-in email, and **Delete my account…** (below).
 - **Admins also see** a **Moderation queue** box at the top with the number of open reports.
 

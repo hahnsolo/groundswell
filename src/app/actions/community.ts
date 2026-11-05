@@ -1,6 +1,8 @@
 "use server";
 
 import { refresh } from "next/cache";
+import { after } from "next/server";
+import { notifyWinCheck, notifyWon } from "@/lib/notify";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@/lib/db";
@@ -161,6 +163,7 @@ export async function proposeWin(_prev: FormState, formData: FormData): Promise<
     db.winProposal.updateMany({ where: { causeId: parsed.data.causeId, resolvedAt: null }, data: { resolvedAt: new Date(), outcome: "withdrawn" } }),
     db.winProposal.create({ data: { causeId: parsed.data.causeId, proposedById: user.id, note: parsed.data.note } }),
   ]);
+  after(() => notifyWinCheck(parsed.data.causeId, user.id)); // "Is it fixed?" emails, after the page updates
   refresh();
   return { ok: true };
 }
@@ -190,6 +193,7 @@ export async function confirmWin(formData: FormData) {
       db.winProposal.update({ where: { id: proposalId }, data: { resolvedAt: new Date(), outcome: "won" } }),
       db.cause.update({ where: { id: proposal.causeId }, data: { stage: "won", resolvedAt: new Date() } }),
     ]);
+    after(() => notifyWon(proposal.causeId));
   }
   refresh();
 }
