@@ -21,6 +21,8 @@ import { canEditCause, canEditEvent, canEditMessage, MESSAGE_EDIT_MINUTES } from
 import { canOfferLead, LEAD_OFFER_DAYS, offerOpen } from "@/lib/leadership";
 import { canReopen, confirmationsNeeded, isActive, proposalOpen } from "@/lib/stages";
 import { refreshStage } from "@/lib/cause-stage";
+import { canLeadAnother, LIMIT_REACHED } from "@/lib/leading-limit";
+import { getActiveLedCauses } from "@/lib/queries";
 import { appUrl, sendEmail } from "@/lib/mail";
 import { fromZodError, type FormState } from "@/lib/forms";
 
@@ -93,6 +95,7 @@ const causeSchema = z.object({
 export async function createCause(_prev: FormState, formData: FormData): Promise<FormState> {
   const user = await requireUser();
   if (!user.emailVerified) return { error: UNVERIFIED_ERROR };
+  if (!canLeadAnother((await getActiveLedCauses(user.id)).length, user.isAdmin)) return { error: LIMIT_REACHED };
   const parsed = causeSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return fromZodError(parsed.error);
   if (fixerOtherMissing(parsed.data)) return FIXER_OTHER_MISSING;
@@ -212,6 +215,7 @@ export async function reopenCause(formData: FormData) {
   const causeId = id.parse(formData.get("causeId"));
   const cause = await db.cause.findUnique({ where: { id: causeId }, select: { leaderId: true, stage: true, closedAt: true, removedAt: true } });
   if (!cause || cause.leaderId !== user.id || cause.stage !== "closed" || cause.removedAt || !canReopen(cause.closedAt)) return;
+  if (!canLeadAnother((await getActiveLedCauses(user.id)).length, user.isAdmin)) return; // reopening makes it count again
   await db.cause.update({ where: { id: causeId }, data: { stage: "raised", closedAt: null, closedReason: null, quietAskedAt: null } });
   await refreshStage(causeId);
   refresh();
@@ -373,6 +377,8 @@ export async function answerLeadOffer(formData: FormData) {
     // Only if nothing changed meanwhile: they're still a member, and the person who offered still leads it.
     const stillMember = await db.causeMember.findUnique({ where: { causeId_userId: { causeId: offer.causeId, userId: user.id } } });
     if (!stillMember || offer.cause.leaderId !== offer.fromUserId || offer.cause.removedAt) return;
+    // Taking it on counts toward their limit; the notice explains and offers Decline instead.
+    if (!canLeadAnother((await getActiveLedCauses(user.id)).length, user.isAdmin)) return;
   }
   await db.$transaction([
     db.leadOffer.update({ where: { id: offer.id }, data: { answeredAt: new Date(), accepted: accept } }),

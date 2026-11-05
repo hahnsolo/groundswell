@@ -6,7 +6,8 @@ import { getCategory } from "@/lib/categories";
 import { askingWhom, fixerEmoji } from "@/lib/fixers";
 import { leadershipLine, offerOpen } from "@/lib/leadership";
 import { areaHref } from "@/lib/countries";
-import { getCauseDetail } from "@/lib/queries";
+import { getActiveLedCauses, getCauseDetail } from "@/lib/queries";
+import { canLeadAnother, MAX_LEADING_CAUSES } from "@/lib/leading-limit";
 import { displayName } from "@/lib/accounts";
 import { peopleLine } from "@/lib/momentum";
 import { canReadChat, chatAccess } from "@/lib/chat-rules";
@@ -69,6 +70,10 @@ async function CauseHeader({ params, children }: { params: LayoutProps<"/causes/
   const latestOffer = cause.leadOffers[0];
   const offerForMe = user && latestOffer?.toUserId === user.id && offerOpen(latestOffer) ? latestOffer : null;
   const isLeader = user?.id === cause.leaderId;
+  // Accepting a hand-over or reopening adds an active cause, so both respect the leading limit.
+  const reopenable = isLeader && cause.stage === "closed" && canReopen(cause.closedAt);
+  const atLimit =
+    user && (offerForMe || reopenable) ? !canLeadAnother((await getActiveLedCauses(user.id)).length, user.isAdmin) : false;
 
   return (
     <article>
@@ -88,10 +93,18 @@ async function CauseHeader({ params, children }: { params: LayoutProps<"/causes/
           <span className="min-w-0 flex-1">
             <strong>{offerForMe.from.name}</strong> has asked you to lead this cause. You&apos;d be able to edit it, move it forward and
             organize around it.
+            {atLimit && (
+              <span className="mt-1 block">
+                You&apos;re already leading {MAX_LEADING_CAUSES} active causes, the most at once. To accept, finish one first (mark it won,
+                close it, or hand it over), or decline.
+              </span>
+            )}
           </span>
-          <button name="answer" value="accept" className={`${buttonStyles.primary} !px-3 !py-1.5`}>
-            Accept
-          </button>
+          {!atLimit && (
+            <button name="answer" value="accept" className={`${buttonStyles.primary} !px-3 !py-1.5`}>
+              Accept
+            </button>
+          )}
           <button name="answer" value="decline" className={`${buttonStyles.secondary} !px-3 !py-1.5`}>
             Decline
           </button>
@@ -110,7 +123,10 @@ async function CauseHeader({ params, children }: { params: LayoutProps<"/causes/
             )}
             {cause.closedReason && <>: {cause.closedReason.replace(/[.!\s]+$/, "")}</>}. You can still read everything here.
           </span>
-          {isLeader && canReopen(cause.closedAt) && (
+          {reopenable && atLimit && (
+            <span className="text-xs text-muted">To reopen it, finish one of the {MAX_LEADING_CAUSES} causes you&apos;re leading first.</span>
+          )}
+          {reopenable && !atLimit && (
             <form action={reopenCause}>
               <input type="hidden" name="causeId" value={cause.id} />
               <button className={`${buttonStyles.secondary} !px-3 !py-1.5`}>Reopen</button>
