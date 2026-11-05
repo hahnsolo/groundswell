@@ -212,6 +212,24 @@ let CAUSE;
   const back = await signIn(browser, "priya@demo.test", opts);
   assert.match(back.url(), /\/me\?restored=1/);
   step("Signing back in restores the account");
+
+  // 5b. Priya now leads 3 active causes (two of her own plus the crossing): she can't start a 4th,
+  //     and is shown why and the ways out. Closing one frees a slot.
+  await go(back, "/causes/new");
+  await back.getByText("You're leading 3 active causes").waitFor({ timeout: 30000 });
+  assert.equal(await back.getByRole("button", { name: "Start this cause" }).count(), 0, "the form shows at the limit");
+  assert.match(await text(back), /Mark it won[\s\S]*Close it[\s\S]*Hand it over/);
+  await back.locator("main").getByRole("link", { name: /Trinity Bellwoods washrooms/ }).click();
+  await back.waitForURL(/\/causes\/\w+/);
+  await settle(back);
+  const close = back.locator("details", { hasText: "Close this cause" });
+  await close.getByText("Close this cause").click();
+  await close.getByLabel("Why are you closing it?").fill("The city reopened them for good");
+  await close.getByRole("button", { name: "Close the cause" }).click();
+  await back.getByText(/You can still read everything here/).waitFor({ timeout: 30000 });
+  await go(back, "/causes/new");
+  await back.getByRole("button", { name: "Start this cause" }).waitFor({ timeout: 30000 });
+  step("Leading 3 active causes: Start a cause explains the limit; closing one frees a slot");
   await back.context().close();
 }
 

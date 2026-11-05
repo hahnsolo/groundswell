@@ -5,6 +5,7 @@ import { after, connection } from "next/server";
 import { advance, confirmationsNeeded, proposalOpen, type Stage } from "./stages";
 import { boundingBox, distanceKm } from "./geo";
 import { isRecentWin } from "./momentum";
+import { countActive } from "./leading-limit";
 
 export type CauseSort = "top" | "new";
 
@@ -204,3 +205,13 @@ export const getCauseDetail = cache(async (id: string, viewerId: string | null) 
 });
 
 export type CauseDetail = NonNullable<Awaited<ReturnType<typeof getCauseDetail>>>;
+
+/** The active causes someone leads, oldest first: what counts toward MAX_LEADING_CAUSES. */
+export async function getActiveLedCauses(userId: string) {
+  const led = await db.cause.findMany({
+    where: { leaderId: userId, removedAt: null },
+    orderBy: { createdAt: "asc" },
+    select: { id: true, title: true, stage: true, removedAt: true },
+  });
+  return led.filter((c) => countActive([c]) === 1);
+}
