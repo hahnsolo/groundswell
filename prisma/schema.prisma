@@ -141,6 +141,10 @@ model Cause {
   fixer         String    @default("unsure")
   // What they wrote when fixer is "other".
   fixerOther    String?
+  // Someone to contact the leader added by hand (a councillor Open North doesn't cover, a landlord…).
+  contactName   String?
+  contactRole   String?
+  contactEmail  String?
   country       String
   postalCode    String
   placeName     String
@@ -281,4 +285,17 @@ model Report {
   reporter     User      @relation(fields: [reporterId], references: [id], onDelete: Cascade)
 
   @@unique([targetType, targetId, reporterId])
+}
+
+// Elected representatives for an area (Canada, via Open North), saved so pages
+// don't wait on the lookup and we stay within its rate limit. Checked again
+// after 30 days (src/lib/area-reps.ts). Looked up by the area's centre point only.
+model AreaRepresentatives {
+  country    String
+  postalCode String
+  // Rep[] from src/lib/representatives.ts
+  reps       Json
+  checkedAt  DateTime @default(now())
+
+  @@id([country, postalCode])
 }

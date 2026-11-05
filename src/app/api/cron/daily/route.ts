@@ -3,12 +3,14 @@ import type { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { purgeCutoff } from "@/lib/moderation";
 import { anonymizeExpiredAccounts } from "@/lib/leaving";
+import { refreshStaleAreaReps } from "@/lib/area-reps";
 
 // Daily housekeeping (see vercel.json). Vercel calls this with
 // "Authorization: Bearer <CRON_SECRET>".
 //  1. Permanently deletes content a moderator removed more than a week ago
 //     (deleting a cause also deletes its comments, meetups and campaigns).
 //  2. Anonymizes accounts deleted more than 30 days ago.
+//  3. Re-checks saved representatives that are over 30 days old.
 export async function GET(request: NextRequest) {
   const secret = process.env.CRON_SECRET;
   if (!secret) {
@@ -22,10 +24,11 @@ export async function GET(request: NextRequest) {
   const where = { removedAt: { lt: purgeCutoff() } };
   const [causes, comments] = await db.$transaction([db.cause.deleteMany({ where }), db.comment.deleteMany({ where })]);
   const accounts = await anonymizeExpiredAccounts();
+  const reps = await refreshStaleAreaReps();
   console.log(
-    `Daily clean-up: purged ${causes.count} removed cause(s) and ${comments.count} removed comment(s); anonymized ${accounts} deleted account(s).`,
+    `Daily clean-up: purged ${causes.count} removed cause(s) and ${comments.count} removed comment(s); anonymized ${accounts} deleted account(s); re-checked representatives for ${reps} area(s).`,
   );
-  return Response.json({ causes: causes.count, comments: comments.count, accounts });
+  return Response.json({ causes: causes.count, comments: comments.count, accounts, reps });
 }
 
 /** Constant-time comparison, so the secret can't be guessed from response timing. */
