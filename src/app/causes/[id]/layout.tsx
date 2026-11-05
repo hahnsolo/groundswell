@@ -80,6 +80,7 @@ async function CauseHeader({ params, children }: { params: LayoutProps<"/causes/
         <p className="text-[11px] uppercase tracking-wide text-muted">
           {cat.emoji} {cat.label} · {cause.placeName} · started by {displayName(cause.author)} ·{" "}
           <RelativeTime iso={cause.createdAt.toISOString()} />
+          {cause.editedAt && " · edited"}
           {cause.status === "resolved" && <span className="ml-2 rounded-full bg-sage/30 px-2 py-0.5 font-semibold text-foreground">✓ Won</span>}
         </p>
         <h1 className="mt-2 text-3xl font-semibold leading-tight sm:text-4xl">{cause.title}</h1>

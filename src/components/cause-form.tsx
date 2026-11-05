@@ -1,13 +1,39 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { createCause } from "@/app/actions/community";
+import { createCause, editCause } from "@/app/actions/community";
 import { CATEGORIES } from "@/lib/categories";
 import { COUNTRIES } from "@/lib/countries";
 import { Field, FormError, SubmitButton, inputStyles, useFormAction } from "./ui";
 import { Honeypot } from "./bot-check";
 import { DescriptionField } from "./description-field";
 import { FixerField } from "./fixer-field";
+
+/** Lets the person who started a cause fix its title and description. */
+export function EditCauseForm({ causeId, title, description }: { causeId: string; title: string; description: string }) {
+  const [state, action] = useFormAction(editCause);
+  const v = state?.values;
+  return (
+    <details className="text-sm" open={!!state && !state.ok}>
+      <summary className="cursor-pointer text-muted hover:text-foreground">Edit title and description</summary>
+      <form action={action} className="mt-3 max-w-2xl space-y-4">
+        <input type="hidden" name="causeId" value={causeId} />
+        <FormError message={state?.error} />
+        <Field label="What's the cause?" name="title" errors={state?.fieldErrors}>
+          <input name="title" required maxLength={120} defaultValue={v?.title ?? title} className={inputStyles} />
+        </Field>
+        <DescriptionField defaultValue={v?.description ?? description} error={state?.fieldErrors?.description?.[0]} />
+        <Honeypot />
+        <div className="flex items-center gap-3">
+          <SubmitButton variant="secondary" pendingText="Saving…">
+            Save changes
+          </SubmitButton>
+          {state?.ok && <span className="text-muted">Saved.</span>}
+        </div>
+      </form>
+    </details>
+  );
+}
 
 export function CauseForm({ country, postal }: { country: string; postal: string }) {
   const [state, action] = useFormAction(createCause);

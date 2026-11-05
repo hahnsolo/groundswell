@@ -17,6 +17,7 @@ import { announceChatChange } from "@/lib/live-chat";
 import { descriptionProblem } from "@/lib/words";
 import { FIXER_IDS, FIXER_OTHER_MAX, type FixerId } from "@/lib/fixers";
 import { endProblem } from "@/lib/event-times";
+import { canEditCause, canEditEvent, canEditMessage, MESSAGE_EDIT_MINUTES } from "@/lib/editing";
 import { fromZodError, type FormState } from "@/lib/forms";
 
 const id = z.string().min(1).max(40);
@@ -43,6 +44,13 @@ async function spamCheck(
 }
 
 const CAUSE_GONE: FormState = { error: "This cause is no longer available." };
+
+/** Edits go through the same honeypot and link rules as new posts, but don't count against posting limits. */
+function editCheck(user: CurrentUser, formData: FormData, ...texts: (string | undefined)[]): FormState {
+  if (honeypotTripped(formData)) return { error: "Something went wrong. Please try again." };
+  const links = linkError(user, ...texts);
+  return links ? { error: links } : null;
+}
 
 /** Comments, meetups and campaigns can only be added to causes a moderator hasn't removed. */
 async function causeOpen(causeId: string) {
@@ -134,6 +142,23 @@ export async function setCauseStatus(formData: FormData) {
   refresh();
 }
 
+/** The person who started a cause can fix its title and description (same rules as when starting it). */
+export async function editCause(_prev: FormState, formData: FormData): Promise<FormState> {
+  const user = await requireUser();
+  const parsed = causeSchema.pick({ title: true, description: true }).extend({ causeId: id }).safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return fromZodError(parsed.error);
+  const cause = await db.cause.findUnique({ where: { id: parsed.data.causeId }, select: { authorId: true, removedAt: true } });
+  if (!cause || !canEditCause(cause, user.id)) return { error: "Only the person who started this cause can change it." };
+  const problem = editCheck(user, formData, parsed.data.title, parsed.data.description);
+  if (problem) return problem;
+  await db.cause.update({
+    where: { id: parsed.data.causeId },
+    data: { title: parsed.data.title, description: parsed.data.description, editedAt: new Date() },
+  });
+  refresh();
+  return { ok: true };
+}
+
 /** The person who raised a cause can change who they think should fix it. */
 export async function setCauseFixer(_prev: FormState, formData: FormData): Promise<FormState> {
   const user = await requireUser();
@@ -198,6 +223,27 @@ export async function addComment(_prev: FormState, formData: FormData): Promise<
   return { ok: true };
 }
 
+/** Fix your own chat message, within 15 minutes of sending it. */
+export async function editComment(_prev: FormState, formData: FormData): Promise<FormState> {
+  const user = await requireUser();
+  const parsed = z.object({ commentId: id, body: commentSchema.shape.body }).safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return fromZodError(parsed.error);
+  const comment = await db.comment.findUnique({
+    where: { id: parsed.data.commentId },
+    select: { authorId: true, causeId: true, createdAt: true, removedAt: true, hidden: true, body: true },
+  });
+  if (!comment || !canEditMessage(comment, user.id)) {
+    return { error: `Messages can only be changed for ${MESSAGE_EDIT_MINUTES} minutes after sending.` };
+  }
+  if (comment.body === parsed.data.body) return { ok: true };
+  const problem = editCheck(user, formData, parsed.data.body);
+  if (problem) return problem;
+  await db.comment.update({ where: { id: parsed.data.commentId }, data: { body: parsed.data.body, editedAt: new Date() } });
+  announceChatChange(comment.causeId);
+  refresh();
+  return { ok: true };
+}
+
 // ---------- Meetups ----------
 
 const meetupSchema = z.object({
@@ -235,6 +281,36 @@ export async function createMeetup(_prev: FormState, formData: FormData): Promis
     },
   });
   redirect(`/events/${meetup.id}`);
+}
+
+/** The host changes an event's details, until it's over. */
+export async function editMeetup(_prev: FormState, formData: FormData): Promise<FormState> {
+  const user = await requireUser();
+  const parsed = meetupSchema.omit({ causeId: true }).extend({ meetupId: id }).safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return fromZodError(parsed.error);
+  const meetup = await db.meetup.findUnique({
+    where: { id: parsed.data.meetupId },
+    select: { organizerId: true, startsAt: true, endsAt: true, causeId: true, cause: { select: { removedAt: true } }, _count: { select: { rsvps: true } } },
+  });
+  if (!meetup || !canEditEvent(meetup, user.id)) return { error: "Only the host can change this event, until it's over." };
+  const { meetupId, isOnline, ...data } = parsed.data;
+  // Moving the start is fine, but not into the past (an event already on keeps its start).
+  if (data.startsAt.getTime() !== meetup.startsAt.getTime() && data.startsAt.getTime() < Date.now()) {
+    return { fieldErrors: { startsAt: ["Pick a time in the future."] } };
+  }
+  const badEnd = endProblem(data.startsAt, data.endsAt);
+  if (badEnd) return { fieldErrors: { endsAt: [badEnd] } };
+  if (data.capacity && data.capacity < meetup._count.rsvps) {
+    return { fieldErrors: { capacity: [`${meetup._count.rsvps} people are already going, so the limit can't be lower than that.`] } };
+  }
+  const problem = editCheck(user, formData, data.title, data.description, isOnline ? undefined : data.location);
+  if (problem) return problem;
+  await db.meetup.update({
+    where: { id: meetupId },
+    data: { ...data, capacity: data.capacity ?? null, isOnline: isOnline === "on", editedAt: new Date() },
+  });
+  refresh();
+  return { ok: true };
 }
 
 export async function toggleRsvp(formData: FormData) {
