@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
+import { after } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import { getCauseDetail } from "@/lib/queries";
 import { displayName } from "@/lib/accounts";
@@ -69,6 +70,11 @@ async function About({ params }: Pick<PageProps<"/causes/[id]">, "params">) {
   // Their own invite link, and how many joined through it (#68).
   const inviteCode = leads && user && cause.stage !== "closed" ? await ensureInviteCode(cause.id, user.id) : null;
   const invitedCount = inviteCode && user ? await joinedFromInvite(cause.id, user.id) : 0;
+  // For "new members since you last looked" on their /me (#75). After the page is sent, so it doesn't slow it down.
+  if (leads && user) {
+    const me = user.id;
+    after(() => db.causeMember.updateMany({ where: { causeId: cause.id, userId: me }, data: { lastLookedAt: new Date() } }));
+  }
   const next = cause.meetups.find((m) => m.upcoming);
   const active = isActive(cause.stage);
   // What's been done, newest first: logged contacts and replies, campaigns, the first meetup, the outcome.

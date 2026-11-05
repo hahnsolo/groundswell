@@ -279,10 +279,18 @@ Click your name in the top bar.
 ![Your activity page](images/walkthrough/11-me.webp)
 
 - **Sign out** at the top right.
+- **Needs you** (only when something does, at the top): each item links straight to the right place.
+  - a request to lead or co-lead a cause, to accept or decline;
+  - *"Is … still going?"* for a quiet cause you lead;
+  - a win to confirm on a cause you've joined, or your own win waiting (*"1 of 2 confirmations"*);
+  - reports on a cause you lead, waiting for a moderator;
+  - events you're hosting in the next 7 days;
+  - new members since you last opened a cause you lead (the past week, the first time).
+- **Causes you lead** (as leader or co-leader), with the stage and member count. *"Nothing needs you right now"* when the list above is empty.
 - **Home area:** set or change your postal code. The top bar falls back to it when you haven't looked at another area.
 - **Upcoming meetups** you've RSVP'd to, with times in your time zone. **✕ Not going** cancels your RSVP. Meetups you host are tagged **Hosting**, with a **Manage** link to the meetup (stepping down is confirmed there).
-- **Causes you raised.** If a moderator hid or removed one, it shows an **Under review** or **Removed** tag here.
-- **Causes you've joined**, each with **Mute emails** (no notification emails about that cause) and **✕ Leave**.
+- **Causes you started** that you don't lead any more (you handed them over), and any a moderator hid or removed, with an **Under review** or **Removed** tag.
+- **Causes you've joined** (other than ones you lead), each with **Mute emails** (no notification emails about that cause) and **✕ Leave**.
 - **Email** (`/me#email`): which notification emails you get. Defaults: **Event reminders** (the day before an event you're going to), **"Is it fixed?"** (a leader asks members to confirm a win), **Wins** (a cause you joined is won) and **New members** (daily, for causes you lead) are on; **Chat summary** (daily, new messages in your causes) is off. Requests to lead or co-lead, and sign-in emails, always come.
 - **Every notification email** ends with links to change these settings, to stop that kind, or to stop them all. The links are signed, so nobody can turn off someone else's emails, and the page asks before unsubscribing (mail apps' own one-click unsubscribe works too).
 - **Sending limits:** notifications get 60 of Resend's 100 free emails a day, so sign-in emails always have room. Past that, notifications are skipped until the next day (most useful first: reminders, then new members, then chat summaries). Reminders and summaries go out with the daily job at 09:00 UTC.

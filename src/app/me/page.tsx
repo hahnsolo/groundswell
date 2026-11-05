@@ -13,8 +13,22 @@ import { ACCOUNT_GRACE_DAYS } from "@/lib/accounts";
 import { LocalTime } from "@/components/local-time";
 import { SubmitButton } from "@/components/ui";
 import { inputStyles } from "@/components/styles";
+import { getLeaderHome } from "@/lib/leader-home";
+import type { NeedKind } from "@/lib/needs-you";
+import { STAGE_LABELS, type Stage } from "@/lib/stages";
 
 export const metadata: Metadata = { title: "Your activity" };
+
+const NEED_ICONS: Record<NeedKind, string> = {
+  lead_offer: "🧭",
+  co_lead: "🤝",
+  still_going: "⏳",
+  confirm_win: "🎉",
+  your_win: "🎉",
+  reports: "🚩",
+  hosting: "📅",
+  new_members: "👋",
+};
 
 export default function MePage(props: PageProps<"/me">) {
   return (
@@ -37,10 +51,13 @@ async function Me({ searchParams }: Pick<PageProps<"/me">, "searchParams">) {
         ? "Welcome to Groundswell! Set your home area below so we can show you what's happening nearby."
         : null;
   const openReports = user.isAdmin ? await db.report.count({ where: { resolved: false } }) : 0;
+  const home = await getLeaderHome(user.id);
+  const ledIds = home.led.map((c) => c.id);
   const [causes, supported, rsvps, credential, prefs] = await Promise.all([
-    db.cause.findMany({ where: { authorId: user.id }, orderBy: { createdAt: "desc" }, take: 20 }),
+    // Started but not leading any more (handed over), or taken down: the ones they lead are listed above.
+    db.cause.findMany({ where: { authorId: user.id, id: { notIn: ledIds } }, orderBy: { createdAt: "desc" }, take: 20 }),
     db.causeMember.findMany({
-      where: { userId: user.id, cause: { authorId: { not: user.id }, hidden: false } },
+      where: { userId: user.id, causeId: { notIn: ledIds }, cause: { authorId: { not: user.id }, hidden: false } },
       include: { cause: true },
       orderBy: { createdAt: "desc" },
       take: 20,
@@ -76,6 +93,45 @@ async function Me({ searchParams }: Pick<PageProps<"/me">, "searchParams">) {
           <button className="rounded-md border-[1.5px] border-ink px-3 py-1 text-sm hover:bg-surface">Sign out</button>
         </form>
       </div>
+
+      {home.needs.length > 0 && (
+        <section className={`${section} border-[1.5px] border-ink bg-mustard/15`} aria-labelledby="needs-you">
+          <h2 id="needs-you" className="mb-3 font-semibold">
+            Needs you
+          </h2>
+          <ul className="space-y-1">
+            {home.needs.map((n) => (
+              <li key={n.key}>
+                <Link href={n.href} className={`${linkRow} flex items-start gap-2`}>
+                  <span aria-hidden="true">{NEED_ICONS[n.kind]}</span>
+                  <span className="min-w-0">{n.text}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {home.led.length > 0 && (
+        <section className={section} aria-labelledby="you-lead">
+          <h2 id="you-lead" className="mb-3 font-semibold">
+            Causes you lead
+          </h2>
+          {home.needs.length === 0 && <p className="mb-2 text-sm text-muted">Nothing needs you right now.</p>}
+          {home.led.map((c) => (
+            <Link key={c.id} href={`/causes/${c.id}`} className={linkRow}>
+              <span className="font-medium">{c.title}</span>
+              {c.coLeading && <span className={`${tag} ml-2`}>Co-leader</span>}
+              {c.hidden && (
+                <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-900 dark:bg-amber-900/40 dark:text-amber-200">Under review</span>
+              )}
+              <span className="block text-sm text-muted">
+                {STAGE_LABELS[c.stage as Stage] ?? c.stage} · {c.members} {c.members === 1 ? "member" : "members"} · {c.placeName}
+              </span>
+            </Link>
+          ))}
+        </section>
+      )}
 
       {user.isAdmin && (
         <Link href="/admin/reports" className={`${section} flex items-center justify-between hover:border-brand/50`}>
