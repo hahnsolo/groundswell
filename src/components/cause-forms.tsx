@@ -231,6 +231,10 @@ export function SignForm({ campaignId, signed }: { campaignId: string; signed: b
         aria-label="Why this matters to you"
       />
       <SubmitButton pendingText="Signing…">Add my name</SubmitButton>
+      <p className="text-xs text-muted">
+        Your name and rough area (like M5V, from your home area) go on the petition the organizers deliver, with your note if you add one.
+        Never your email.
+      </p>
     </form>
   );
 }

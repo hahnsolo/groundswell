@@ -463,12 +463,15 @@ model CauseAction {
   id          String   @id @default(cuid())
   causeId     String
   createdById String
-  // contacted | replied | still_going
+  // contacted | replied | still_going | delivered (a petition was handed over, #74)
   kind        String
-  // Who was contacted, and how: letter | email | call | meeting
+  // Who was contacted, and how: letter | email | call | meeting | in_person
   who         String?
   how         String?
   note        String?
+  // For "delivered": which campaign, and how many signatures went with it.
+  campaignId  String?
+  signatures  Int?
   happenedAt  DateTime @default(now())
   createdAt   DateTime @default(now())
   cause       Cause    @relation(fields: [causeId], references: [id], onDelete: Cascade)

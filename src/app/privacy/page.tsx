@@ -79,6 +79,11 @@ export default function PrivacyPage() {
             <strong>Members of a cause:</strong> its chat.
           </li>
           <li>
+            <strong>The people leading a cause:</strong> when you sign one of its campaigns, your name, your rough home area (like
+            M5V or a ZIP code, if you set one), the date and your note go on the petition they can download and deliver to whoever
+            they&apos;re asking. Never your email.
+          </li>
+          <li>
             <strong>Only you (and the Groundswell team, to run the site):</strong> your email and home area.
           </li>
           <li>

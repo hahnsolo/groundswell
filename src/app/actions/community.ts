@@ -257,6 +257,47 @@ export async function logContact(_prev: FormState, formData: FormData): Promise<
   return { ok: true };
 }
 
+/**
+ * "We delivered it" (#74): the petition was handed over. Logged on the
+ * timeline with how many signatures went, and counts as taking action.
+ */
+export async function markDelivered(_prev: FormState, formData: FormData): Promise<FormState> {
+  const user = await requireUser();
+  const parsed = z
+    .object({
+      campaignId: id,
+      how: z.enum(["email", "letter", "meeting", "in_person"], { errorMap: () => ({ message: "How did you deliver it?" }) }),
+      happenedAt: z.coerce.date({ errorMap: () => ({ message: "When was it?" }) }),
+      note: z.string().trim().max(500).default(""),
+    })
+    .safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return fromZodError(parsed.error);
+  const campaign = await db.campaign.findUnique({
+    where: { id: parsed.data.campaignId },
+    select: { causeId: true, target: true, _count: { select: { signatures: { where: { user: { deactivatedAt: null } } } } } },
+  });
+  if (!campaign || !(await leadingActiveCause(campaign.causeId, user.id))) return { error: "Only the people leading this cause can log a delivery." };
+  if (parsed.data.happenedAt.getTime() > Date.now() + 60 * 60 * 1000) return { fieldErrors: { happenedAt: ["That's in the future."] } };
+  const problem = editCheck(user, formData, parsed.data.note);
+  if (problem) return problem;
+  await db.causeAction.create({
+    data: {
+      causeId: campaign.causeId,
+      createdById: user.id,
+      kind: "delivered",
+      who: campaign.target,
+      how: parsed.data.how,
+      note: parsed.data.note || null,
+      happenedAt: parsed.data.happenedAt,
+      campaignId: parsed.data.campaignId,
+      signatures: campaign._count.signatures,
+    },
+  });
+  await refreshStage(campaign.causeId);
+  refresh();
+  return { ok: true };
+}
+
 /** The leader notes that whoever they contacted replied. */
 export async function logReply(_prev: FormState, formData: FormData): Promise<FormState> {
   const user = await requireUser();
