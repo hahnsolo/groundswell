@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
+import Link from "next/link";
 import { Fraunces, Inter } from "next/font/google";
 import { SiteHeader } from "@/components/site-header";
 import { VerifyBanner } from "@/components/verify-banner";
@@ -48,6 +49,17 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <footer className="border-t-[1.5px] border-ink py-8 text-center text-sm text-muted">
           <p className="font-display text-base italic text-foreground">Built for neighbours.</p>
           <p className="mt-1">Be kind, be specific, assume good faith.</p>
+          <nav aria-label="About Groundswell" className="mt-3 flex justify-center gap-4">
+            <Link href="/privacy" className="hover:text-foreground hover:underline">
+              Privacy
+            </Link>
+            <Link href="/terms" className="hover:text-foreground hover:underline">
+              Terms
+            </Link>
+            <Link href="/conduct" className="hover:text-foreground hover:underline">
+              Code of conduct
+            </Link>
+          </nav>
         </footer>
         <InstallPrompt />
         <ServiceWorkerRegister />
