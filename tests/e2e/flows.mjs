@@ -388,6 +388,42 @@ let CAUSE;
   await page.getByLabel("Your message").waitFor({ timeout: 30000 });
   assert.doesNotMatch(await text(page), /This cause is closed/);
   step("The leader can reopen it");
+
+  // 10. Co-leaders: Alex joins the trail cause, Sam invites him to co-lead, Alex accepts and gets the leader tools.
+  const alex = await signIn(browser, "alex@demo.test", opts);
+  await go(alex, `/causes/${trail}`);
+  await alex.locator("main").getByRole("button", { name: "Join this cause" }).first().click();
+  await alex.getByText("✓ Joined").first().waitFor({ timeout: 30000 });
+
+  await go(page, `/causes/${trail}`);
+  const co = page.locator("details", { hasText: "Up to 2 members can share leading" });
+  await co.locator("summary").click();
+  await co.getByLabel("Who to invite to co-lead").selectOption({ label: "Alex" });
+  await co.getByRole("button", { name: "Invite to co-lead" }).click();
+  await co.getByText(/invited, waiting for an answer/).waitFor({ timeout: 30000 });
+  step("The leader invites a member to co-lead");
+
+  await go(alex, `/causes/${trail}`);
+  await alex.getByText(/has asked you to co-lead this cause/).waitFor({ timeout: 30000 });
+  await alex.getByRole("button", { name: "Accept" }).click();
+  await alex.locator("main article header:visible").first().getByText(/led by Sam and Alex/i).waitFor({ timeout: 30000 });
+  assert.equal(await alex.getByText("Edit title and description").count(), 1, "the co-leader should get the leader tools");
+  assert.equal(await alex.getByText("Hand over leading this cause").count(), 0, "a co-leader can't hand the cause over");
+  step("The member accepts: shown as led by both, with the leader tools (but not handing over)");
+
+  await go(alex, `/causes/${trail}/events`);
+  await alex.getByText("+ Organize an event").click();
+  const form = alex.locator("form", { has: alex.getByRole("button", { name: "Create meetup" }) });
+  await form.getByLabel("Title").fill("Trailhead clean-up");
+  const day = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000);
+  const ymd = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, "0")}-${String(day.getDate()).padStart(2, "0")}`;
+  await form.getByLabel("Starts").fill(`${ymd}T09:00`);
+  await form.getByLabel("Where").fill("Runyon Canyon trailhead gate");
+  await Promise.all([alex.waitForURL(/\/events\/\w+/, { timeout: 60000, waitUntil: "commit" }), form.getByRole("button", { name: "Create meetup" }).click()]);
+  await settle(alex);
+  assert.match(await text(alex), /Trailhead clean-up/);
+  step("The co-leader organizes an event");
+  await alex.context().close();
   await page.context().close();
 }
 

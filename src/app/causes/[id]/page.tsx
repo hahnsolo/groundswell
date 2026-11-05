@@ -3,12 +3,14 @@ import { Suspense } from "react";
 import { getCurrentUser } from "@/lib/auth";
 import { getCauseDetail } from "@/lib/queries";
 import { displayName } from "@/lib/accounts";
-import { reportContent, withdrawLeadOffer, withdrawWin } from "@/app/actions/community";
+import { removeCoLeader, reportContent, withdrawLeadOffer, withdrawWin } from "@/app/actions/community";
+import { coLeadInviteOpen, leadsCause, MAX_CO_LEADERS } from "@/lib/leadership";
+import { MAX_LEADING_CAUSES } from "@/lib/leading-limit";
 import { isActive } from "@/lib/stages";
 import { CloseCauseForm, LogContactForm, LogReplyForm, ProposeWinForm } from "@/components/stage-parts";
 import { db } from "@/lib/db";
 import { LEAD_OFFER_DAYS, offerOpen } from "@/lib/leadership";
-import { HandOverForm } from "@/components/handover";
+import { CoLeaderInviteForm, HandOverForm } from "@/components/handover";
 import { LocalTime } from "@/components/local-time";
 import { CampaignForm, LetterBuilder, SignForm } from "@/components/cause-forms";
 import { WhoCanFix } from "@/components/who-can-fix";
@@ -39,6 +41,10 @@ async function About({ params }: Pick<PageProps<"/causes/[id]">, "params">) {
   const causeUrl = `${appUrl}/causes/${cause.id}`;
   const place = `${cause.placeName}, ${cause.region}`;
   const isLeader = user?.id === cause.leaderId;
+  // The leader and co-leaders share the tools; handing over and choosing co-leaders stay with the leader.
+  const leads = leadsCause(cause, user?.id);
+  const coLeads = cause.coLeaders.filter((c) => c.acceptedAt || coLeadInviteOpen(c));
+  const coLeadSpaces = MAX_CO_LEADERS - coLeads.length;
   // Handing over: an offer still waiting for an answer, and the members the lead could go to.
   const latestOffer = cause.leadOffers[0];
   const pendingOffer = isLeader && latestOffer && offerOpen(latestOffer) ? latestOffer : null;
@@ -197,7 +203,7 @@ async function About({ params }: Pick<PageProps<"/causes/[id]">, "params">) {
       )}
 
       <div className="flex flex-wrap items-center gap-3 text-sm">
-        {isLeader ? (
+        {leads ? (
           <div className="w-full space-y-3">
           {active && (
             <>
@@ -219,6 +225,42 @@ async function About({ params }: Pick<PageProps<"/causes/[id]">, "params">) {
           )}
           <FixerChangeForm causeId={cause.id} country={cause.country} fixer={cause.fixer} fixerOther={cause.fixerOther} />
           {canEditCause(cause, user?.id) && <EditCauseForm causeId={cause.id} title={cause.title} description={cause.description} />}
+          <details className="text-sm">
+            <summary className="cursor-pointer text-muted hover:text-foreground">
+              Co-leaders{coLeads.length > 0 ? ` (${coLeads.length} of ${MAX_CO_LEADERS})` : ""}
+            </summary>
+            <div className="mt-3 max-w-xl space-y-3">
+              <p className="text-muted">
+                Up to {MAX_CO_LEADERS} members can share leading this cause. Co-leaders can do everything here except hand it over or
+                choose co-leaders. It counts toward their {MAX_LEADING_CAUSES} active causes.
+              </p>
+              {coLeads.length > 0 && (
+                <ul className="space-y-2">
+                  {coLeads.map((c) => (
+                    <li key={c.userId} className="flex flex-wrap items-center gap-3">
+                      <span>
+                        <strong>{displayName(c.user)}</strong>
+                        {!c.acceptedAt && <span className="text-muted"> · invited, waiting for an answer</span>}
+                      </span>
+                      {(isLeader || c.userId === user?.id) && (
+                        <form action={removeCoLeader}>
+                          <input type="hidden" name="causeId" value={cause.id} />
+                          <input type="hidden" name="userId" value={c.userId} />
+                          <button className="text-xs text-muted underline hover:text-foreground">
+                            {c.userId === user?.id ? "Step down as co-leader" : c.acceptedAt ? "Remove" : "Withdraw the invite"}
+                          </button>
+                        </form>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {isLeader && active && coLeadSpaces > 0 && (
+                <CoLeaderInviteForm causeId={cause.id} members={handOverTo.filter((m) => !coLeads.some((c) => c.userId === m.id))} />
+              )}
+            </div>
+          </details>
+          {isLeader && (
           <details className="text-sm" open={!!pendingOffer}>
             <summary className="cursor-pointer text-muted hover:text-foreground">Hand over leading this cause</summary>
             <div className="mt-3 max-w-xl space-y-3">
@@ -237,6 +279,7 @@ async function About({ params }: Pick<PageProps<"/causes/[id]">, "params">) {
               )}
             </div>
           </details>
+          )}
           </div>
         ) : (
           user?.emailVerified && (

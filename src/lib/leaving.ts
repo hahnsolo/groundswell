@@ -68,6 +68,7 @@ export async function leaveCause(userId: string, causeId: string) {
   await db.$transaction([
     db.causeMember.deleteMany({ where: { userId, causeId } }),
     db.signature.deleteMany({ where: { userId, campaign: { causeId } } }),
+    db.coLeader.deleteMany({ where: { userId, causeId } }), // co-leading needs membership
   ]);
 }
 

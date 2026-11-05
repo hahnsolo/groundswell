@@ -29,4 +29,9 @@ describe("handing over a cause", () => {
     expect(leadershipLine("Dev", "Dev", true)).toBe("started by Dev");
     expect(leadershipLine("Dev", "Maya", false)).toBe("started by Dev · led by Maya");
   });
+
+  it("names co-leaders alongside the leader", () => {
+    expect(leadershipLine("Dev", "Dev", true, ["Maya"])).toBe("started by Dev · led by Dev and Maya");
+    expect(leadershipLine("Dev", "Maya", false, ["Sam", "Priya"])).toBe("started by Dev · led by Maya, Sam and Priya");
+  });
 });

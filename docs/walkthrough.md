@@ -139,6 +139,7 @@ Type your name (and the recipient's email if you have it). The app writes a poli
   - **Add to the timeline:** *we contacted someone* (moves it to Taking action) and *they replied*.
   - **Close this cause**, with a reason, for one that's stopped without a win. It stays readable; the chat becomes read-only and nobody can join or add events.
   - **Hand over leading this cause** to a member, who accepts or declines.
+  - **Co-leaders:** the leader can invite up to 2 members to share leading (they accept or decline within 7 days). Co-leaders get every tool here except handing over and choosing co-leaders, can post in the chat straight away, and the header reads *"led by Sam and Alex"*. A co-leader can step down; the leader can remove one. Co-leading counts toward the 3-active-causes limit.
   - Everyone else sees **Report this cause** there instead.
 
 **Rules:** signing and starting a campaign need a confirmed email; campaigns are limited to 5 an hour (1 for new accounts).

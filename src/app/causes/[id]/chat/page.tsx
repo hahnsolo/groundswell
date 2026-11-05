@@ -9,6 +9,7 @@ import { reportContent, toggleMembership } from "@/app/actions/community";
 import { LocalTime } from "@/components/local-time";
 import { CommentForm, MessageEditor } from "@/components/cause-forms";
 import { canEditMessage } from "@/lib/editing";
+import { leadsCause } from "@/lib/leadership";
 import { Panel, RemovedNotice, SignInPrompt } from "@/components/cause-parts";
 import { buttonStyles } from "@/components/styles";
 
@@ -31,7 +32,7 @@ async function Chat({ params }: Pick<PageProps<"/causes/[id]/chat">, "params">) 
   const access = chatAccess({
     signedIn: !!user,
     isAdmin: user?.isAdmin,
-    isLeader: user?.id === cause.leaderId,
+    isLeader: leadsCause(cause, user?.id),
     joinedAt: cause.viewerJoinedAt,
     emailVerified: user?.emailVerified,
   });
@@ -86,6 +87,8 @@ async function Chat({ params }: Pick<PageProps<"/causes/[id]/chat">, "params">) 
                   <span className={`font-semibold ${c.author.deactivatedAt ? "" : "text-foreground"}`}>{mine ? "You" : displayName(c.author)}</span>
                   {c.author.id === cause.leaderId && !mine ? (
                     <span className="ml-1">· leads this</span>
+                  ) : !mine && leadsCause(cause, c.author.id) ? (
+                    <span className="ml-1">· co-leads this</span>
                   ) : (
                     c.author.id === cause.authorId && !mine && <span className="ml-1">· started this</span>
                   )}
