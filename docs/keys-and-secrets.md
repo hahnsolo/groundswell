@@ -29,6 +29,7 @@ After changing a variable in Vercel, you must **redeploy** for it to take effect
 | `TURNSTILE_SECRET_KEY` | Turnstile's private key, used to check answers | **Secret** | Optional; Cloudflare's test key | Set (previews: Cloudflare's test key) |
 | `CHAT_URL` | Address of the live chat server on Cloudflare (see [Live chat](live-chat.md)) | Config | `http://localhost:8787` | Set (previews: the preview chat server) |
 | `CHAT_SECRET` | Shared with the chat server; signs chat passes and announcements. Must match the chat server's own `CHAT_SECRET` | **Secret** | `local-dev-chat-secret` | Set, a different value for previews |
+| `BLOB_READ_WRITE_TOKEN` | Lets the app store cover images in Vercel Blob. Added for you when you connect a Blob store to the project | **Secret** | Leave unset (images are saved in `public/dev-uploads`) | Set automatically by connecting the Blob store |
 | `GOOGLE_CLIENT_ID` | Identifies our app to Google | Config | Optional | Optional |
 | `GOOGLE_CLIENT_SECRET` | Proves to Google it's really us | **Secret** | Optional | Optional |
 | `APPLE_CLIENT_ID` | Our Apple "Services ID" | Config | Optional | Optional |
@@ -45,6 +46,12 @@ Why some settings have safety nets built into the code:
 - **`MAIL_FROM`:** checked for the right shape before sending, because a typo here once caused confusing failures (see [Troubleshooting](troubleshooting.md#emails-fail-to-send)).
 - **`CRON_SECRET`:** without it, the clean-up job refuses to run (rather than running unprotected, where anyone could trigger it), and logs "CRON_SECRET is not set".
 - **Turnstile, Google, Apple:** each feature switches itself on only when its keys are present, so nothing breaks before you've set them up.
+- **`BLOB_READ_WRITE_TOKEN`:** without it, the live site says "Image uploads aren't set up yet" instead of losing images. Storage is free up to 1 GB; uploads pause at 850 MB, and the admin area shows how much is used.
+
+### Setting up image storage (once)
+1. Vercel → the **groundswell** project → **Storage** → **Create** → **Blob** → name it `groundswell-images` → **Create**.
+2. Connect it to the project for **Production** and **Preview**. Vercel adds `BLOB_READ_WRITE_TOKEN` itself.
+3. Redeploy. Add a cover image to a cause to check it works.
 
 ## How to rotate (replace) each one
 

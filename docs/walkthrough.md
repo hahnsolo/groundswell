@@ -140,6 +140,12 @@ Type your name (and the recipient's email if you have it). The app writes a poli
   - **Close this cause**, with a reason, for one that's stopped without a win. It stays readable; the chat becomes read-only and nobody can join or add events.
   - **Hand over leading this cause** to a member, who accepts or declines.
   - **Co-leaders:** the leader can invite up to 2 members to share leading (they accept or decline within 7 days). Co-leaders get every tool here except handing over and choosing co-leaders, can post in the chat straight away, and the header reads *"led by Sam and Alex"*. A co-leader can step down; the leader can remove one. Co-leading counts toward the 3-active-causes limit.
+  - **Add a cover image** (or **Change the cover image**):
+    - Choose a photo (on a phone, the camera or photo library), slide it into the wide frame, and describe it for screen readers.
+    - The photo is made smaller and its hidden details (like location) are removed *on the device*, before it's uploaded.
+    - It shows across the top of the cause, on its card on the neighbourhood board, and as the picture when the link is shared.
+    - Events get covers the same way, from the event page; the host or the cause's leaders can set one.
+    - Admins see **Remove image (moderator)** under any cover. New accounts can't add images on their first day.
   - Everyone else sees **Report this cause** there instead.
 
 **Rules:** signing and starting a campaign need a confirmed email; campaigns are limited to 5 an hour (1 for new accounts).

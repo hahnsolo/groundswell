@@ -24,6 +24,7 @@
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",
+    "@vercel/blob": "^2.8.2",
     "better-auth": "1.7.15",
     "next": "16.4.3",
     "react": "19.3.1",

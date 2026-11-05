@@ -121,6 +121,10 @@ function EventGroup({ title, events }: { title: string; events: NearbyEvent[] })
                     {cat.emoji} For: {e.cause.title} · {e._count.rsvps} going{e.capacity ? ` of ${e.capacity}` : ""}
                   </span>
                 </span>
+                {e.coverThumbUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element -- already resized; served straight from storage
+                  <img src={e.coverThumbUrl} alt={e.coverAlt ?? ""} loading="lazy" className="hidden aspect-video w-32 shrink-0 self-center rounded border border-border object-cover sm:block" />
+                )}
               </Link>
             </li>
           );

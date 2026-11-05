@@ -11,6 +11,7 @@ import { CloseCauseForm, LogContactForm, LogReplyForm, ProposeWinForm } from "@/
 import { db } from "@/lib/db";
 import { LEAD_OFFER_DAYS, offerOpen } from "@/lib/leadership";
 import { CoLeaderInviteForm, HandOverForm } from "@/components/handover";
+import { CoverPicker } from "@/components/cover-picker";
 import { LocalTime } from "@/components/local-time";
 import { CampaignForm, LetterBuilder, SignForm } from "@/components/cause-forms";
 import { WhoCanFix } from "@/components/who-can-fix";
@@ -225,6 +226,14 @@ async function About({ params }: Pick<PageProps<"/causes/[id]">, "params">) {
           )}
           <FixerChangeForm causeId={cause.id} country={cause.country} fixer={cause.fixer} fixerOther={cause.fixerOther} />
           {canEditCause(cause, user?.id) && <EditCauseForm causeId={cause.id} title={cause.title} description={cause.description} />}
+          {canEditCause(cause, user?.id) && (
+            <details className="text-sm">
+              <summary className="cursor-pointer text-muted hover:text-foreground">{cause.coverUrl ? "Change the cover image" : "Add a cover image"}</summary>
+              <div className="mt-3 max-w-xl">
+                <CoverPicker target="cause" id={cause.id} current={cause.coverUrl} currentAlt={cause.coverAlt} label="Choose a cover image for this cause" />
+              </div>
+            </details>
+          )}
           <details className="text-sm">
             <summary className="cursor-pointer text-muted hover:text-foreground">
               Co-leaders{coLeads.length > 0 ? ` (${coLeads.length} of ${MAX_CO_LEADERS})` : ""}

@@ -43,6 +43,16 @@ export default function ConductPage() {
       </section>
 
       <section>
+        <h2>Images</h2>
+        <ul>
+          <li>Use images of the place or the problem (the crossing, the broken bench, your group at the meetup), or one you made.</li>
+          <li>Only post photos you took or have permission to use.</li>
+          <li>No close-up photos of people who haven&apos;t agreed, especially children, and nothing showing someone&apos;s home address or licence plate.</li>
+          <li>Nothing violent, sexual, hateful or shocking. Moderators remove images that break these rules, and may close the account.</li>
+        </ul>
+      </section>
+
+      <section>
         <h2>If you see something wrong</h2>
         <ul>
           <li>

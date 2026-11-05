@@ -6,6 +6,7 @@ import { anonymizeExpiredAccounts } from "@/lib/leaving";
 import { refreshStaleAreaReps } from "@/lib/area-reps";
 import { dailyStageHousekeeping } from "@/lib/cause-stage";
 import { pruneNotificationLog, sendChatDigests, sendEventReminders, sendNewMemberDigests } from "@/lib/notify";
+import { cleanupDetachedMedia } from "@/lib/covers";
 
 // Daily housekeeping (see vercel.json). Vercel calls this with
 // "Authorization: Bearer <CRON_SECRET>".
@@ -16,6 +17,7 @@ import { pruneNotificationLog, sendChatDigests, sendEventReminders, sendNewMembe
 //  4. Cause stages: lapses unconfirmed win proposals, moves causes forward,
 //     asks about causes quiet for 90 days and closes them 14 days later.
 //  5. Notification emails (#18): event reminders, new-member and chat summaries.
+//  6. Deletes uploaded images nothing uses any more (#66).
 export async function GET(request: NextRequest) {
   const secret = process.env.CRON_SECRET;
   if (!secret) {
@@ -36,8 +38,10 @@ export async function GET(request: NextRequest) {
   const memberDigests = await sendNewMemberDigests();
   const chatDigests = await sendChatDigests();
   await pruneNotificationLog();
+  // Images whose cause or event was purged above, or that were replaced (#66).
+  const images = await cleanupDetachedMedia();
   console.log(
-    `Daily clean-up: purged ${causes.count} removed cause(s) and ${comments.count} removed comment(s); anonymized ${accounts} deleted account(s); re-checked representatives for ${reps} area(s); stages: ${stages.moved} moved forward, ${stages.lapsed} win proposal(s) lapsed, ${stages.asked} quiet cause(s) asked, ${stages.closed} closed as quiet; emails: ${reminded.length} event reminder(s), ${memberDigests} new-member and ${chatDigests} chat summaries.`,
+    `Daily clean-up: purged ${causes.count} removed cause(s) and ${comments.count} removed comment(s); anonymized ${accounts} deleted account(s); re-checked representatives for ${reps} area(s); stages: ${stages.moved} moved forward, ${stages.lapsed} win proposal(s) lapsed, ${stages.asked} quiet cause(s) asked, ${stages.closed} closed as quiet; emails: ${reminded.length} event reminder(s), ${memberDigests} new-member and ${chatDigests} chat summaries; deleted ${images} unused image(s).`,
   );
   const emails = {
     reminders: reminded.length,

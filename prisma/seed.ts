@@ -68,6 +68,8 @@ async function main() {
           id,
           emailVerified: true,
           isAdmin: u.email === "alex@demo.test",
+          // Regulars, not brand-new accounts (new accounts have tighter limits, e.g. no images on day one).
+          createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
           // Better Auth keeps email/password logins as a "credential" account keyed by user id.
           accounts: { create: { id: randomUUID(), accountId: id, providerId: "credential", password: passwordHash } },
         },

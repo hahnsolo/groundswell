@@ -76,6 +76,7 @@ src/app/api/representatives Canadian representative lookup
 | `CRON_SECRET` | Production (daily purge of removed content) | Generate it yourself, like `BETTER_AUTH_SECRET` | Free |
 | `RESEND_API_KEY`, `MAIL_FROM` | Production (emails) | [resend.com](https://resend.com) → API Keys; verify your domain | Free tier |
 | `NEXT_PUBLIC_TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY` | Production (bot protection) | Cloudflare dashboard → Turnstile → Add widget | Free |
+| `BLOB_READ_WRITE_TOKEN` | Production (cover images) | Vercel → Storage → Create → Blob, connected to the project (added automatically) | Free up to 1 GB |
 | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | Optional | Google Cloud Console (below) | Free |
 | `APPLE_CLIENT_ID`, `APPLE_TEAM_ID`, `APPLE_KEY_ID`, `APPLE_PRIVATE_KEY` | Optional | Apple Developer portal (below) | $99/year |
 
