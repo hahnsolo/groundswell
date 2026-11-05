@@ -208,6 +208,41 @@ export const getCauseDetail = cache(async (id: string, viewerId: string | null) 
 
 export type CauseDetail = NonNullable<Awaited<ReturnType<typeof getCauseDetail>>>;
 
+/** Just what a shared link's preview needs about a cause (src/lib/share-meta.ts). */
+export const getCauseForShare = cache(async (id: string) => {
+  const c = await db.cause.findUnique({
+    where: { id },
+    select: {
+      title: true,
+      description: true,
+      placeName: true,
+      region: true,
+      stage: true,
+      hidden: true,
+      removedAt: true,
+      campaigns: { orderBy: { createdAt: "desc" }, take: 1, select: { ask: true } },
+      _count: { select: { members: true } },
+    },
+  });
+  return c ? { ...c, ask: c.campaigns[0]?.ask ?? null, members: c._count.members } : null;
+});
+
+/** Just what a shared link's preview needs about an event. */
+export const getEventForShare = cache(async (id: string) => {
+  const e = await db.meetup.findUnique({
+    where: { id },
+    select: {
+      title: true,
+      startsAt: true,
+      location: true,
+      isOnline: true,
+      _count: { select: { rsvps: true } },
+      cause: { select: { title: true, placeName: true, region: true, country: true, hidden: true, removedAt: true } },
+    },
+  });
+  return e ? { ...e, going: e._count.rsvps } : null;
+});
+
 /** The active causes someone leads or co-leads, oldest first: what counts toward MAX_LEADING_CAUSES. */
 export async function getActiveLedCauses(userId: string) {
   const led = await db.cause.findMany({

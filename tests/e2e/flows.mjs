@@ -20,6 +20,18 @@ let CAUSE;
   assert.equal(new URL(page.url()).pathname, `/causes/${CAUSE}/chat`);
   step("Old /issues/ links redirect to /causes/");
 
+  // Shared links show the cause in previews (WhatsApp, iMessage, Facebook), with a picture.
+  const preview = await page.request.get(`${BASE}/causes/${CAUSE}`, { headers: { "User-Agent": "facebookexternalhit/1.1" } });
+  const head = await preview.text();
+  assert.match(head, /<title>No safe crossing on Santa Monica Blvd[^<]*· Groundswell<\/title>/);
+  assert.match(head, /<meta property="og:description" content="Beverly Hills, CA · \d+ neighbours? ha(s|ve) joined/);
+  const ogImage = head.match(/<meta property="og:image" content="([^"]+)"/)?.[1];
+  assert.ok(ogImage, "no preview image");
+  const img = await page.request.get(new URL(new URL(ogImage).pathname + new URL(ogImage).search, BASE).toString());
+  assert.equal(img.status(), 200);
+  assert.equal(img.headers()["content-type"], "image/png");
+  step("A shared cause link previews with its title, place, members and a picture");
+
   // The privacy policy, terms and code of conduct are linked from every page's footer and from sign-up.
   for (const [label, heading] of [["Privacy", "Privacy policy"], ["Terms", "Terms of use"], ["Code of conduct", "Code of conduct"]]) {
     await page.locator("footer").getByRole("link", { name: label, exact: true }).click();

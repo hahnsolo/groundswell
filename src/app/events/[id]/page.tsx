@@ -12,8 +12,22 @@ import { EditEventForm, ShareButton } from "@/components/cause-forms";
 import { canEditEvent } from "@/lib/editing";
 import { Panel, SignInPrompt } from "@/components/cause-parts";
 import { buttonStyles } from "@/components/styles";
+import { getEventForShare } from "@/lib/queries";
+import { eventShare } from "@/lib/share-meta";
 
-export const metadata: Metadata = { title: "Event" };
+// The tab title and the preview card when the link is shared (the image is opengraph-image.tsx).
+export async function generateMetadata({ params }: PageProps<"/events/[id]">): Promise<Metadata> {
+  const { id } = await params;
+  const e = await getEventForShare(id);
+  const share = e && eventShare(e);
+  if (!share) return { title: "Event", robots: { index: false } };
+  return {
+    title: share.title,
+    description: share.description,
+    openGraph: { title: share.title, description: share.description, type: "website", url: `/events/${id}` },
+    twitter: { card: "summary_large_image", title: share.title, description: share.description },
+  };
+}
 
 // Fixed light fills (not theme colours), so the dark initials stay readable in dark mode too.
 const AVATAR_COLOURS = ["bg-[#e9b44c]", "bg-[#a9c4b2]", "bg-[#f0c9b8]"];
