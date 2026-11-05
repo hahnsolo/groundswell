@@ -660,8 +660,42 @@ let CAUSE;
   await go(page, `/causes/${park}`);
   assert.equal(await page.locator("section#leader").count(), 0, "members don't see the leader panel");
   assert.match(await page.locator("[aria-label^='Stage:']").innerText(), /2 more neighbours joining moves this to Gathering/);
-  await priyaLeads.context().close();
   step("The leader panel sits near the top with the next step first and every tool grouped; members see none of it");
+
+  // 16. A leader's home on /me (#75): Priya proposes a win and invites Alex to co-lead; both see what needs them.
+  const coLead = panel.locator("details", { hasText: "Co-leaders" });
+  await coLead.locator("summary").click();
+  await coLead.getByLabel("Who to invite to co-lead").selectOption({ label: await coLead.locator("option", { hasText: "Alex" }).first().innerText() });
+  await coLead.getByRole("button", { name: "Invite to co-lead" }).click();
+  await coLead.getByText("invited, waiting for an answer").waitFor({ timeout: 30000 });
+  const winTool = panel.locator("details", { hasText: "propose a win" });
+  await winTool.getByText("It's fixed: propose a win").click();
+  await winTool.getByLabel("What happened?").fill("The landlord withdrew the above-guideline application.");
+  await winTool.getByRole("button", { name: "Ask members to confirm" }).click();
+  await priyaLeads.getByText(/You proposed a win: 0 of 1/).waitFor({ timeout: 30000 });
+
+  await go(priyaLeads, "/me");
+  const needs = priyaLeads.locator("section", { has: priyaLeads.getByRole("heading", { name: "Needs you" }) });
+  assert.match(await needs.innerText(), /Your win on "Rent increases above guideline[^"]*" is waiting: 0 of 1 confirmations/);
+  const lead = priyaLeads.locator("section", { has: priyaLeads.getByRole("heading", { name: "Causes you lead" }) });
+  assert.match(await lead.innerText(), /Rent increases above guideline[\s\S]*Raised · 3 members/);
+  const started = priyaLeads.locator("section", { has: priyaLeads.getByRole("heading", { name: "Causes you started" }) });
+  assert.doesNotMatch(await started.innerText(), /Rent increases/, "causes you lead aren't listed again under started");
+
+  await go(alex, "/me");
+  const alexNeeds = alex.locator("section", { has: alex.getByRole("heading", { name: "Needs you" }) });
+  const alexText = await alexNeeds.innerText();
+  assert.match(alexText, /asked you to co-lead "Rent increases/);
+  assert.match(alexText, /says "Rent increases[^"]*" is fixed\. Is it\?/);
+  await alexNeeds.getByRole("link", { name: /is fixed\. Is it\?/ }).click();
+  await alex.waitForURL(new RegExp(`/causes/${park}#win$`));
+  await alex.getByRole("button", { name: "Yes, it's fixed" }).waitFor({ timeout: 30000 });
+  await go(alex, "/me");
+  await alex.locator("section", { has: alex.getByRole("heading", { name: "Needs you" }) }).getByRole("link", { name: /asked you to co-lead/ }).click();
+  await alex.waitForURL(new RegExp(`/causes/${park}$`));
+  await alex.getByRole("button", { name: "Accept" }).waitFor({ timeout: 30000 });
+  await priyaLeads.context().close();
+  step("/me shows the causes you lead and what needs you (a win waiting, a co-lead invite), each linking to the right place");
 
   await alex.context().close();
   await page.context().close();

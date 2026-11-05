@@ -260,6 +260,8 @@ model CauseMember {
   inviteCode  String? @unique
   // Who invited them, when they joined through someone's invite link (#68). A user id, not a relation.
   invitedById String?
+  // When someone leading it last opened its About tab, for "3 new members since you last looked" (#75).
+  lastLookedAt DateTime?
   cause     Cause    @relation(fields: [causeId], references: [id], onDelete: Cascade)
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
