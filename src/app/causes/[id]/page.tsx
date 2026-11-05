@@ -6,7 +6,10 @@ import { getCauseDetail } from "@/lib/queries";
 import { displayName } from "@/lib/accounts";
 import { reportContent, setCauseStatus } from "@/app/actions/community";
 import { LocalTime } from "@/components/local-time";
-import { CampaignForm, LetterBuilder, RepLookup, SignForm } from "@/components/cause-forms";
+import { CampaignForm, LetterBuilder, SignForm } from "@/components/cause-forms";
+import { WhoCanFix } from "@/components/who-can-fix";
+import { getAreaReps } from "@/lib/area-reps";
+import { leadRep, repTarget } from "@/lib/representatives";
 import { Panel, SignInPrompt } from "@/components/cause-parts";
 import { FixerChangeForm } from "@/components/fixer-field";
 import { EditCauseForm } from "@/components/cause-form";
@@ -33,12 +36,24 @@ async function About({ params }: Pick<PageProps<"/causes/[id]">, "params">) {
   const place = `${cause.placeName}, ${cause.region}`;
   const isAuthor = user?.id === cause.authorId;
   const next = cause.meetups.find((m) => m.upcoming);
+  // Saved per area; the first visit to a new area looks them up (a second or two).
+  const areaReps = await getAreaReps(cause);
+  // A campaign starts out addressed to the actual person when we know them.
+  const fixerLevel = cause.fixer === "city" ? "municipal" : cause.fixer === "province" ? "provincial" : cause.fixer === "federal" ? "federal" : null;
+  const rep = fixerLevel && areaReps ? leadRep(areaReps.reps, fixerLevel) : null;
+  const campaignTarget = rep
+    ? repTarget(rep)
+    : !fixerLevel && cause.contactName
+      ? [cause.contactName, cause.contactRole].filter(Boolean).join(", ")
+      : campaignTargetFor(cause.fixer, cause.fixerOther, cause.country, cause.placeName);
 
   return (
     <div className="space-y-6">
       <Panel>
         <p className="whitespace-pre-line text-[17px] leading-relaxed">{cause.description}</p>
       </Panel>
+
+      <WhoCanFix cause={cause} areaReps={areaReps} isLeader={canEditCause(cause, user?.id)} />
 
       {next && (
         <Link
@@ -118,20 +133,12 @@ async function About({ params }: Pick<PageProps<"/causes/[id]">, "params">) {
                 + {cause.campaigns.length ? "Start another campaign" : "Start a campaign"}
               </summary>
               <div className="mt-4">
-                <CampaignForm
-                  causeId={cause.id}
-                  defaultTarget={campaignTargetFor(cause.fixer, cause.fixerOther, cause.country, cause.placeName)}
-                />
+                <CampaignForm causeId={cause.id} defaultTarget={campaignTarget} />
               </div>
             </details>
           ) : (
             <SignInPrompt next={`/causes/${cause.id}`} text="start a campaign" />
           )}
-
-          <div className="border-t border-border pt-4">
-            <h3 className="mb-2 text-sm font-semibold">Find your representatives</h3>
-            <RepLookup country={cause.country} />
-          </div>
         </div>
       </Panel>
 

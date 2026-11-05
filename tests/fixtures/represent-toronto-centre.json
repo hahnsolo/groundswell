@@ -1,0 +1,40 @@
+{
+    "objects":  [
+                    {
+                        "name":  "Evan Solomon",
+                        "elected_office":  "MP",
+                        "district_name":  "Toronto Centre",
+                        "representative_set_name":  "House of Commons",
+                        "party_name":  "Liberal",
+                        "email":  "evan.solomon@parl.gc.ca",
+                        "url":  "https://www.ourcommons.ca/Members/en/evan-solomon(123229)"
+                    },
+                    {
+                        "name":  "Chris Moise",
+                        "elected_office":  "Councillor",
+                        "district_name":  "Toronto Centre",
+                        "representative_set_name":  "Toronto City Council",
+                        "party_name":  "",
+                        "email":  "Councillor_Moise@toronto.ca",
+                        "url":  ""
+                    },
+                    {
+                        "name":  "Olivia Chow",
+                        "elected_office":  "Mayor",
+                        "district_name":  "Toronto",
+                        "representative_set_name":  "Toronto City Council",
+                        "party_name":  "",
+                        "email":  "mayor_chow@toronto.ca",
+                        "url":  ""
+                    },
+                    {
+                        "name":  "Kristyn Wong-Tam",
+                        "elected_office":  "MPP",
+                        "district_name":  "Toronto Centre",
+                        "representative_set_name":  "Legislative Assembly of Ontario",
+                        "party_name":  "New Democratic Party of Ontario",
+                        "email":  "kwong-tam-qp@ndp.on.ca",
+                        "url":  "https://www.ola.org/en/members/all/kristyn-wong-tam"
+                    }
+                ]
+}

@@ -15,9 +15,9 @@ let CAUSE;
   const page = await (await browser.newContext(opts)).newPage();
   CAUSE = await findCause(page, "/area/us/90046?radius=25", "No safe crossing");
   // Causes used to live at /causes/…; shared links must still work.
-  await go(page, `/causes/${CAUSE}/chat`);
+  await go(page, `/issues/${CAUSE}/chat`);
   assert.equal(new URL(page.url()).pathname, `/causes/${CAUSE}/chat`);
-  step("Old /causes/ links redirect to /causes/");
+  step("Old /issues/ links redirect to /causes/");
   await page.context().close();
 }
 
@@ -210,9 +210,27 @@ let CAUSE;
   assert.match(await text(page), /Asking: the city/);
   step("A 60-word description starts the cause, asking the city");
 
-  // A campaign starts from who should fix it; the leader can change it.
+  // Who can fix this: the area's councillor, provincial rep and MP, looked up by the area's centre.
+  const who = page.locator("#who");
+  await who.waitFor({ timeout: 30000 });
+  const whoText = await who.innerText();
+  for (const heading of ["CITY", "PROVINCE", "FEDERAL"]) assert.match(whoText.toUpperCase(), new RegExp(heading));
+  assert.match(whoText, /Councillor/);
+  assert.match(whoText, /\bMPP?\b/);
+  assert.ok(whoText.toUpperCase().indexOf("CITY") < whoText.toUpperCase().indexOf("PROVINCE"), "the city should come first when the city should fix it");
+  step("Who can fix this lists the councillor, provincial rep and MP, city first");
+
+  // The leader adds someone to contact by hand.
+  await who.getByText("Add someone to contact").click();
+  await who.getByLabel("Name").fill("Spadina Road library branch manager");
+  await who.getByLabel("Role (optional)").fill("Toronto Public Library");
+  await who.getByRole("button", { name: "Save" }).click();
+  await page.getByText("Added by whoever started this cause").waitFor({ timeout: 30000 });
+  step("The leader can add someone to contact by hand");
+
+  // A campaign starts addressed to the actual councillor; the leader can change who should fix it.
   await page.getByText("+ Start a campaign").click();
-  assert.equal(await page.locator('input[name="target"]').inputValue(), "City council for Downtown Toronto");
+  assert.match(await page.locator('input[name="target"]').inputValue(), /^Councillor .+/);
   // (Next keeps the new-cause page hidden in the background for Back, so look only inside the change form.)
   const change = page.locator("details", { hasText: "Change who should fix it" });
   await change.getByText("Change who should fix it").click();

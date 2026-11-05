@@ -159,6 +159,34 @@ export async function editCause(_prev: FormState, formData: FormData): Promise<F
   return { ok: true };
 }
 
+/**
+ * The person who started a cause can add someone to contact by hand: a
+ * councillor we don't have for their city, a landlord, a school board. Blank clears it.
+ */
+export async function setCauseContact(_prev: FormState, formData: FormData): Promise<FormState> {
+  const user = await requireUser();
+  const parsed = z
+    .object({
+      causeId: id,
+      contactName: z.string().trim().max(80),
+      contactRole: z.string().trim().max(80).default(""),
+      contactEmail: z.union([z.literal(""), z.string().trim().toLowerCase().email("That email doesn't look right.").max(120)]),
+    })
+    .safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return fromZodError(parsed.error);
+  const cause = await db.cause.findUnique({ where: { id: parsed.data.causeId }, select: { authorId: true, removedAt: true } });
+  if (!cause || !canEditCause(cause, user.id)) return { error: "Only the person who started this cause can change this." };
+  const { contactName, contactRole, contactEmail } = parsed.data;
+  const problem = editCheck(user, formData, contactName, contactRole);
+  if (problem) return problem;
+  await db.cause.update({
+    where: { id: parsed.data.causeId },
+    data: contactName ? { contactName, contactRole: contactRole || null, contactEmail: contactEmail || null } : { contactName: null, contactRole: null, contactEmail: null },
+  });
+  refresh();
+  return { ok: true };
+}
+
 /** The person who raised a cause can change who they think should fix it. */
 export async function setCauseFixer(_prev: FormState, formData: FormData): Promise<FormState> {
   const user = await requireUser();
