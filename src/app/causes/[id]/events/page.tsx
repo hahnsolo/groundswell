@@ -4,7 +4,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { getCauseDetail } from "@/lib/queries";
 import { displayName } from "@/lib/accounts";
 import { stepDownAsHost, toggleRsvp } from "@/app/actions/community";
-import { LocalTime } from "@/components/local-time";
+import { LocalTimeRange } from "@/components/local-time";
 import { MeetupForm } from "@/components/cause-forms";
 import { Panel, SignInPrompt } from "@/components/cause-parts";
 import { buttonStyles } from "@/components/styles";
@@ -36,7 +36,7 @@ async function Events({ params }: Pick<PageProps<"/causes/[id]/events">, "params
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div className="min-w-0">
                 <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">
-                  <LocalTime iso={m.startsAt.toISOString()} />
+                  <LocalTimeRange start={m.startsAt.toISOString()} end={m.endsAt.toISOString()} />
                   {!m.upcoming && " · happening now"}
                 </p>
                 <h2 className="mt-1 text-xl font-semibold">

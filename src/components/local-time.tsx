@@ -23,6 +23,20 @@ export function LocalTime({ iso, options }: { iso: string; options?: Intl.DateTi
   );
 }
 
+/**
+ * A start and end, written the way the viewer's locale writes ranges:
+ * "Thursday, November 5, 4:00 – 6:00 p.m.", or with both dates when it spans days.
+ */
+export function LocalTimeRange({ start, end, options }: { start: string; end: string; options?: Intl.DateTimeFormatOptions }) {
+  const inBrowser = useInBrowser();
+  const opts = options ?? { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" };
+  return (
+    <time dateTime={start} data-end={end}>
+      {inBrowser ? new Intl.DateTimeFormat(undefined, opts).formatRange(new Date(start), new Date(end)) : " "}
+    </time>
+  );
+}
+
 const rtf = new Intl.RelativeTimeFormat(undefined, { numeric: "auto" });
 const UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
   ["year", 365 * 86400],

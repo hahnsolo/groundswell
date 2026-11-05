@@ -3,12 +3,11 @@ import { cache } from "react";
 import { connection } from "next/server";
 import { db } from "./db";
 import { boundingBox, distanceKm } from "./geo";
+import { eventState } from "./event-times";
 
 const HOUR = 60 * 60 * 1000;
 const DAY = 24 * HOUR;
 
-/** Events stay listed until a few hours after they start, in case people are running late. */
-export const STILL_ON_HOURS = 6;
 /** How far ahead "Events nearby" looks. */
 export const EVENTS_AHEAD_DAYS = 60;
 
@@ -43,27 +42,28 @@ export const getEventDetail = cache(async (id: string, viewerId: string | null) 
   const viewerGoing = viewerId
     ? !!(await db.rsvp.findUnique({ where: { meetupId_userId: { meetupId: id, userId: viewerId } }, select: { userId: true } }))
     : false;
-  const now = Date.now();
+  const state = eventState(event.startsAt, event.endsAt);
   const { rsvps, ...rest } = event;
   return {
     ...rest,
     goingNames: rsvps.filter((r) => !r.user.deactivatedAt).map((r) => r.user.name),
     viewerGoing,
-    upcoming: event.startsAt.getTime() > now,
-    over: event.startsAt.getTime() < now - STILL_ON_HOURS * HOUR,
+    upcoming: state === "upcoming",
+    over: state === "over",
   };
 });
 
 export type EventDetail = NonNullable<Awaited<ReturnType<typeof getEventDetail>>>;
 
-/** Upcoming events for causes near a place, soonest first. */
+/** Events for causes near a place that haven't ended yet, soonest first. */
 export async function getNearbyEvents(opts: { country: string; lat: number; lng: number; radiusKm: number }, viewerId: string | null) {
   await connection();
   const now = Date.now();
   const box = boundingBox(opts.lat, opts.lng, opts.radiusKm);
   const rows = await db.meetup.findMany({
     where: {
-      startsAt: { gte: new Date(now - STILL_ON_HOURS * HOUR), lt: new Date(now + EVENTS_AHEAD_DAYS * DAY) },
+      endsAt: { gt: new Date(now) },
+      startsAt: { lt: new Date(now + EVENTS_AHEAD_DAYS * DAY) },
       cause: {
         country: opts.country,
         hidden: false,

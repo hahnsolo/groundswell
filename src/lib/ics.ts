@@ -1,9 +1,6 @@
 // "Add to calendar": a single-event iCalendar (.ics) file, which Google
 // Calendar, Apple Calendar and Outlook all open. Pure, so it's easy to test.
 
-/** Events don't have an end time yet, so calendars get this default length. */
-export const DEFAULT_EVENT_HOURS = 2;
-
 /** iCalendar text values escape backslashes, commas, semicolons and newlines. */
 export function escapeIcsText(s: string) {
   return s.replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
@@ -32,12 +29,12 @@ export function buildIcs(e: {
   id: string;
   title: string;
   startsAt: Date;
+  endsAt: Date;
   location: string;
   description: string;
   url: string;
   now?: Date;
 }) {
-  const end = new Date(e.startsAt.getTime() + DEFAULT_EVENT_HOURS * 60 * 60 * 1000);
   const lines = [
     "BEGIN:VCALENDAR",
     "VERSION:2.0",
@@ -48,7 +45,7 @@ export function buildIcs(e: {
     `UID:${e.id}@groundswell`,
     `DTSTAMP:${icsDate(e.now ?? new Date())}`,
     `DTSTART:${icsDate(e.startsAt)}`,
-    `DTEND:${icsDate(end)}`,
+    `DTEND:${icsDate(e.endsAt)}`,
     `SUMMARY:${escapeIcsText(e.title)}`,
     `LOCATION:${escapeIcsText(e.location)}`,
     `DESCRIPTION:${escapeIcsText(`${e.description ? `${e.description}\n\n` : ""}Details: ${e.url}`)}`,

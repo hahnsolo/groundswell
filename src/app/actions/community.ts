@@ -16,6 +16,7 @@ import { chatAccess } from "@/lib/chat-rules";
 import { announceChatChange } from "@/lib/live-chat";
 import { descriptionProblem } from "@/lib/words";
 import { FIXER_IDS, FIXER_OTHER_MAX, type FixerId } from "@/lib/fixers";
+import { endProblem } from "@/lib/event-times";
 import { fromZodError, type FormState } from "@/lib/forms";
 
 const id = z.string().min(1).max(40);
@@ -204,6 +205,7 @@ const meetupSchema = z.object({
   title: z.string().trim().min(4, "Add a title.").max(120),
   description: z.string().trim().max(3000).default(""),
   startsAt: z.coerce.date({ errorMap: () => ({ message: "Pick a date and time." }) }),
+  endsAt: z.coerce.date({ errorMap: () => ({ message: "Pick when it ends." }) }),
   location: z.string().trim().min(3, "Where is it? (an address, venue or video link)").max(300),
   isOnline: z.literal("on").optional(),
   capacity: z.preprocess((v) => (v === "" || v == null ? undefined : v), z.coerce.number().int().min(2).max(10000).optional()),
@@ -218,6 +220,8 @@ export async function createMeetup(_prev: FormState, formData: FormData): Promis
   if (parsed.data.startsAt.getTime() < Date.now()) {
     return { fieldErrors: { startsAt: ["Pick a time in the future."] } };
   }
+  const badEnd = endProblem(parsed.data.startsAt, parsed.data.endsAt);
+  if (badEnd) return { fieldErrors: { endsAt: [badEnd] } };
   const { isOnline, ...data } = parsed.data;
   // The venue of an online meetup *is* a link, so it doesn't count against the limit.
   const spam = await spamCheck(user, formData, "meetup", data.title, data.description, isOnline ? undefined : data.location);

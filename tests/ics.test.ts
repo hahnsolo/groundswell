@@ -5,6 +5,7 @@ const event = {
   id: "m1",
   title: "Tenants' rights info night",
   startsAt: new Date("2026-10-29T23:00:00Z"),
+  endsAt: new Date("2026-10-30T00:30:00Z"),
   location: "Fort York library, meeting room 2",
   description: "Bring your notice; the clinic wants to see them.",
   url: "https://groundswell.hahnsolo.ca/events/m1",
@@ -20,12 +21,12 @@ describe("Add to calendar (.ics)", () => {
     expect(escapeIcsText("a, b; c\\d\nline two")).toBe("a\\, b\\; c\\\\d\\nline two");
   });
 
-  it("builds a single event lasting two hours", () => {
+  it("builds a single event with its real start and end", () => {
     const ics = buildIcs(event);
     expect(ics.startsWith("BEGIN:VCALENDAR\r\n")).toBe(true);
     expect(ics.endsWith("END:VCALENDAR\r\n")).toBe(true);
     expect(ics).toContain("DTSTART:20261029T230000Z");
-    expect(ics).toContain("DTEND:20261030T010000Z");
+    expect(ics).toContain("DTEND:20261030T003000Z");
     expect(ics).toContain("UID:m1@groundswell");
     expect(ics).toContain("LOCATION:Fort York library\\, meeting room 2");
     expect(ics).toContain("SUMMARY:Tenants' rights info night");

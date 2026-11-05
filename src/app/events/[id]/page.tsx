@@ -7,7 +7,7 @@ import { getEventDetail } from "@/lib/event-queries";
 import { displayName } from "@/lib/accounts";
 import { peopleLine } from "@/lib/momentum";
 import { stepDownAsHost, toggleRsvp } from "@/app/actions/community";
-import { LocalTime } from "@/components/local-time";
+import { LocalTimeRange } from "@/components/local-time";
 import { ShareButton } from "@/components/cause-forms";
 import { Panel, SignInPrompt } from "@/components/cause-parts";
 import { buttonStyles } from "@/components/styles";
@@ -59,7 +59,11 @@ async function Event({ params }: Pick<PageProps<"/events/[id]">, "params">) {
           <div className="flex gap-3">
             <dt className="w-5 shrink-0" aria-label="When">🗓️</dt>
             <dd>
-              <LocalTime iso={e.startsAt.toISOString()} options={{ weekday: "long", month: "long", day: "numeric", hour: "numeric", minute: "2-digit" }} />
+              <LocalTimeRange
+                start={e.startsAt.toISOString()}
+                end={e.endsAt.toISOString()}
+                options={{ weekday: "long", month: "long", day: "numeric", hour: "numeric", minute: "2-digit" }}
+              />
             </dd>
           </div>
           <div className="flex gap-3">

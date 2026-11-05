@@ -44,7 +44,7 @@ async function Me({ searchParams }: Pick<PageProps<"/me">, "searchParams">) {
       take: 20,
     }),
     db.rsvp.findMany({
-      where: { userId: user.id, meetup: { startsAt: { gte: new Date() }, cause: { hidden: false } } },
+      where: { userId: user.id, meetup: { endsAt: { gt: new Date() }, cause: { hidden: false } } },
       include: { meetup: { include: { cause: { select: { title: true } } } } },
       orderBy: { meetup: { startsAt: "asc" } },
     }),
