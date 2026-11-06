@@ -10,7 +10,9 @@ import { EmailPrefsForm } from "@/components/email-prefs";
 import { setCauseMuted } from "@/app/actions/notifications";
 import { signOut } from "@/app/actions/auth";
 import { ACCOUNT_GRACE_DAYS } from "@/lib/accounts";
-import { LocalTime } from "@/components/local-time";
+import { LocalTime, RelativeTime } from "@/components/local-time";
+import { after } from "next/server";
+import { getInbox } from "@/lib/inbox";
 import { SubmitButton } from "@/components/ui";
 import { inputStyles } from "@/components/styles";
 import { getLeaderHome } from "@/lib/leader-home";
@@ -54,6 +56,9 @@ async function Me({ searchParams }: Pick<PageProps<"/me">, "searchParams">) {
         : null;
   const openReports = user.isAdmin ? await db.report.count({ where: { resolved: false } }) : 0;
   const pushKey = pushPublicKey();
+  const inbox = await getInbox(user.id, 30);
+  // Seeing them here marks them read, after the page is sent, so this page still shows which are new.
+  if (inbox.unread > 0) after(() => db.notification.updateMany({ where: { userId: user.id, readAt: null }, data: { readAt: new Date() } }));
   const home = await getLeaderHome(user.id);
   const ledIds = home.led.map((c) => c.id);
   const [causes, supported, rsvps, credential, prefs] = await Promise.all([
@@ -114,6 +119,26 @@ async function Me({ searchParams }: Pick<PageProps<"/me">, "searchParams">) {
           </ul>
         </section>
       )}
+
+      <section className={`${section} scroll-mt-20`} id="notifications" aria-labelledby="your-notifications">
+        <h2 id="your-notifications" className="mb-3 font-semibold">
+          Notifications
+        </h2>
+        {inbox.items.length === 0 && <p className="text-sm text-muted">Nothing yet. News from your causes will show up here, and under your name icon.</p>}
+        <ul className="space-y-1">
+          {inbox.items.map((n) => (
+            <li key={n.id}>
+              <Link href={n.url} className={`${linkRow} ${n.unread ? "bg-mustard/15" : ""}`}>
+                <span className="font-medium">{n.title}</span>
+                {n.body && <span className="block text-sm text-muted">{n.body}</span>}
+                <span className="block text-xs text-muted">
+                  <RelativeTime iso={n.createdAt} />
+                </span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </section>
 
       {home.led.length > 0 && (
         <section className={section} aria-labelledby="you-lead">
@@ -220,8 +245,8 @@ async function Me({ searchParams }: Pick<PageProps<"/me">, "searchParams">) {
             <form action={setCauseMuted}>
               <input type="hidden" name="causeId" value={s.causeId} />
               <input type="hidden" name="muted" value={s.muted ? "0" : "1"} />
-              <button className={xButton} aria-label={`${s.muted ? "Unmute" : "Mute"} emails about ${s.cause.title}`}>
-                {s.muted ? "🔕 Muted" : "Mute emails"}
+              <button className={xButton} aria-label={`${s.muted ? "Unmute" : "Mute"} notifications about ${s.cause.title}`}>
+                {s.muted ? "🔕 Muted" : "Mute"}
               </button>
             </form>
             <form action={toggleMembership}>
@@ -259,10 +284,8 @@ async function Me({ searchParams }: Pick<PageProps<"/me">, "searchParams">) {
       )}
 
       <section className={`${section} scroll-mt-20`} id="email">
-        <h2 className="mb-1 font-semibold">Email</h2>
-        <p className="mb-4 text-sm text-muted">
-          What you hear about. With notifications on, these come to your device instead of by email. To stop them for one cause, mute it above.
-        </p>
+        <h2 className="mb-1 font-semibold">What you hear about</h2>
+        <p className="mb-4 text-sm text-muted">These show under your name icon, and by push if it&apos;s on for a device. To stop them for one cause, mute it above.</p>
         <EmailPrefsForm prefs={prefs} />
       </section>
 

@@ -50,7 +50,8 @@ function useSentTicks(causeId: string) {
   return { sent, toggle };
 }
 
-async function readContacts(file: File) {
+/** Reads a contact list spreadsheet, here in the browser. */
+export async function readContactFile(file: File) {
   if (file.size > MAX_FILE) throw new Error("That file is over 5 MB. Try exporting just names, emails and phone numbers.");
   const name = file.name.toLowerCase();
   if (name.endsWith(".xls")) throw new Error("That's an older Excel file. Save it as .xlsx or .csv first, then try again.");
@@ -154,7 +155,7 @@ export function InviteYourGroup({
             if (!file) return;
             setError(null);
             try {
-              const result = await readContacts(file);
+              const result = await readContactFile(file);
               if (result.contacts.length === 0) setError("We couldn't find any emails or phone numbers in that file. Check it has columns like Name, Email and Phone.");
               setList({ file: file.name, ...result });
             } catch (err) {

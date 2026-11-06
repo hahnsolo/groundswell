@@ -97,7 +97,7 @@ async function Events({ params }: Pick<PageProps<"/causes/[id]/events">, "params
                 <form action={stepDownAsHost} className="mt-2 space-y-2">
                   <input type="hidden" name="meetupId" value={m.id} />
                   <p className="text-muted">
-                    The first person who RSVP&apos;d becomes the host and gets an email. If nobody else is going, the event is cancelled.
+                    The first person who RSVP&apos;d becomes the host and is told. If nobody else is going, the event is cancelled.
                   </p>
                   <button className={`${buttonStyles.secondary} !px-3 !py-1 text-xs`}>Step down as host</button>
                 </form>

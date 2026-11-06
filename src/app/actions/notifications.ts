@@ -25,7 +25,13 @@ export async function saveEmailPrefs(_prev: FormState, formData: FormData): Prom
   return { ok: true };
 }
 
-/** Mute (or unmute) notification emails about one cause. */
+/** Opening your notifications marks them read (#95). */
+export async function markNotificationsRead() {
+  const user = await requireUser();
+  await db.notification.updateMany({ where: { userId: user.id, readAt: null }, data: { readAt: new Date() } });
+}
+
+/** Mute (or unmute) notifications about one cause. */
 export async function setCauseMuted(formData: FormData) {
   const user = await requireUser();
   const parsed = z.object({ causeId: z.string().min(1).max(40), muted: z.enum(["1", "0"]) }).safeParse(Object.fromEntries(formData));

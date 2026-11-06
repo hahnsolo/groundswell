@@ -1,7 +1,9 @@
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
+import { getInbox } from "@/lib/inbox";
+import { UserMenu } from "./user-menu";
 
-/** Signed in: your initial, linking to your activity (sign out lives there). Signed out: sign in / join. */
+/** Signed in: your initial, opening your notifications and activity (#95). Signed out: sign in / join. */
 export async function UserNav() {
   const user = await getCurrentUser();
   if (!user) {
@@ -16,14 +18,6 @@ export async function UserNav() {
       </nav>
     );
   }
-  return (
-    <Link
-      href="/me"
-      title={`${user.name} · your activity`}
-      aria-label={`${user.name}: your activity`}
-      className="grid h-8 w-8 place-items-center rounded-full border-[1.5px] border-ink bg-mustard text-sm font-semibold text-[#1f2a44] hover:opacity-90"
-    >
-      {user.name[0]?.toUpperCase()}
-    </Link>
-  );
+  const { unread, items } = await getInbox(user.id, 8);
+  return <UserMenu name={user.name} unread={unread} items={items} />;
 }

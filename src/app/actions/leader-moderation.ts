@@ -10,7 +10,7 @@ import { canHideMessage, HIDE_REPORT_REASON, removeProblem } from "@/lib/leader-
 import { leadsCause } from "@/lib/leadership";
 import { leaveCause } from "@/lib/leaving";
 import { announceChatChange } from "@/lib/live-chat";
-import { appUrl, sendEmail } from "@/lib/mail";
+import { notifyAlways } from "@/lib/notify";
 
 // Leaders keeping their own cause's chat clean (#71), and moderators' undo.
 // Every step is written to LeaderAction, which moderators see in the queue.
@@ -93,15 +93,11 @@ export async function removeFromCause(_prev: FormState, formData: FormData): Pro
     db.leaderAction.create({ data: { kind: "remove", causeId, byUserId: user.id, targetUserId: userId, reason } }),
   ]);
   announceChatChange(causeId);
-  if (!target.deactivatedAt) {
-    after(() =>
-      sendEmail({
-        to: target.email,
-        subject: `You were removed from "${cause.title}"`,
-        text: `Hi ${target.name},\n\nThe people leading "${cause.title}" on Groundswell removed you from it. They said:\n\n"${reason}"\n\nYou can't rejoin this cause. If you think this is wrong, you can report the cause from its page:\n${appUrl(`/causes/${causeId}`)}`,
-      }).catch((e) => console.warn("Removal email failed:", (e as Error).message)),
-    );
-  }
+  after(() =>
+    notifyAlways(userId, "removed", `You were removed from "${cause.title}"`, `The people leading it said: "${reason}" You can't rejoin it.`, `/causes/${causeId}`).catch((e) =>
+      console.warn("Removal notice failed:", (e as Error).message),
+    ),
+  );
   refresh();
   return { ok: true };
 }

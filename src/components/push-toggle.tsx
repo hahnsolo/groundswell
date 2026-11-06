@@ -84,9 +84,9 @@ export function PushToggle({ publicKey }: { publicKey: string }) {
   return (
     <div className="space-y-2 text-sm" data-testid="push-toggle">
       {state === "on" && <p>Notifications are <strong>on</strong> on this device. Signing out turns them off here.</p>}
-      {state === "off" && <p>Get a phone notification instead of an email for the kinds you&apos;ve chosen below. Tapping one opens the right page.</p>}
+      {state === "off" && <p>Get the kinds you&apos;ve chosen below on your phone or computer, even when Groundswell isn&apos;t open. Tapping one opens the right page.</p>}
       {state === "denied" && <p className="text-muted">This browser has notifications blocked for Groundswell. You can allow them in its site settings.</p>}
-      {state === "unsupported" && <p className="text-muted">This browser can&apos;t show notifications, so you&apos;ll get emails.</p>}
+      {state === "unsupported" && <p className="text-muted">This browser can&apos;t show push notifications. You&apos;ll still see them under your name icon.</p>}
       {state === "ios-howto" && <p className="text-muted">{IOS_HOWTO}</p>}
       {state === "off" && (
         <button
@@ -97,7 +97,7 @@ export function PushToggle({ publicKey }: { publicKey: string }) {
             run(async () => {
               const ok = await turnOn(publicKey);
               setState(await currentState());
-              if (!ok) setNote("Notifications weren't turned on. You'll keep getting emails.");
+              if (!ok) setNote("Push wasn't turned on. You'll still see notifications under your name icon.");
             })
           }
         >

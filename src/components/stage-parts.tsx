@@ -116,7 +116,7 @@ export function AnnouncementForm({ causeId, left, members }: { causeId: string; 
         <form action={action} className="space-y-3">
           <input type="hidden" name="causeId" value={causeId} />
           <p className="text-muted">
-            Pinned at the top of the chat until you replace or unpin it. {members === 1 ? "Your member is" : `Your ${members} members are`} told by notification, or in their daily email. {left} left this
+            Pinned at the top of the chat until you replace or unpin it. {members === 1 ? "Your member is" : `Your ${members} members are`} told in their notifications, and by push if they have it on. {left} left this
             week.
           </p>
           <FormError message={state?.error} />

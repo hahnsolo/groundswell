@@ -139,6 +139,11 @@ export function inviteMessage(title: string, place: string, link: string) {
   return `Hi! We're organizing "${title}" in ${place} on Groundswell, so everything's in one place: the chat, the events and the ask. Join us here: ${link}`;
 }
 
+/** The ready-written update a host sends their own list (#95). They fill in the news. */
+export function updateMessage(title: string, link: string) {
+  return `A quick update about "${title}":\n\n\n\nThe details, and to say you're coming: ${link}`;
+}
+
 /** The same message with their first name, when it starts with "Hi!". */
 export function personalize(message: string, name: string) {
   const first = firstNameOf(name);

@@ -8,6 +8,7 @@ import { displayName } from "@/lib/accounts";
 import { peopleLine } from "@/lib/momentum";
 import { cancelOccurrence, stepDownAsHost, toggleRsvp } from "@/app/actions/community";
 import { isRepeat, REPEATS } from "@/lib/recurrence";
+import { EmailMyList } from "@/components/email-my-list";
 import { LocalTimeRange } from "@/components/local-time";
 import { EditEventForm, ShareButton } from "@/components/cause-forms";
 import { canEditEvent } from "@/lib/editing";
@@ -244,6 +245,15 @@ async function Event({ params }: Pick<PageProps<"/events/[id]">, "params">) {
         </details>
       )}
 
+      {hosting && !e.over && (
+        <details className="mt-6 border-t border-border pt-4 text-sm" id="email-list">
+          <summary className="cursor-pointer text-muted hover:text-foreground">✉️ Email my list an update</summary>
+          <div className="mt-3 max-w-xl">
+            <EmailMyList title={e.title} link={taggedUrl(`${appUrl}${here}`, "email")} />
+          </div>
+        </details>
+      )}
+
       {hosting && e.upcoming && e.seriesId && (
         <details className="mt-6 border-t border-border pt-4 text-sm" id="cancel">
           <summary className="cursor-pointer text-muted hover:text-foreground">Cancel a meeting</summary>
@@ -268,7 +278,7 @@ async function Event({ params }: Pick<PageProps<"/events/[id]">, "params">) {
           <form action={stepDownAsHost} className="mt-2 max-w-md space-y-2">
             <input type="hidden" name="meetupId" value={e.id} />
             <p className="text-muted">
-              The first person who said they&apos;re going becomes the host and gets an email. If nobody else is going, the event is cancelled.
+              The first person who said they&apos;re going becomes the host and is told. If nobody else is going, the event is cancelled.
             </p>
             <button className={`${buttonStyles.secondary} !px-3 !py-1 text-xs`}>Step down as host</button>
           </form>
