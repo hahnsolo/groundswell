@@ -1,77 +1,63 @@
 "use client";
 
-import { useState, useSyncExternalStore } from "react";
-import { addComment, createCampaign, createMeetup, editComment, editMeetup, signCampaign, unsignCampaign } from "@/app/actions/community";
+import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { addComment, createCampaign, createMeetup, editMeetup, signCampaign, unsignCampaign } from "@/app/actions/community";
 import { Field, FormError, SubmitButton, buttonStyles, inputStyles, useFormAction } from "./ui";
-import type { FormState } from "@/lib/forms";
 import { Honeypot } from "./bot-check";
 import { defaultEnd } from "@/lib/event-times";
 
+const MAX_BOX_PX = 160;
+
+/** Computers send on Enter (Shift+Enter for a new line); on phones Enter is a new line and Send is the button. */
+const sendsOnEnter = () => window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+
+/**
+ * The chat's message box (#70): one line that grows as you type, and an icon
+ * Send button. On success React clears the box; on error the text comes back.
+ */
 export function CommentForm({ causeId }: { causeId: string }) {
-  // On success React clears the box; on error the text comes back via state.values.
   const [state, action] = useFormAction(addComment);
+  const box = useRef<HTMLTextAreaElement>(null);
+  const fit = () => {
+    const t = box.current;
+    if (!t) return;
+    t.style.height = "auto";
+    t.style.height = `${Math.min(t.scrollHeight, MAX_BOX_PX)}px`;
+  };
+  // Back to one line after sending.
+  useEffect(() => {
+    if (state?.ok && box.current) box.current.style.height = "";
+  }, [state]);
   return (
-    <form action={action} className="space-y-2">
+    <form action={action} className="space-y-1">
       <input type="hidden" name="causeId" value={causeId} />
       <FormError message={state?.error} />
-      <textarea
-        name="body"
-        required
-        rows={2}
-        maxLength={3000}
-        placeholder="Write a message to your neighbours…"
-        defaultValue={state?.values?.body}
-        className={inputStyles}
-        aria-label="Your message"
-      />
+      <div className="flex items-end gap-2">
+        <textarea
+          ref={box}
+          name="body"
+          required
+          rows={1}
+          maxLength={3000}
+          placeholder="Message your neighbours"
+          defaultValue={state?.values?.body}
+          onInput={fit}
+          onKeyDown={(e) => {
+            if (e.key !== "Enter" || e.shiftKey || e.nativeEvent.isComposing || !sendsOnEnter()) return;
+            e.preventDefault();
+            if (e.currentTarget.value.trim()) e.currentTarget.form?.requestSubmit();
+          }}
+          className={`${inputStyles} max-h-40 min-h-10 resize-none !py-2 leading-snug`}
+          aria-label="Your message"
+        />
+        <SubmitButton aria-label="Send" title="Send" pendingText="…" className="!h-10 !w-10 shrink-0 !rounded-full !p-0">
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" className="mx-auto" fill="currentColor">
+            <path d="M3.4 20.4 21 12 3.4 3.6 3.4 10.1 15 12 3.4 13.9z" />
+          </svg>
+        </SubmitButton>
+      </div>
       {state?.fieldErrors?.body?.[0] && <p className="text-sm text-red-600">{state.fieldErrors.body[0]}</p>}
       <Honeypot />
-      <SubmitButton pendingText="Sending…">Send</SubmitButton>
-    </form>
-  );
-}
-
-/** "Edit" on your own message (shown for 15 minutes after sending); opens it in place. */
-export function MessageEditor({ commentId, body, children }: { commentId: string; body: string; children: React.ReactNode }) {
-  const [editing, setEditing] = useState(false);
-  const [state, action] = useFormAction(async (prev: FormState, formData: FormData) => {
-    const result = await editComment(prev, formData);
-    if (result?.ok) setEditing(false);
-    return result;
-  });
-  if (!editing) {
-    return (
-      <>
-        {children}
-        <button type="button" onClick={() => setEditing(true)} className="ml-2 text-xs text-muted underline hover:text-foreground">
-          Edit
-        </button>
-      </>
-    );
-  }
-  return (
-    <form action={action} className="mt-1 w-full max-w-lg space-y-2 text-left">
-      <input type="hidden" name="commentId" value={commentId} />
-      <FormError message={state?.error} />
-      <textarea
-        name="body"
-        required
-        rows={3}
-        maxLength={3000}
-        defaultValue={state?.values?.body ?? body}
-        aria-label="Edit your message"
-        autoFocus
-        className={inputStyles}
-      />
-      <Honeypot />
-      <div className="flex items-center gap-2">
-        <SubmitButton pendingText="Saving…" className="!px-3 !py-1 text-xs">
-          Save
-        </SubmitButton>
-        <button type="button" onClick={() => setEditing(false)} className="text-xs text-muted underline hover:text-foreground">
-          Cancel
-        </button>
-      </div>
     </form>
   );
 }
