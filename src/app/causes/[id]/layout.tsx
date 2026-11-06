@@ -306,7 +306,7 @@ async function CauseHeader({ params, children }: { params: LayoutProps<"/causes/
                 )}
               </>
             ) : cause.stage === "closed" ? null : (
-              <form action={toggleMembership}>
+              <form action={toggleMembership} title="The people leading this cause can see that you joined.">
                 <input type="hidden" name="causeId" value={cause.id} />
                 <button className={buttonStyles.primary}>Join this cause</button>
               </form>
@@ -314,6 +314,7 @@ async function CauseHeader({ params, children }: { params: LayoutProps<"/causes/
             <ShareButton url={taggedUrl(`${appUrl}/causes/${cause.id}`, "link")} title={cause.title} />
           </div>
         </div>
+        {!cause.viewerIsMember && cause.stage !== "closed" && <p className="mt-2 text-right text-xs text-muted">The people leading this cause can see that you joined.</p>}
       </header>
 
       <CauseTabs id={cause.id} chatLocked={!canReadChat(access)} messages={cause._count.comments} events={upcomingEvents} />

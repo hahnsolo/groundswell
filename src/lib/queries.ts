@@ -32,8 +32,9 @@ export async function getNearbyCauses(opts: {
     },
     include: {
       _count: { select: { members: true, comments: true, meetups: true } },
-      // The first few people to care, for "Priya, Sam and 12 neighbours care".
+      // The first few people to care, for "Priya, Sam and 12 neighbours care". Only people who allow their name (#79).
       members: {
+        where: { user: { showName: true } },
         orderBy: { createdAt: "asc" },
         take: 4,
         select: { user: { select: { name: true, deactivatedAt: true } } },
@@ -116,7 +117,9 @@ export const getCauseDetail = cache(async (id: string, viewerId: string | null) 
       // Co-leaders and open invites (#42), oldest first.
       coLeaders: { orderBy: { createdAt: "asc" }, include: { user: { select: { id: true, name: true, deactivatedAt: true } } } },
       _count: { select: { members: true, comments: { where: { hidden: false } } } },
+      // Only people who allow their name; everyone else is just counted (#79).
       members: {
+        where: { user: { showName: true } },
         orderBy: { createdAt: "asc" },
         take: 4,
         select: { user: { select: { name: true, deactivatedAt: true } } },
@@ -125,7 +128,7 @@ export const getCauseDetail = cache(async (id: string, viewerId: string | null) 
         // Authors still see their own hidden or removed comments, with a note.
         where: viewerId ? { OR: [{ hidden: false }, { authorId: viewerId }] } : { hidden: false },
         orderBy: { createdAt: "asc" },
-        include: { author: { select: { id: true, name: true, deactivatedAt: true } } },
+        include: { author: { select: { id: true, name: true, deactivatedAt: true, showName: true } } },
       },
       meetups: {
         where: { endsAt: { gt: new Date() } },
@@ -139,13 +142,13 @@ export const getCauseDetail = cache(async (id: string, viewerId: string | null) 
       campaigns: {
         orderBy: { createdAt: "desc" },
         include: {
-          creator: { select: { id: true, name: true, deactivatedAt: true } },
+          creator: { select: { id: true, name: true, deactivatedAt: true, showName: true } },
           _count: { select: { signatures: true } },
           signatures: {
             orderBy: { createdAt: "desc" },
             take: 5,
             where: { note: { not: null } },
-            include: { user: { select: { name: true, deactivatedAt: true } } },
+            include: { user: { select: { id: true, name: true, deactivatedAt: true, showName: true } } },
           },
         },
       },

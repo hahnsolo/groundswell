@@ -9,6 +9,9 @@ import { coLeadInviteOpen, leadsCause, MAX_CO_LEADERS } from "@/lib/leadership";
 import { MAX_LEADING_CAUSES } from "@/lib/leading-limit";
 import { isActive, leaderNext, type Stage } from "@/lib/stages";
 import { buttonStyles } from "@/components/styles";
+import { MemberList } from "@/components/member-list";
+import { getMemberRows } from "@/lib/members";
+import { shownName, type MemberRow } from "@/lib/member-list";
 import { CloseCauseForm, DeliveredForm, LogContactForm, LogReplyForm, ProposeWinForm } from "@/components/stage-parts";
 import { DELIVERED_HOW } from "@/lib/petition";
 import { db } from "@/lib/db";
@@ -77,6 +80,10 @@ async function About({ params }: Pick<PageProps<"/causes/[id]">, "params">) {
     after(() => db.causeMember.updateMany({ where: { causeId: cause.id, userId: me }, data: { lastLookedAt: new Date() } }));
   }
   const next = cause.meetups.find((m) => m.upcoming);
+  // Who's in, for the people leading it (#79).
+  const memberRows = leads && user ? await getMemberRows(cause, user.id, next?.id ?? null) : [];
+  // Names people hid are still shown to the people leading the cause, and to moderators.
+  const seesAll = leads || !!user?.isAdmin;
   const active = isActive(cause.stage);
   // What's been done, newest first: logged contacts and replies, campaigns, the first meetup, the outcome.
   const HOW: Record<string, string> = { letter: "by letter", email: "by email", call: "by phone", meeting: "in a meeting" };
@@ -123,6 +130,9 @@ async function About({ params }: Pick<PageProps<"/causes/[id]">, "params">) {
           sources={sources}
           inviteCode={inviteCode}
           invitedCount={invitedCount}
+          memberRows={memberRows}
+          askLabel={cause.campaigns[0]?.ask ?? null}
+          eventTitle={next?.title ?? null}
           coLeads={coLeads}
           coLeadSpaces={coLeadSpaces}
           handOverTo={handOverTo}
@@ -168,7 +178,7 @@ async function About({ params }: Pick<PageProps<"/causes/[id]">, "params">) {
                   </div>
                   <p className="mt-1 text-xs text-muted">
                     <strong className="text-foreground">{c._count.signatures}</strong> of {c.goal} signed · started by{" "}
-                    {displayName(c.creator)}
+                    {shownName(c.creator, { viewerId: user?.id, seesAll })}
                   </p>
                 </div>
                 {user ? (
@@ -181,7 +191,7 @@ async function About({ params }: Pick<PageProps<"/causes/[id]">, "params">) {
                   <ul className="space-y-1.5 border-l-2 border-border pl-3">
                     {c.signatures.map((s) => (
                       <li key={s.userId} className="text-xs text-muted">
-                        “{s.note}” — {displayName(s.user)}
+                        “{s.note}” — {shownName(s.user, { viewerId: user?.id, seesAll })}
                       </li>
                     ))}
                   </ul>
@@ -306,6 +316,9 @@ function LeaderPanel({
   sources,
   inviteCode,
   invitedCount,
+  memberRows,
+  askLabel,
+  eventTitle,
   coLeads,
   coLeadSpaces,
   handOverTo,
@@ -321,6 +334,9 @@ function LeaderPanel({
   sources: string | null;
   inviteCode: string | null;
   invitedCount: number;
+  memberRows: MemberRow[];
+  askLabel: string | null;
+  eventTitle: string | null;
   coLeads: NonNullable<Awaited<ReturnType<typeof getCauseDetail>>>["coLeaders"];
   coLeadSpaces: number;
   handOverTo: { id: string; name: string }[];
@@ -378,6 +394,12 @@ function LeaderPanel({
               </>
             ) : null}
           </p>
+          <details className="text-sm" id="members">
+            <summary className="cursor-pointer font-medium hover:text-foreground">👥 Members ({memberRows.length}): who&apos;s joined, signed and coming</summary>
+            <div className="mt-3">
+              <MemberList rows={memberRows} askLabel={askLabel} eventTitle={eventTitle} />
+            </div>
+          </details>
           {inviteCode && (
             <details className="text-sm" id="invite" open={step?.action === "invite"}>
               <summary className="cursor-pointer font-medium hover:text-foreground">👋 Bring your group over: invite your WhatsApp group, email list or contacts</summary>

@@ -73,13 +73,16 @@ export default function PrivacyPage() {
         <h2>Who can see what</h2>
         <ul>
           <li>
-            <strong>Anyone:</strong> causes, events, campaigns and the names on them, and notes added to signatures.
+            <strong>Anyone:</strong> causes, events, campaigns and the names on them, and notes added to signatures. You can turn off{" "}
+            <em>Show my name on causes I join</em> on <Link href="/me#privacy">your activity page</Link>: you then appear as &ldquo;A
+            neighbour&rdquo; and are just counted. Leading a cause or hosting an event is public, so your name shows there either way.
           </li>
           <li>
             <strong>Members of a cause:</strong> its chat.
           </li>
           <li>
-            <strong>The people leading a cause:</strong> when you sign one of its campaigns, your name, your rough home area (like
+            <strong>The people leading a cause:</strong> everyone who&apos;s joined it, by name (whatever your name setting), when they
+            joined, whether they&apos;ve signed and are going to the next event, and how they found it. When you sign one of its campaigns, your name, your rough home area (like
             M5V or a ZIP code, if you set one), the date and your note go on the petition they can download and deliver to whoever
             they&apos;re asking. Never your email.
           </li>

@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import { requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { COUNTRIES, areaHref } from "@/lib/countries";
-import { setHomeArea, toggleRsvp, toggleMembership } from "@/app/actions/community";
+import { setHomeArea, setShowName, toggleRsvp, toggleMembership } from "@/app/actions/community";
 import { DeleteAccountForm } from "@/components/account-forms";
 import { EmailPrefsForm } from "@/components/email-prefs";
 import { setCauseMuted } from "@/app/actions/notifications";
@@ -70,7 +70,7 @@ async function Me({ searchParams }: Pick<PageProps<"/me">, "searchParams">) {
     db.account.findFirst({ where: { userId: user.id, providerId: "credential" }, select: { id: true } }),
     db.user.findUniqueOrThrow({
       where: { id: user.id },
-      select: { notifyEvents: true, notifyWinCheck: true, notifyWins: true, notifyNewMembers: true, notifyChatDigest: true },
+      select: { notifyEvents: true, notifyWinCheck: true, notifyWins: true, notifyNewMembers: true, notifyChatDigest: true, showName: true },
     }),
   ]);
 
@@ -229,6 +229,23 @@ async function Me({ searchParams }: Pick<PageProps<"/me">, "searchParams">) {
             </form>
           </div>
         ))}
+      </section>
+
+      <section className={`${section} scroll-mt-20`} id="privacy">
+        <h2 className="mb-3 font-semibold">Privacy</h2>
+        <form action={setShowName} className="space-y-3 text-sm">
+          <label className="flex items-start gap-2">
+            <input type="checkbox" name="showName" defaultChecked={prefs.showName} className="mt-1" />
+            <span>
+              <span className="font-medium">Show my name on causes I join</span>
+              <span className="block text-muted">
+                Off: you appear as &ldquo;A neighbour&rdquo; in chats, signatures and who&apos;s going, and you&apos;re just counted. The people leading each
+                cause still see your name, and it still goes on a petition you sign. Leading a cause or hosting an event is public, so your name shows there.
+              </span>
+            </span>
+          </label>
+          <SubmitButton variant="secondary">Save privacy setting</SubmitButton>
+        </form>
       </section>
 
       <section className={`${section} scroll-mt-20`} id="email">

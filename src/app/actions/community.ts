@@ -250,11 +250,21 @@ export async function logContact(_prev: FormState, formData: FormData): Promise<
   if (parsed.data.happenedAt.getTime() > Date.now() + 60 * 60 * 1000) return { fieldErrors: { happenedAt: ["That's in the future."] } };
   const problem = editCheck(user, formData, parsed.data.who, parsed.data.note);
   if (problem) return problem;
-  const { causeId, note, ...rest } = parsed.data;
-  await db.causeAction.create({ data: { causeId, createdById: user.id, kind: "contacted", note: note || null, ...rest } });
+  const { causeId, note, happenedAt, ...rest } = parsed.data;
+  await db.causeAction.create({ data: { causeId, createdById: user.id, kind: "contacted", note: note || null, happenedAt: dayAtNoon(happenedAt), ...rest } });
   await refreshStage(causeId);
   refresh();
   return { ok: true };
+}
+
+/**
+ * A date picked in a form ("2026-11-05") arrives as midnight UTC, which is still
+ * the day before in the Americas. Noon UTC shows as the same day nearly everywhere.
+ */
+function dayAtNoon(d: Date) {
+  const noon = new Date(d);
+  noon.setUTCHours(12, 0, 0, 0);
+  return noon;
 }
 
 /**
@@ -288,7 +298,7 @@ export async function markDelivered(_prev: FormState, formData: FormData): Promi
       who: campaign.target,
       how: parsed.data.how,
       note: parsed.data.note || null,
-      happenedAt: parsed.data.happenedAt,
+      happenedAt: dayAtNoon(parsed.data.happenedAt),
       campaignId: parsed.data.campaignId,
       signatures: campaign._count.signatures,
     },
@@ -857,5 +867,12 @@ export async function setHomeArea(formData: FormData) {
   const p = parsePostal(String(formData.get("country") ?? ""), String(formData.get("postal") ?? ""));
   if (!p.ok) return;
   await db.user.update({ where: { id: user.id }, data: { homeCountry: p.country.code, homePostal: p.postal } });
+  refresh();
+}
+
+/** "Show my name on causes I join" (#79). */
+export async function setShowName(formData: FormData) {
+  const user = await requireUser();
+  await db.user.update({ where: { id: user.id }, data: { showName: formData.get("showName") === "on" } });
   refresh();
 }

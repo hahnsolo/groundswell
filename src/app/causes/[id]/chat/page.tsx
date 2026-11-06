@@ -3,7 +3,7 @@ import { ChatShell, DayDivider, MessageActions } from "@/components/chat-shell";
 import { startsGroup } from "@/lib/chat-days";
 import { getCurrentUser } from "@/lib/auth";
 import { getCauseDetail } from "@/lib/queries";
-import { displayName } from "@/lib/accounts";
+import { shownName } from "@/lib/member-list";
 import { CHAT_COOLING_OFF_HOURS, chatAccess } from "@/lib/chat-rules";
 import { chatPass } from "@/lib/live-chat";
 import { LiveChat } from "@/components/live-chat";
@@ -56,6 +56,7 @@ async function Chat({ params }: Pick<PageProps<"/causes/[id]/chat">, "params">) 
               <form action={toggleMembership}>
                 <input type="hidden" name="causeId" value={cause.id} />
                 <button className={buttonStyles.primary}>Join this cause</button>
+                <p className="mt-2 text-xs text-muted">The people leading this cause can see that you joined.</p>
               </form>
             )}
           </div>
@@ -113,7 +114,9 @@ async function Chat({ params }: Pick<PageProps<"/causes/[id]/chat">, "params">) 
                 <div className={`flex max-w-[88%] flex-col sm:max-w-[75%] ${mine ? "items-end" : "items-start"}`}>
                   {first && !mine && (
                     <p className="mb-0.5 px-1 text-xs text-muted">
-                      <span className={`font-semibold ${c.author.deactivatedAt ? "" : "text-foreground"}`}>{displayName(c.author)}</span>
+                      <span className={`font-semibold ${c.author.deactivatedAt ? "" : "text-foreground"}`}>
+                        {shownName(c.author, { viewerId: user?.id, seesAll: leadsCause(cause, user?.id) || !!user?.isAdmin, publicRole: !!role })}
+                      </span>
                       {role && <span className="ml-1">· {role}</span>}
                     </p>
                   )}

@@ -784,6 +784,56 @@ let CAUSE;
   await phone.context().close();
   step("Phone chat: the box is in view, it opens and stays at the newest message, and 'New messages ↓' when scrolled up");
 
+  // 19. See who's in (#79). Priya's Members list; Sam turns his name off and shows as "A neighbour" to Alex, not to Priya.
+  const priya2 = await signIn(browser, "priya@demo.test", opts);
+  await go(priya2, `/causes/${park}/events`); // her seeded event went when she deleted her account in step 5
+  await priya2.getByText("+ Organize an event").click();
+  const infoNight = priya2.locator("form", { has: priya2.getByRole("button", { name: "Create meetup" }) });
+  await infoNight.getByLabel("Title").fill("Tenants meeting");
+  await infoNight.getByLabel("Starts").fill(`${ymd}T19:00`);
+  await infoNight.getByLabel("Where").fill("Fort York library");
+  await Promise.all([priya2.waitForURL(/\/events\/\w+/, { timeout: 60000, waitUntil: "commit" }), infoNight.getByRole("button", { name: "Create meetup" }).click()]);
+  await settle(priya2);
+  await go(priya2, `/causes/${park}`);
+  await priya2.locator("details#members summary").click();
+  const memberList = priya2.getByRole("list", { name: "Members" });
+  const samRow = memberList.locator("li", { hasText: "Sam" });
+  assert.match(await samRow.innerText(), /from the flyer[\s\S]*✓ Signed[\s\S]*Not going/);
+  assert.match(await memberList.locator("li", { hasText: "Alex" }).innerText(), /from your invite/);
+  assert.doesNotMatch(await memberList.innerText(), /@/, "emails are never shown");
+  await priya2.getByLabel("Filter members").selectOption("not_going");
+  assert.equal(await memberList.locator("li", { hasText: "Priya" }).count(), 0, "the host is going, so she's filtered out");
+  assert.equal(await samRow.count(), 1);
+  await go(page, `/causes/${park}`);
+  assert.equal(await page.locator("details#members").count(), 0, "members don't see the list");
+  assert.match(await text(page), /“=1\+1 "my rent" went up” — Sam/, "Sam sees his own name");
+  await go(page, "/me");
+  await page.getByLabel(/Show my name on causes I join/).uncheck();
+  await page.getByRole("button", { name: "Save privacy setting" }).click();
+  // Wait until it's saved: a fresh load shows it off.
+  for (let tries = 0; tries < 10; tries++) {
+    await page.waitForTimeout(1500);
+    await go(page, "/me");
+    if (!(await page.getByLabel(/Show my name on causes I join/).isChecked())) break;
+    assert.notEqual(tries, 9, "the setting should save");
+  }
+  await go(alex, `/causes/${park}`);
+  assert.match(await text(alex), /Priya, Alex and 1 neighbour have joined/, "he's just counted in who's joined");
+  assert.match(await text(alex), /“=1\+1 "my rent" went up” — Sam/, "Alex is the demo moderator, so he still sees the name");
+  await go(priya2, `/causes/${park}`);
+  assert.match(await text(priya2), /“=1\+1 "my rent" went up” — Sam/, "the leader still sees the name");
+  await priya2.locator("details#members summary").click();
+  assert.match(await priya2.getByRole("list", { name: "Members" }).locator("li", { hasText: "Sam" }).innerText(), /shows as .a neighbour. to others/);
+  await priya2.context().close();
+  const visitor = await (await browser.newContext(opts)).newPage();
+  await go(visitor, `/causes/${park}`);
+  const visitorSees = await text(visitor);
+  assert.match(visitorSees, /“=1\+1 "my rent" went up” — A neighbour/, "everyone else sees 'A neighbour'");
+  assert.doesNotMatch(visitorSees, /\bSam\b/, "and never the name");
+  assert.match(visitorSees, /The people leading this cause can see that you joined/, "the Join button says who can see it");
+  await visitor.context().close();
+  step("A leader sees Members with signed/going; with the setting off, Sam is 'A neighbour' to others but named to the leader");
+
   await alex.context().close();
   await page.context().close();
 }
