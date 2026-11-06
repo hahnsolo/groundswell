@@ -31,6 +31,8 @@ export type MemberRow = {
   role: "leads" | "co-leads" | null;
   /** Their name is hidden from everyone but the people leading the cause. */
   hidden: boolean;
+  /** The viewer can remove them from the cause (#71). */
+  removable?: boolean;
 };
 
 /** Where someone came from, in words for the Members list. */

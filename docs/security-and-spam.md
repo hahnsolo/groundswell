@@ -56,6 +56,7 @@ Almost all spam comes from brand-new accounts posting links, so new accounts are
 - Admins review everything at `/admin/reports` (see [Day to day](day-to-day.md#using-the-moderation-queue)). Each decision is recorded.
 - **Removing is undoable for a week.** Removed content is hidden from everyone but its author, who sees a notice with the moderator's reason. After 7 days a daily job deletes it for good, so people's words aren't kept longer than needed.
 - Removed content can't be reported again, and nothing new (comments, meetups, campaigns) can be added to a removed Cause.
+- **Leaders moderate their own cause (#71).** The people leading a cause can hide a chat message (it also files a report) and remove someone from the cause with a reason (they can't rejoin, sign or RSVP there, and are told why). They can't do this to moderators or co-leaders. Every action is in **What leaders did** at `/admin/reports`, where an admin can undo it.
 
 ### Privacy
 - Only the coarse area is stored (Canadian FSA like `M5V`, or a US ZIP), never a street address.

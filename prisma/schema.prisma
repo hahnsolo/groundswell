@@ -296,12 +296,43 @@ model Comment {
   removalReason String?
   // Set when its author fixes it within the edit window (shown as "edited").
   editedAt      DateTime?
+  // Who leading the cause hid it (#71). Others see "Hidden by the people leading this cause".
+  hiddenByLeaderId String?
   createdAt     DateTime  @default(now())
   cause         Cause     @relation(fields: [causeId], references: [id], onDelete: Cascade)
   author        User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
 
   @@index([causeId, createdAt])
   @@index([removedAt])
+}
+
+// Someone the people leading a cause removed from it (#71): they can't rejoin
+// unless a moderator lifts it (liftedAt).
+model CauseBan {
+  causeId   String
+  userId    String
+  byUserId  String
+  reason    String
+  createdAt DateTime  @default(now())
+  liftedAt  DateTime?
+
+  @@id([causeId, userId])
+  @@index([userId])
+}
+
+// The moderators' log of what leaders did in their causes (#71).
+// kind: hide | unhide | remove | undo_hide | lift_ban. Plain ids, so the record outlives what it's about.
+model LeaderAction {
+  id           String   @id @default(cuid())
+  kind         String
+  causeId      String
+  byUserId     String
+  targetUserId String
+  commentId    String?
+  reason       String?
+  createdAt    DateTime @default(now())
+
+  @@index([createdAt])
 }
 
 model Meetup {

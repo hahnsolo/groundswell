@@ -397,7 +397,7 @@ function LeaderPanel({
           <details className="text-sm" id="members">
             <summary className="cursor-pointer font-medium hover:text-foreground">👥 Members ({memberRows.length}): who&apos;s joined, signed and coming</summary>
             <div className="mt-3">
-              <MemberList rows={memberRows} askLabel={askLabel} eventTitle={eventTitle} />
+              <MemberList causeId={cause.id} rows={memberRows} askLabel={askLabel} eventTitle={eventTitle} />
             </div>
           </details>
           {inviteCode && (

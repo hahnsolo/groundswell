@@ -5,6 +5,7 @@ import { cookies } from "next/headers";
 import { after } from "next/server";
 import { inviteCodeIn, readSource, sourceCookie } from "@/lib/sources";
 import { findInviteCode } from "@/lib/spread";
+import { removedFromCause } from "@/lib/members";
 import { notifyWinCheck, notifyWon } from "@/lib/notify";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -577,6 +578,7 @@ export async function toggleMembership(formData: FormData) {
     await db.causeMember.delete({ where: key });
     await db.coLeader.deleteMany({ where: { causeId, userId: user.id } }); // co-leading needs membership
   } else {
+    if (await removedFromCause(causeId, user.id)) return; // the people leading it removed them (#71)
     // Through someone's invite link (#68): counts toward "joined from your invite" for them (not for inviting yourself).
     const tag = (await cookies()).get(sourceCookie(causeId))?.value;
     const code = inviteCodeIn(tag);
@@ -732,6 +734,7 @@ export async function toggleRsvp(formData: FormData) {
   const key = { meetupId_userId: { meetupId, userId: user.id } };
   const existing = await db.rsvp.findUnique({ where: key });
   if (existing) await db.rsvp.delete({ where: key });
+  else if (await removedFromCause(meetup.causeId, user.id)) return;
   else if (!meetup.capacity || meetup._count.rsvps < meetup.capacity) {
     await db.rsvp.create({ data: { meetupId, userId: user.id, source: await arrivedFrom(meetupId) } });
   }
@@ -802,6 +805,7 @@ export async function signCampaign(_prev: FormState, formData: FormData): Promis
   if (!user.emailVerified) return { error: UNVERIFIED_ERROR };
   const links = linkError(user, parsed.data.note);
   if (links) return { error: links };
+  if (await removedFromCause(campaign.causeId, user.id)) return { error: "The people leading this cause removed you from it." };
   await db.signature.upsert({
     where: { campaignId_userId: { campaignId: parsed.data.campaignId, userId: user.id } },
     create: { campaignId: parsed.data.campaignId, userId: user.id, note: parsed.data.note || null },

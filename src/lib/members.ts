@@ -1,9 +1,15 @@
 import "server-only";
 import { db } from "./db";
+import { removeProblem } from "./leader-moderation";
 import { leadsCause } from "./leadership";
 import { fromLabel, type MemberRow } from "./member-list";
 
 type Led = { id: string; leaderId: string; coLeaders?: { userId: string; acceptedAt: Date | null; createdAt: Date }[]; campaigns: { id: string }[] };
+
+/** The people leading this cause removed them and a moderator hasn't lifted it (#71). */
+export async function removedFromCause(causeId: string, userId: string) {
+  return (await db.causeBan.count({ where: { causeId, userId, liftedAt: null } })) > 0;
+}
 
 /**
  * Everyone who's joined a cause, for the people leading it (#79): when they
@@ -17,7 +23,7 @@ export async function getMemberRows(cause: Led, viewerId: string, nextEventId: s
       where: { causeId: cause.id, user: { deactivatedAt: null } },
       orderBy: { createdAt: "desc" },
       take: 500,
-      select: { createdAt: true, source: true, invitedById: true, user: { select: { id: true, name: true, showName: true } } },
+      select: { createdAt: true, source: true, invitedById: true, user: { select: { id: true, name: true, showName: true, isAdmin: true } } },
     }),
     latestAsk ? db.signature.findMany({ where: { campaignId: latestAsk }, select: { userId: true } }) : [],
     nextEventId ? db.rsvp.findMany({ where: { meetupId: nextEventId }, select: { userId: true } }) : [],
@@ -35,6 +41,7 @@ export async function getMemberRows(cause: Led, viewerId: string, nextEventId: s
       from: fromLabel(m.source, m.invitedById, viewerId),
       role,
       hidden: !m.user.showName && !role,
+      removable: !removeProblem({ id: viewerId, leads: true }, { id: m.user.id, isAdmin: m.user.isAdmin, isLeader: role === "leads", isCoLeader: role === "co-leads" }),
     };
   });
 }

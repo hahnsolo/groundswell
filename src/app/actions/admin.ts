@@ -41,7 +41,8 @@ export async function moderate(formData: FormData) {
 
   await db.$transaction(async (tx) => {
     if (targetType === "cause") await tx.cause.updateMany({ where, data });
-    else await tx.comment.updateMany({ where, data });
+    // Keeping it also clears a leader's hide (#71).
+    else await tx.comment.updateMany({ where, data: decision === "kept" ? { ...data, hiddenByLeaderId: null } : data });
     await tx.report.updateMany({
       where: { targetType, targetId, resolved: false },
       data: { resolved: true, resolution: decision, resolvedById: admin.id, resolvedAt: new Date() },
@@ -63,7 +64,7 @@ export async function restore(formData: FormData) {
 
   await db.$transaction(async (tx) => {
     const { count } =
-      targetType === "cause" ? await tx.cause.updateMany({ where, data }) : await tx.comment.updateMany({ where, data });
+      targetType === "cause" ? await tx.cause.updateMany({ where, data }) : await tx.comment.updateMany({ where, data: { ...data, hiddenByLeaderId: null } });
     if (count === 0) return;
     // Record the reversal on the reports that led to the removal.
     await tx.report.updateMany({

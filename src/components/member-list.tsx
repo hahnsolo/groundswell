@@ -3,11 +3,12 @@
 import { useState } from "react";
 import { listMembers, type MemberFilter, type MemberRow, type MemberSort } from "@/lib/member-list";
 import { LocalTime } from "./local-time";
+import { RemoveMemberForm } from "./remove-member";
 
 // The leaders' Members list (#79): who's joined, when, whether they've signed
 // and are coming, and how they found the cause. Never emails.
 
-export function MemberList({ rows, askLabel, eventTitle }: { rows: MemberRow[]; askLabel: string | null; eventTitle: string | null }) {
+export function MemberList({ causeId, rows, askLabel, eventTitle }: { causeId: string; rows: MemberRow[]; askLabel: string | null; eventTitle: string | null }) {
   const [filter, setFilter] = useState<MemberFilter>("all");
   const [sort, setSort] = useState<MemberSort>("newest");
   const shown = listMembers(rows, filter, sort);
@@ -44,6 +45,14 @@ export function MemberList({ rows, askLabel, eventTitle }: { rows: MemberRow[]; 
               {askLabel && <span className={m.signed ? "" : "text-muted"}>{m.signed ? "✓ Signed" : "Not signed"}</span>}
               {eventTitle && <span className={m.going ? "" : "text-muted"}>{m.going ? "✓ Going" : "Not going"}</span>}
             </span>
+            {m.removable && (
+              <details className="w-full text-xs">
+                <summary className="cursor-pointer text-muted hover:text-foreground">Remove from this cause</summary>
+                <div className="mt-2">
+                  <RemoveMemberForm causeId={causeId} userId={m.id} name={m.name} />
+                </div>
+              </details>
+            )}
           </li>
         ))}
         {shown.length === 0 && <li className="p-3 text-center text-muted">Nobody here. Everyone&apos;s covered.</li>}
