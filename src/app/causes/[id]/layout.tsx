@@ -21,6 +21,8 @@ import { StageTracker } from "@/components/stage-tracker";
 import { RelativeTime } from "@/components/local-time";
 import { ShareButton } from "@/components/cause-forms";
 import { SourceTag } from "@/components/source-tag";
+import { PushPrompt } from "@/components/push-toggle";
+import { pushPublicKey } from "@/lib/push";
 import { taggedUrl } from "@/lib/sources";
 import { CauseTabs } from "@/components/cause-tabs";
 import { RemovedNotice } from "@/components/cause-parts";
@@ -76,6 +78,7 @@ async function CauseHeader({ params, children }: { params: LayoutProps<"/causes/
     );
   }
 
+  const pushKey = pushPublicKey();
   const cat = getCategory(cause.category);
   const place = `${cause.placeName}, ${cause.region}`;
   const appUrl = process.env.APP_URL ?? "http://localhost:3000";
@@ -325,6 +328,9 @@ async function CauseHeader({ params, children }: { params: LayoutProps<"/causes/
           <p className="mt-2 text-right text-xs text-muted">The people leading this cause can see that you joined.</p>
         )}
       </header>
+
+      {/* A quiet offer of notifications, once someone has joined something (#72). Never on a first visit. */}
+      {cause.viewerIsMember && pushKey && <PushPrompt publicKey={pushKey} />}
 
       <CauseTabs id={cause.id} chatLocked={!canReadChat(access)} messages={cause._count.comments} events={upcomingEvents} />
       <div className="mt-6">{children}</div>

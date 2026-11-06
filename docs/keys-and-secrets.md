@@ -30,6 +30,8 @@ After changing a variable in Vercel, you must **redeploy** for it to take effect
 | `CHAT_URL` | Address of the live chat server on Cloudflare (see [Live chat](live-chat.md)) | Config | `http://localhost:8787` | Set (previews: the preview chat server) |
 | `CHAT_SECRET` | Shared with the chat server; signs chat passes and announcements. Must match the chat server's own `CHAT_SECRET` | **Secret** | `local-dev-chat-secret` | Set, a different value for previews |
 | `BLOB_READ_WRITE_TOKEN` | Lets the app store cover images in Vercel Blob. Added for you when you connect a Blob store to the project | **Secret** | Leave unset (images are saved in `public/dev-uploads`) | Set automatically by connecting the Blob store |
+| `VAPID_PUBLIC_KEY` | Push notifications' public key, shown to browsers (not a secret). Generated once with its private key | Config (public) | Optional | Set |
+| `VAPID_PRIVATE_KEY` | Signs push notifications, so only we can send to people's devices | **Secret** | Optional | Set |
 | `GOOGLE_CLIENT_ID` | Identifies our app to Google | Config | Optional | Optional |
 | `GOOGLE_CLIENT_SECRET` | Proves to Google it's really us | **Secret** | Optional | Optional |
 | `APPLE_CLIENT_ID` | Our Apple "Services ID" | Config | Optional | Optional |
@@ -52,6 +54,14 @@ Why some settings have safety nets built into the code:
 1. Vercel → the **groundswell** project → **Storage** → **Create** → **Blob** → name it `groundswell-images` → **Create**.
 2. Connect it to the project for **Production** and **Preview**. Vercel adds `BLOB_READ_WRITE_TOKEN` itself.
 3. Redeploy. Add a cover image to a cause to check it works.
+
+### Setting up push notifications (once)
+Without these keys, push is simply off and everyone keeps getting email.
+1. On your PC, in the project folder, run `npx web-push generate-vapid-keys`. It prints a public and a private key.
+2. Vercel → the **groundswell** project → **Settings** → **Environment Variables**. Add `VAPID_PUBLIC_KEY` and `VAPID_PRIVATE_KEY`, for **Production** and **Preview**.
+3. Redeploy. **Notifications on this device** then appears on your activity page.
+
+Don't replace these keys casually: everyone's devices are tied to them, so after a change people would have to turn notifications on again.
 
 ## How to rotate (replace) each one
 
