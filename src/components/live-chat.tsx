@@ -29,10 +29,11 @@ export function LiveChat({ pass }: { pass: ChatPass | null }) {
     let refreshTimer: ReturnType<typeof setTimeout> | undefined;
     let checkTimer: ReturnType<typeof setInterval> | undefined;
 
-    // A burst of changes (say, a moderator clearing several messages) becomes one refresh.
+    // A burst of changes (say, a moderator clearing several messages) becomes one
+    // refresh, and open chats spread out over a moment rather than all reloading at once (#97).
     const refreshSoon = () => {
       clearTimeout(refreshTimer);
-      refreshTimer = setTimeout(() => router.refresh(), 150);
+      refreshTimer = setTimeout(() => router.refresh(), 150 + Math.random() * 1350);
     };
     const startChecking = () => {
       checkTimer ??= setInterval(() => {

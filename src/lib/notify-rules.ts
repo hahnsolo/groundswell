@@ -57,8 +57,8 @@ export type AlwaysKind = "leading" | "hosting" | "removed";
 export type NoticeKind = NotifyKind | AlwaysKind;
 
 /** What's stored: short, with the title and text within their limits. */
-export function noticeRow(userId: string, kind: NoticeKind, message: { title: string; body: string; url: string }) {
-  return { userId, kind, title: message.title.slice(0, 120), body: message.body.slice(0, 300), url: message.url };
+export function noticeRow(userId: string, kind: NoticeKind, message: { title: string; body: string; url: string }, sourceId?: string) {
+  return { userId, kind, title: message.title.slice(0, 120), body: message.body.slice(0, 300), url: message.url, ...(sourceId ? { sourceId } : {}) };
 }
 
 const HOUR = 60 * 60 * 1000;

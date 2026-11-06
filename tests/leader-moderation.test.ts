@@ -1,8 +1,24 @@
 import { describe, expect, it } from "vitest";
-import { canHideMessage, removeProblem } from "@/lib/leader-moderation";
+import { acceptsPeople, canHideMessage, removeProblem, staysHiddenAfterUnhide } from "@/lib/leader-moderation";
 
 const leader = { id: "lead", leads: true };
 const member = { id: "m", leads: false };
+
+describe("which causes take new people (#97)", () => {
+  const open = { stage: "gathering", hidden: false, removedAt: null };
+  it("takes them on an open cause", () => expect(acceptsPeople(open)).toBe(true));
+  it("not on a closed, hidden or removed one, or one that's gone", () => {
+    expect(acceptsPeople({ ...open, stage: "closed" })).toBe(false);
+    expect(acceptsPeople({ ...open, hidden: true })).toBe(false);
+    expect(acceptsPeople({ ...open, removedAt: new Date() })).toBe(false);
+    expect(acceptsPeople(null)).toBe(false);
+  });
+});
+
+describe("a leader's Unhide (#97)", () => {
+  it("shows the message when few others reported it", () => expect(staysHiddenAfterUnhide(2)).toBe(false));
+  it("leaves it hidden for a moderator when the community's reports would have hidden it", () => expect(staysHiddenAfterUnhide(3)).toBe(true));
+});
 
 describe("who can hide what (#71)", () => {
   it("lets the people leading a cause hide others' messages", () => {

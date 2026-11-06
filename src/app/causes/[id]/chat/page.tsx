@@ -1,14 +1,16 @@
 import { Fragment, Suspense } from "react";
 import { ChatShell, DayDivider, MessageActions } from "@/components/chat-shell";
-import { startsGroup } from "@/lib/chat-days";
+import Link from "next/link";
+import { CHAT_PAGE, MAX_CHAT_SHOWN, messagesToShow, startsGroup } from "@/lib/chat-days";
 import { getCurrentUser } from "@/lib/auth";
-import { getCauseDetail } from "@/lib/queries";
+import { db } from "@/lib/db";
+import { getCauseDetail, getCauseMessages } from "@/lib/queries";
 import { shownName } from "@/lib/member-list";
 import { canHideMessage, HIDDEN_BY_LEADERS, removeProblem } from "@/lib/leader-moderation";
 import { CHAT_COOLING_OFF_HOURS, chatAccess } from "@/lib/chat-rules";
 import { chatPass } from "@/lib/live-chat";
 import { LiveChat } from "@/components/live-chat";
-import { toggleMembership } from "@/app/actions/community";
+import { reportContent, toggleMembership } from "@/app/actions/community";
 import { unpinAnnouncement } from "@/app/actions/announcements";
 import { LocalTime } from "@/components/local-time";
 import { CommentForm } from "@/components/cause-forms";
@@ -22,12 +24,12 @@ import { buttonStyles } from "@/components/styles";
 export default function ChatTab(props: PageProps<"/causes/[id]/chat">) {
   return (
     <Suspense fallback={<div className="h-64 animate-pulse rounded-md bg-border/60" />}>
-      <Chat params={props.params} />
+      <Chat params={props.params} searchParams={props.searchParams} />
     </Suspense>
   );
 }
 
-async function Chat({ params }: Pick<PageProps<"/causes/[id]/chat">, "params">) {
+async function Chat({ params, searchParams }: Pick<PageProps<"/causes/[id]/chat">, "params" | "searchParams">) {
   const { id } = await params;
   const user = await getCurrentUser();
   const cause = await getCauseDetail(id, user?.id ?? null);
@@ -72,10 +74,13 @@ async function Chat({ params }: Pick<PageProps<"/causes/[id]/chat">, "params">) 
   // Only people who can read the chat get a pass to listen for new messages.
   const pass = await chatPass(cause.id);
 
-  const comments = cause.comments;
+  const shown = messagesToShow((await searchParams).show);
+  const { messages: comments, hasEarlier } = await getCauseMessages(cause.id, user?.id ?? null, shown);
   const last = comments.at(-1);
   const viewerLeads = leadsCause(cause, user?.id);
   const pinned = cause.announcements[0];
+  const reportedPinned =
+    !!pinned && !!user && !!(await db.report.findUnique({ where: { targetType_targetId_reporterId: { targetType: "announcement", targetId: pinned.id, reporterId: user.id } }, select: { id: true } }));
 
   return (
     <ChatShell
@@ -97,6 +102,15 @@ async function Chat({ params }: Pick<PageProps<"/causes/[id]/chat">, "params">) 
                 <button className="text-xs text-muted underline hover:text-foreground">Unpin</button>
               </form>
             )}
+            {reportedPinned ? (
+              <p className="mt-1 text-xs text-muted">You reported this. A moderator will take a look.</p>
+            ) : user?.emailVerified && pinned.authorId !== user.id && (
+              <form action={reportContent} className="mt-1">
+                <input type="hidden" name="targetType" value="announcement" />
+                <input type="hidden" name="targetId" value={pinned.id} />
+                <button className="text-xs text-muted underline hover:text-red-600">Report this announcement</button>
+              </form>
+            )}
           </aside>
         )
       }
@@ -109,6 +123,13 @@ async function Chat({ params }: Pick<PageProps<"/causes/[id]/chat">, "params">) 
         />
       }
     >
+      {hasEarlier && shown < MAX_CHAT_SHOWN && (
+        <p className="mb-3 text-center">
+          <Link href={`/causes/${cause.id}/chat?show=${shown + CHAT_PAGE}`} scroll={false} className="text-sm font-medium text-link underline">
+            Show earlier messages
+          </Link>
+        </p>
+      )}
       <ol aria-label="Messages">
         {comments.map((c, i) => {
           const prev = i > 0 ? comments[i - 1] : null;

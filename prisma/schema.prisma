@@ -96,6 +96,8 @@ model Notification {
   body      String
   // The page it opens.
   url       String
+  // What it's about, when that can be taken down (an announcement), so it goes from people's lists too (#97).
+  sourceId  String?
   createdAt DateTime  @default(now())
   readAt    DateTime?
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -103,6 +105,7 @@ model Notification {
   @@index([userId, createdAt])
   @@index([userId, readAt])
   @@index([createdAt])
+  @@index([sourceId])
 }
 
 // A device getting push notifications (#72). Tied to the sign-in session, so
@@ -358,11 +361,17 @@ model Announcement {
   body       String
   createdAt  DateTime  @default(now())
   unpinnedAt DateTime?
+  // Moderation (#97), as on Comment: hidden after reports, removed by a moderator.
+  hidden        Boolean   @default(false)
+  removedAt     DateTime?
+  removedById   String?
+  removalReason String?
   cause      Cause     @relation(fields: [causeId], references: [id], onDelete: Cascade)
   author     User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
   notices    AnnouncementNotice[]
 
   @@index([causeId, createdAt])
+  @@index([removedAt])
 }
 
 // One person to tell about one announcement: by push right away, otherwise in

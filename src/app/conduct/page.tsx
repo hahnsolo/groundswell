@@ -56,7 +56,7 @@ export default function ConductPage() {
         <h2>If you see something wrong</h2>
         <ul>
           <li>
-            Use <strong>Report</strong> on the cause or message. Reports are private: the person isn&apos;t told who reported them.
+            Use <strong>Report</strong> on the cause, message or announcement. Reports are private: the person isn&apos;t told who reported them.
           </li>
           <li>
             When three members whose accounts are more than a day old report the same thing, it&apos;s hidden right away until a

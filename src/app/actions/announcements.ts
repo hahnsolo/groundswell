@@ -26,8 +26,9 @@ export async function postAnnouncement(_prev: FormState, formData: FormData): Pr
     .safeParse(Object.fromEntries(formData));
   if (!parsed.success) return fromZodError(parsed.error);
   const { causeId, body } = parsed.data;
-  const cause = await db.cause.findUnique({ where: { id: causeId }, select: { ...LEADERS, stage: true, removedAt: true } });
+  const cause = await db.cause.findUnique({ where: { id: causeId }, select: { ...LEADERS, stage: true, removedAt: true, hidden: true } });
   if (!cause || cause.removedAt || !isActive(cause.stage) || !leadsCause(cause, user.id)) return { error: "Only the people leading this cause can post an announcement." };
+  if (cause.hidden) return { error: "This cause is hidden while moderators review it, so it can't post announcements." };
   if (honeypotTripped(formData)) return { error: "Something went wrong. Please try again." };
   const links = linkError(user, body);
   if (links) return { error: links };
@@ -38,6 +39,8 @@ export async function postAnnouncement(_prev: FormState, formData: FormData): Pr
     db.announcement.updateMany({ where: { causeId, unpinnedAt: null }, data: { unpinnedAt: new Date() } }),
     db.announcement.create({ data: { causeId, authorId: user.id, body } }),
   ]);
+  // In moderators' log, so they can see and remove it without waiting for a report.
+  await db.leaderAction.create({ data: { kind: "announce", causeId, byUserId: user.id, targetUserId: user.id, commentId: announcement.id, reason: body.slice(0, 300) } });
   announceChatChange(causeId);
   after(() => notifyAnnouncement(announcement.id).catch((e) => console.warn("Announcement notices failed:", (e as Error).message)));
   refresh();

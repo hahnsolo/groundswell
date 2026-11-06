@@ -124,15 +124,6 @@ export const getCauseDetail = cache(async (id: string, viewerId: string | null) 
         take: 4,
         select: { user: { select: { name: true, deactivatedAt: true } } },
       },
-      comments: {
-        // Authors still see their own hidden or removed comments, with a note.
-        // Hidden by a leader (#71): everyone sees a placeholder, without the words (the page leaves them out).
-        where: {
-          OR: [{ hidden: false }, ...(viewerId ? [{ authorId: viewerId }] : []), { hiddenByLeaderId: { not: null }, removedAt: null }],
-        },
-        orderBy: { createdAt: "asc" },
-        include: { author: { select: { id: true, name: true, deactivatedAt: true, showName: true, isAdmin: true } } },
-      },
       meetups: {
         where: { endsAt: { gt: new Date() } },
         orderBy: { startsAt: "asc" },
@@ -163,7 +154,7 @@ export const getCauseDetail = cache(async (id: string, viewerId: string | null) 
         include: { proposedBy: { select: { id: true, name: true } }, confirmations: { select: { userId: true } } },
       },
       // What's pinned at the top of the chat (#73).
-      announcements: { where: { unpinnedAt: null }, orderBy: { createdAt: "desc" }, take: 1, include: { author: { select: { name: true, deactivatedAt: true } } } },
+      announcements: { where: { unpinnedAt: null, removedAt: null, hidden: false }, orderBy: { createdAt: "desc" }, take: 1, include: { author: { select: { name: true, deactivatedAt: true } } } },
       // The timeline: contacts, replies, check-ins.
       actions: { orderBy: { happenedAt: "desc" }, take: 50, include: { createdBy: { select: { name: true, deactivatedAt: true } } } },
     },
@@ -218,6 +209,25 @@ export const getCauseDetail = cache(async (id: string, viewerId: string | null) 
 });
 
 export type CauseDetail = NonNullable<Awaited<ReturnType<typeof getCauseDetail>>>;
+
+/**
+ * The newest messages of a cause's chat, oldest first (#97). Only the chat tab
+ * loads these, so the rest of a cause's pages stay light however long its chat gets.
+ */
+export async function getCauseMessages(causeId: string, viewerId: string | null, take: number) {
+  const rows = await db.comment.findMany({
+    where: {
+      causeId,
+      // Authors still see their own hidden or removed comments, with a note.
+      // Hidden by a leader (#71): everyone sees a placeholder, without the words (the page leaves them out).
+      OR: [{ hidden: false }, ...(viewerId ? [{ authorId: viewerId }] : []), { hiddenByLeaderId: { not: null }, removedAt: null }],
+    },
+    orderBy: { createdAt: "desc" },
+    take: take + 1, // one extra, to know if there are earlier ones
+    include: { author: { select: { id: true, name: true, deactivatedAt: true, showName: true, isAdmin: true } } },
+  });
+  return { messages: rows.slice(0, take).reverse(), hasEarlier: rows.length > take };
+}
 
 /** Just what a shared link's preview needs about a cause (src/lib/share-meta.ts). */
 export const getCauseForShare = cache(async (id: string) => {
