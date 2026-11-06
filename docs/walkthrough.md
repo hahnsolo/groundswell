@@ -201,9 +201,10 @@ A member past the wait:
 - Your own messages sit on the right in green; everyone else's on the left. Messages from the same person in a row are grouped (the name shows once), each bubble has its time, and **Today**, **Yesterday** or the day separates days.
 - **On a phone** the chat fills the screen like a group chat: a one-line header (**←** back to the cause, and its title), the messages, and the message box pinned to the bottom, above the keyboard. It opens at the newest message and stays there as new ones arrive. If you've scrolled up to read, **New messages ↓** appears instead of jumping you down. On a computer it's a roomy panel under the cause's header.
 - **The message box** starts as one line and grows as you type. **Send** is the round arrow button. On a computer, Enter sends (Shift+Enter for a new line); on a phone, Enter is a new line.
+- **Long chats** open with the latest 50 messages; **Show earlier messages** at the top brings in 50 more at a time, up to 1,000.
 - **⋯ on each message** opens a small menu: **Edit** your own message (for 15 minutes) or **Report** someone else's.
 - **For the people leading the cause,** the menu also has:
-  - **Hide:** others see *"Hidden by the people leading this cause"*; the author still sees their message, with a note. It also files a report for moderators. **Unhide** takes it back.
+  - **Hide:** others see *"Hidden by the people leading this cause"*; the author still sees their message, with a note. It also files a report for moderators. **Unhide** takes it back, unless three other established accounts have reported it too: then it stays hidden until a moderator decides.
   - **Remove from this cause** (also in the Members list): asks why. The person leaves the cause, can't rejoin, sign or RSVP there, and is told why on the page and in their notifications. Their messages stay.
   - Not on moderators' messages, and co-leaders are removed under Co-leaders. Moderators see all of it under **What leaders did** in the queue, and can undo it.
 - **Why the 24-hour wait:** it gives newcomers a day to get a feel for the conversation, and it stops bots that join and spam straight away. Reading, RSVPing and signing aren't held back, only posting in the chat.
@@ -338,7 +339,7 @@ After confirming, you're signed out everywhere and land on this page:
 
 ### How reporting works
 
-1. Any member with a confirmed email can click **Report** on a cause or a comment (not their own).
+1. Any member with a confirmed email can click **Report** on a cause, a comment or a pinned announcement (not their own).
 2. The report goes into the moderation queue. Up to 20 reports an hour per person.
 3. If **3 different accounts that are over a day old** report the same thing, it's **hidden automatically** until an admin decides. The author still sees it, with a note that it's under review.
 
@@ -351,7 +352,9 @@ After confirming, you're signed out everywhere and land on this page:
 Each reported item shows its type, number of reports, when it was first reported, the content and who wrote it, and the reporters' reasons. Then:
 
 - **Keep & dismiss reports** (or **Restore** if it was auto-hidden): it stays, and the reports are closed.
-- **Remove message / cause:** optionally type a reason first (the author will see it), then click.
+- **Remove message / cause / announcement:** optionally type a reason first (the author will see it), then click.
+
+**Announcements** also come out of everyone's notifications when they're removed or hidden after reports, and the author is told. Restoring one pins it again but doesn't put it back in notifications. Every announcement is listed under **What leaders did**, with **Remove announcement**, so you can act before anyone reports it.
 
 ### After removing: undo for 7 days
 

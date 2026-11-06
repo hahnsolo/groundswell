@@ -1,8 +1,21 @@
 // What the people leading a cause can do about messages and members (#71).
 // Pure, so it's easy to test. Moderators see every action, and can undo it.
 
+import { shouldAutoHide } from "./moderation";
+
 export const HIDDEN_BY_LEADERS = "Hidden by the people leading this cause";
 export const HIDE_REPORT_REASON = "Hidden by someone leading this cause";
+
+export const REMOVED_FROM_CAUSE = "The people leading this cause removed you from it.";
+export const CAUSE_NOT_ACCEPTING = "This cause isn't open to new people right now.";
+
+/** Joining, RSVPing and signing aren't open on a closed, hidden or removed cause. */
+export function acceptsPeople(cause: { stage: string; hidden: boolean; removedAt: Date | null } | null | undefined) {
+  return !!cause && !cause.removedAt && !cause.hidden && cause.stage !== "closed";
+}
+
+/** After a leader's Unhide, a message stays hidden if the community's reports would have hidden it anyway. */
+export const staysHiddenAfterUnhide = (establishedReportsFromOthers: number) => shouldAutoHide(establishedReportsFromOthers);
 
 /** Leaders can hide any message in their cause, except a moderator's or their own (they can just edit theirs). */
 export function canHideMessage(viewer: { id?: string | null; leads: boolean }, author: { id: string; isAdmin?: boolean }) {

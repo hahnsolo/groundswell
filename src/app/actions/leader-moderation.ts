@@ -6,7 +6,9 @@ import { z } from "zod";
 import { requireAdmin, requireUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { fromZodError, type FormState } from "@/lib/forms";
-import { canHideMessage, HIDE_REPORT_REASON, removeProblem } from "@/lib/leader-moderation";
+import { canHideMessage, HIDE_REPORT_REASON, removeProblem, staysHiddenAfterUnhide } from "@/lib/leader-moderation";
+import { ESTABLISHED_ACCOUNT_MS } from "@/lib/moderation";
+import { linkError } from "@/lib/spam";
 import { leadsCause } from "@/lib/leadership";
 import { leaveCause } from "@/lib/leaving";
 import { announceChatChange } from "@/lib/live-chat";
@@ -50,8 +52,18 @@ export async function unhideMessage(formData: FormData) {
     select: { causeId: true, removedAt: true, hiddenByLeaderId: true, authorId: true, cause: { select: LEADERS } },
   });
   if (!comment || comment.removedAt || !comment.hiddenByLeaderId || !leadsCause(comment.cause, user.id)) return;
+  // If enough other people reported it, it stays hidden for a moderator to decide.
+  const fromOthers = await db.report.count({
+    where: {
+      targetType: "comment",
+      targetId: commentId,
+      resolved: false,
+      reporterId: { not: comment.hiddenByLeaderId },
+      reporter: { createdAt: { lt: new Date(Date.now() - ESTABLISHED_ACCOUNT_MS) } },
+    },
+  });
   await db.$transaction([
-    db.comment.update({ where: { id: commentId }, data: { hidden: false, hiddenByLeaderId: null } }),
+    db.comment.update({ where: { id: commentId }, data: { hidden: staysHiddenAfterUnhide(fromOthers), hiddenByLeaderId: null } }),
     db.report.updateMany({
       where: { targetType: "comment", targetId: commentId, reporterId: comment.hiddenByLeaderId, resolved: false },
       data: { resolved: true, resolution: "kept", resolvedById: user.id, resolvedAt: new Date() },
@@ -70,6 +82,9 @@ export async function removeFromCause(_prev: FormState, formData: FormData): Pro
     .safeParse(Object.fromEntries(formData));
   if (!parsed.success) return fromZodError(parsed.error);
   const { causeId, userId, reason } = parsed.data;
+  // The reason goes in a notification from Groundswell, so it follows the same link rule as any post.
+  const links = linkError(user, reason);
+  if (links) return { fieldErrors: { reason: [links] } };
   const [cause, target] = await Promise.all([
     db.cause.findUnique({ where: { id: causeId }, select: { ...LEADERS, title: true } }),
     db.user.findUnique({ where: { id: userId }, select: { id: true, name: true, email: true, isAdmin: true, deactivatedAt: true } }),

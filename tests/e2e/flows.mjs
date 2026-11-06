@@ -3,6 +3,7 @@
 // Needs fresh demo data (`npm run db:seed`), because it changes it.
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import { PrismaClient } from "@prisma/client";
 import { BASE, CONTEXT, PW, findCause, go, launch, settle, signIn } from "./helpers.mjs";
 
 const browser = await launch();
@@ -900,6 +901,15 @@ let CAUSE;
   const removedView = await text(page);
   assert.match(removedView, /removed you from it\. They said: .Repeated spam after being asked to stop\./, "he's told why");
   assert.equal(await page.locator("main").getByRole("button", { name: "Join this cause" }).count(), 0, "and can't rejoin");
+  // Nor can he organize there (#97).
+  await go(page, `/causes/${park}/events`);
+  await page.getByText("+ Organize an event").click();
+  const refusedEvent = page.locator("form", { has: page.getByRole("button", { name: "Create meetup" }) });
+  await refusedEvent.getByLabel("Title").fill("Back anyway meeting");
+  await refusedEvent.getByLabel("Starts").fill(`${ymd}T18:00`);
+  await refusedEvent.locator('input[name="location"]').fill("The park gate");
+  await refusedEvent.getByRole("button", { name: "Create meetup" }).click();
+  await refusedEvent.getByText("The people leading this cause removed you from it.").waitFor({ timeout: 30000 });
   await go(alex, "/admin/reports");
   await alex.getByRole("button", { name: "Undo: let them rejoin" }).first().click();
   await alex.getByRole("button", { name: "Undo: let them rejoin" }).waitFor({ state: "detached", timeout: 30000 });
@@ -954,6 +964,31 @@ let CAUSE;
   assert.equal(dailyRun.announced, undefined, "announcements aren't emailed");
   step("Notifications: unread count on the name icon, a dropdown that links to the right page, marked read when opened, and listed on /me");
 
+  // Announcements can be moderated (#97). Sam reports it; Alex removes it; it's gone from the chat and from notifications; Priya is told why.
+  await go(page, `/causes/${park}/chat`);
+  await page.getByRole("button", { name: "Report this announcement" }).click();
+  await page.getByText("You reported this.").waitFor({ timeout: 30000 });
+  await go(alex, "/admin/reports");
+  assert.match(await text(alex), /What leaders did[\s\S]*posted an announcement/, "every announcement is in the log");
+  const reportedNews = alex.locator("li", { hasText: "Bring your rent notices" }).filter({ hasText: "1 report" });
+  await reportedNews.getByLabel("Reason for removing").fill("Not about the cause.");
+  await reportedNews.getByRole("button", { name: "Remove announcement" }).click();
+  await reportedNews.waitFor({ state: "detached", timeout: 30000 });
+  await go(alex, `/causes/${park}/chat`);
+  assert.equal(await alex.getByRole("complementary", { name: "Announcement" }).count(), 0, "it's no longer pinned");
+  await go(alex, "/me");
+  const alexNotices = await alex.locator("#notifications").innerText();
+  assert.doesNotMatch(alexNotices, /Bring your rent notices/, "it's gone from notifications");
+  assert.match(alexNotices, /moved to Thursday/, "the earlier one isn't");
+  await go(priya4, "/me");
+  assert.match(await priya4.locator("#notifications").innerText(), /A moderator removed your announcement[\s\S]*Not about the cause\./, "the author is told why");
+  await go(alex, "/admin/reports");
+  await alex.getByRole("button", { name: "Restore announcement" }).first().click();
+  await alex.getByRole("button", { name: "Restore announcement" }).waitFor({ state: "detached", timeout: 30000 });
+  await go(alex, `/causes/${park}/chat`);
+  assert.match(await alex.getByRole("complementary", { name: "Announcement" }).innerText(), /Bring your rent notices/, "restoring pins it again");
+  step("Announcements can be reported and removed: gone from the chat and notifications, the author is told, and it can be restored");
+
   await postNews("Third and last one this week.");
   await go(priya4, `/causes/${park}`);
   await priya4.getByText("📢 Post an announcement").click();
@@ -961,8 +996,50 @@ let CAUSE;
   await go(priya4, `/causes/${park}/chat`);
   await priya4.getByRole("complementary", { name: "Announcement" }).getByRole("button", { name: "Unpin" }).click();
   await priya4.getByRole("complementary", { name: "Announcement" }).waitFor({ state: "detached", timeout: 30000 });
-  await priya4.context().close();
   step("Announcements: pinned in the chat, at most 3 a week, and the leader can unpin");
+
+  // A leader's Unhide can't override the community's reports (#97), and long chats load in pages. These need data set up directly.
+  const prisma = new PrismaClient();
+  const dayAgo = new Date(Date.now() - 25 * 60 * 60 * 1000);
+  // Three neighbours with accounts over a day old: only those count towards hiding. The demo data doesn't have enough.
+  const reporters = await Promise.all([1, 2, 3].map((n) => prisma.user.create({ data: { name: `Neighbour ${n}`, email: `neighbour${n}@demo.test`, emailVerified: true, createdAt: dayAgo }, select: { id: true } })));
+  await go(priya4, `/causes/${CAUSE}/chat`);
+  const reportedMessage = priya4.locator("li[data-message]", { hasText: "Counted 5 near-misses" });
+  await reportedMessage.getByLabel("Message options").click();
+  await reportedMessage.getByRole("button", { name: "Hide", exact: true }).click();
+  const placeholder = priya4.locator("li[data-message]", { hasText: "Hidden by the people leading this cause" }).first();
+  await placeholder.waitFor({ timeout: 30000 });
+  const hiddenOne = await prisma.comment.findFirstOrThrow({ where: { causeId: CAUSE, body: { contains: "Counted 5 near-misses" } }, select: { id: true } });
+  await prisma.report.createMany({ data: reporters.map((r) => ({ targetType: "comment", targetId: hiddenOne.id, reporterId: r.id, reason: "Rude" })), skipDuplicates: true });
+  await go(priya4, `/causes/${CAUSE}/chat`); // the menu she hid it from is still open
+  await placeholder.getByLabel("Message options").click();
+  await placeholder.getByRole("button", { name: "Unhide" }).click();
+  await placeholder.waitFor({ state: "detached", timeout: 30000 });
+  await go(priya4, `/causes/${CAUSE}/chat`);
+  assert.doesNotMatch(await text(priya4), /Counted 5 near-misses/, "still hidden: reports hid it, not just the leader");
+  await go(alex, "/admin/reports");
+  const stillReported = alex.locator("li", { hasText: "Counted 5 near-misses" }).filter({ hasText: /\d reports/ });
+  await stillReported.getByRole("button", { name: /Restore & dismiss reports/ }).click();
+  await stillReported.waitFor({ state: "detached", timeout: 30000 });
+  await go(priya4, `/causes/${CAUSE}/chat`);
+  assert.match(await text(priya4), /Counted 5 near-misses/, "and a moderator can still bring it back");
+  await priya4.context().close();
+  step("A leader's Unhide leaves a message hidden when enough others reported it; a moderator decides");
+
+  const alexRow = await prisma.user.findUniqueOrThrow({ where: { email: "alex@demo.test" }, select: { id: true } });
+  const longAgo = Date.now() - 3 * 24 * 60 * 60 * 1000;
+  await prisma.comment.createMany({ data: Array.from({ length: 60 }, (_, i) => ({ causeId: park, authorId: alexRow.id, body: `Old note ${i}.`, createdAt: new Date(longAgo + i * 60000) })) });
+  await prisma.$disconnect();
+  await go(alex, `/causes/${park}/chat`);
+  const shownMessages = alex.locator("li[data-message]");
+  assert.equal(await shownMessages.count(), 50, "a long chat opens with the latest 50");
+  assert.doesNotMatch(await text(alex), /Old note 0\./, "the oldest wait");
+  await alex.getByRole("link", { name: "Show earlier messages" }).click();
+  await alex.waitForURL(/show=100/, { timeout: 30000 });
+  await alex.getByText("Old note 0.").first().waitFor({ timeout: 30000 });
+  assert.ok((await shownMessages.count()) >= 60, "showing earlier brings them in");
+  assert.equal(await alex.getByRole("link", { name: "Show earlier messages" }).count(), 0, "and the link goes when there are no more");
+  step("A long chat opens with the latest 50 messages and shows earlier ones on request");
 
   // 22. Recurring events (#78). Priya sets up a weekly meeting, 6 times; the next 4 show; she changes the future ones and cancels one, then the rest.
   const priya5 = await signIn(browser, "priya@demo.test", opts);
@@ -990,8 +1067,13 @@ let CAUSE;
   await go(alex, secondHref);
   await alex.getByRole("button", { name: "I'll be there" }).click();
   await waitText(alex, /You're going/);
-  await go(alex, `/causes/${park}/events`);
   const alexWeekly = alex.locator("section", { has: alex.getByRole("heading", { name: "Weekly tenants check-in" }) });
+  // The button changes at once; the save follows just after, so allow it a moment.
+  for (let tries = 0; tries < 10; tries++) {
+    await go(alex, `/causes/${park}/events`);
+    if (/✓ Going/.test(await alexWeekly.nth(1).innerText())) break;
+    await alex.waitForTimeout(1500);
+  }
   assert.match(await alexWeekly.nth(1).innerText(), /✓ Going/);
   assert.match(await alexWeekly.nth(0).innerText(), /I'll be there/, "going to one isn't going to all");
   // Change this and all future ones, from the second.

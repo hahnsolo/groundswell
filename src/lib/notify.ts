@@ -62,10 +62,10 @@ export async function unsubscribe(userId: string, kind: string, token: string) {
  * first, in one go, so a slow push service or a timeout can't lose anyone's.
  * Returns how each person was reached.
  */
-async function deliver<P extends Recipient>(people: P[], kind: NoticeKind, title: string, body: string, url: string) {
+async function deliver<P extends Recipient>(people: P[], kind: NoticeKind, title: string, body: string, url: string, sourceId?: string) {
   if (people.length === 0) return [];
   const message = pushMessage(title, body, url);
-  await db.notification.createMany({ data: people.map((p) => noticeRow(p.id, kind, message)) });
+  await db.notification.createMany({ data: people.map((p) => noticeRow(p.id, kind, message, sourceId)) });
   const reached: { person: P; channel: "push" | "site" }[] = [];
   for (const person of people) {
     let channel: "push" | "site" = "site";
@@ -172,8 +172,13 @@ export async function notifyAnnouncement(announcementId: string) {
   });
   if (!a) return 0;
   const people = await membersWanting(a.causeId, "announcement", a.authorId);
-  const reached = await deliver(people, "announcement", `News from "${a.cause.title}"`, a.body, `/causes/${a.causeId}/chat`);
+  const reached = await deliver(people, "announcement", `News from "${a.cause.title}"`, a.body, `/causes/${a.causeId}/chat`, announcementId);
   return reached.length;
+}
+
+/** Something was taken down: its words shouldn't stay in anyone's notifications (#97). */
+export async function withdrawNotices(sourceId: string) {
+  await db.notification.deleteMany({ where: { sourceId } });
 }
 
 // ---------- Daily (from the daily job) ----------

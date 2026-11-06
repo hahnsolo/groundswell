@@ -1,5 +1,23 @@
 import { describe, expect, it } from "vitest";
-import { dayLabel, startsGroup } from "@/lib/chat-days";
+import { CHAT_PAGE, dayLabel, MAX_CHAT_SHOWN, messagesToShow, startsGroup } from "@/lib/chat-days";
+
+describe("how many messages a chat loads (#97)", () => {
+  it("opens with one page", () => {
+    expect(messagesToShow(undefined)).toBe(CHAT_PAGE);
+    expect(messagesToShow("")).toBe(CHAT_PAGE);
+  });
+  it("adds whole pages", () => {
+    expect(messagesToShow("100")).toBe(100);
+    expect(messagesToShow("101")).toBe(150);
+  });
+  it("ignores nonsense and stops at the limit", () => {
+    expect(messagesToShow("abc")).toBe(CHAT_PAGE);
+    expect(messagesToShow("-5")).toBe(CHAT_PAGE);
+    expect(messagesToShow(["100", "200"])).toBe(CHAT_PAGE);
+    expect(messagesToShow("Infinity")).toBe(CHAT_PAGE);
+    expect(messagesToShow("99999999")).toBe(MAX_CHAT_SHOWN);
+  });
+});
 
 describe("chat grouping (#70)", () => {
   const at = (s: string) => new Date(s);

@@ -1,5 +1,16 @@
 // How a chat groups messages (#70). Pure, so it's easy to test.
 
+/** A chat opens with this many messages; "Show earlier" adds this many more (#97). */
+export const CHAT_PAGE = 50;
+export const MAX_CHAT_SHOWN = 1000;
+
+/** How many messages to load, from the address: always a whole number of pages, within limits. */
+export function messagesToShow(raw: unknown) {
+  const n = Number(typeof raw === "string" ? raw : NaN);
+  if (!Number.isFinite(n) || n <= CHAT_PAGE) return CHAT_PAGE;
+  return Math.min(Math.ceil(n / CHAT_PAGE) * CHAT_PAGE, MAX_CHAT_SHOWN);
+}
+
 /** Messages from the same person this close together are shown as one group (no repeated name). */
 export const GROUP_WITHIN_MS = 10 * 60 * 1000;
 

@@ -28,13 +28,13 @@ export default function ReportsPage() {
 }
 
 type Target = {
-  type: "cause" | "comment";
+  type: "cause" | "comment" | "announcement";
   id: string;
   reports: { reason: string; createdAt: Date; reporter: string }[];
 };
 
 /** What people call these on the site. */
-const kindLabel = (type: Target["type"]) => (type === "cause" ? "cause" : "message");
+const kindLabel = (type: Target["type"]) => (type === "comment" ? "message" : type);
 
 async function Queue() {
   await requireAdmin();
@@ -56,9 +56,10 @@ async function Queue() {
   const list = [...targets.values()].sort((a, b) => b.reports.length - a.reports.length);
 
   const ids = (type: Target["type"]) => list.filter((t) => t.type === type).map((t) => t.id);
-  const [causes, comments] = await Promise.all([loadCauses(ids("cause")), loadComments(ids("comment"))]);
+  const [causes, comments, announcements] = await Promise.all([loadCauses(ids("cause")), loadComments(ids("comment")), loadAnnouncements(ids("announcement"))]);
   const causeById = new Map(causes.map((i) => [i.id, i]));
-  const commentById = new Map(comments.map((c) => [c.id, c]));
+  // Messages and announcements both belong to a cause's chat, and read the same here.
+  const postById = new Map<string, PostRow>([...comments, ...announcements].map((c) => [c.id, c]));
   // Image storage (#66): free up to 1 GB on Vercel Blob; uploads pause at 850 MB.
   const used = await storageUsed();
   const storage = storageState(used);
@@ -80,7 +81,7 @@ async function Queue() {
       {list.length === 0 ? (
         <p className="rounded-xl border border-dashed border-border bg-surface p-10 text-center text-muted">All clear — nothing to review.</p>
       ) : (
-        <QueueList list={list} causeById={causeById} commentById={commentById} />
+        <QueueList list={list} causeById={causeById} postById={postById} />
       )}
       <RecentlyRemoved />
       <LeaderLog />
@@ -94,18 +95,21 @@ const ACTION_WORDS: Record<string, string> = {
   remove: "removed",
   undo_hide: "(moderator) undid hiding a message by",
   lift_ban: "(moderator) lifted the removal of",
+  announce: "posted an announcement",
 };
 
 /** What leaders did in their own causes (#71): every hide and removal, with undo while it still stands. */
 async function LeaderLog() {
   const actions = await db.leaderAction.findMany({ orderBy: { createdAt: "desc" }, take: 100 });
   const unique = (ids: (string | null)[]) => [...new Set(ids.filter((i): i is string => !!i))];
-  const [people, causes, comments, bans] = await Promise.all([
+  const [people, causes, comments, bans, announcements] = await Promise.all([
     db.user.findMany({ where: { id: { in: unique(actions.flatMap((a) => [a.byUserId, a.targetUserId])) } }, select: { id: true, name: true, deactivatedAt: true } }),
     db.cause.findMany({ where: { id: { in: unique(actions.map((a) => a.causeId)) } }, select: { id: true, title: true } }),
     db.comment.findMany({ where: { id: { in: unique(actions.map((a) => a.commentId)) } }, select: { id: true, body: true, hiddenByLeaderId: true } }),
     db.causeBan.findMany({ where: { causeId: { in: unique(actions.map((a) => a.causeId)) }, liftedAt: null }, select: { causeId: true, userId: true } }),
+    db.announcement.findMany({ where: { id: { in: unique(actions.filter((a) => a.kind === "announce").map((a) => a.commentId)) } }, select: { id: true, body: true, removedAt: true } }),
   ]);
+  const announcement = new Map(announcements.map((n) => [n.id, n]));
   const person = new Map(people.map((p) => [p.id, displayName(p)]));
   const cause = new Map(causes.map((c) => [c.id, c.title]));
   const comment = new Map(comments.map((c) => [c.id, c]));
@@ -117,7 +121,7 @@ async function LeaderLog() {
       <h2 id="leader-log" className="text-lg font-semibold tracking-tight">
         What leaders did
       </h2>
-      <p className="mb-4 mt-1 text-sm text-muted">Every message hidden and person removed by the people leading a cause. You can undo any that still stand.</p>
+      <p className="mb-4 mt-1 text-sm text-muted">Every announcement posted, message hidden and person removed by the people leading a cause. You can undo any that still stand.</p>
       {actions.length === 0 ? (
         <p className="rounded-xl border border-dashed border-border bg-surface p-6 text-center text-sm text-muted">Nothing yet.</p>
       ) : (
@@ -129,10 +133,18 @@ async function LeaderLog() {
             seen.add(key);
             const undoHide = first && a.kind === "hide" && !!c?.hiddenByLeaderId;
             const undoBan = first && a.kind === "remove" && banned.has(`${a.causeId}:${a.targetUserId}`);
+            const posted = a.kind === "announce" && a.commentId ? announcement.get(a.commentId) : undefined;
             return (
               <li key={a.id} className="rounded-xl border border-border bg-surface p-4 text-sm">
                 <p>
-                  <strong>{person.get(a.byUserId) ?? "Someone"}</strong> {ACTION_WORDS[a.kind] ?? a.kind} <strong>{person.get(a.targetUserId) ?? "someone"}</strong> in{" "}
+                  <strong>{person.get(a.byUserId) ?? "Someone"}</strong> {ACTION_WORDS[a.kind] ?? a.kind}
+                  {a.kind !== "announce" && (
+                    <>
+                      {" "}
+                      <strong>{person.get(a.targetUserId) ?? "someone"}</strong>
+                    </>
+                  )}{" "}
+                  in{" "}
                   <Link href={`/causes/${a.causeId}`} className="underline">
                     {cause.get(a.causeId) ?? "a cause"}
                   </Link>{" "}
@@ -141,7 +153,20 @@ async function LeaderLog() {
                   </span>
                 </p>
                 {c && <p className="mt-1 line-clamp-3 whitespace-pre-line text-xs text-muted">&ldquo;{c.body}&rdquo;</p>}
-                {a.reason && <p className="mt-1 text-xs text-muted">Reason: &ldquo;{a.reason}&rdquo;</p>}
+                {a.kind === "announce" ? (
+                  <p className="mt-1 line-clamp-3 whitespace-pre-line text-xs text-muted">&ldquo;{posted?.body ?? a.reason}&rdquo;</p>
+                ) : (
+                  a.reason && <p className="mt-1 text-xs text-muted">Reason: &ldquo;{a.reason}&rdquo;</p>
+                )}
+                {posted && !posted.removedAt && (
+                  <form action={moderate} className="mt-2">
+                    <input type="hidden" name="targetType" value="announcement" />
+                    <input type="hidden" name="targetId" value={posted.id} />
+                    <button name="decision" value="removed" className={`${buttonStyles.secondary} text-red-700 dark:text-red-400`}>
+                      Remove announcement
+                    </button>
+                  </form>
+                )}
                 {undoHide && (
                   <form action={undoLeaderHide} className="mt-2">
                     <input type="hidden" name="commentId" value={a.commentId!} />
@@ -167,18 +192,16 @@ async function LeaderLog() {
 async function RecentlyRemoved() {
   const where = { removedAt: { gt: purgeCutoff() } };
   const author = { select: { name: true, email: true, deactivatedAt: true } };
-  const [causes, comments] = await Promise.all([
+  const on = { include: { author, cause: { select: { id: true, title: true } } }, orderBy: { removedAt: "desc" as const }, take: 100 };
+  const [causes, comments, announcements] = await Promise.all([
     db.cause.findMany({ where, include: { author }, orderBy: { removedAt: "desc" }, take: 100 }),
-    db.comment.findMany({
-      where,
-      include: { author, cause: { select: { id: true, title: true } } },
-      orderBy: { removedAt: "desc" },
-      take: 100,
-    }),
+    db.comment.findMany({ where, ...on }),
+    db.announcement.findMany({ where, ...on }),
   ]);
   const items = [
     ...causes.map((i) => ({ ...i, type: "cause" as const, text: i.title, on: null })),
     ...comments.map((c) => ({ ...c, type: "comment" as const, text: c.body, on: c.cause })),
+    ...announcements.map((c) => ({ ...c, type: "announcement" as const, text: c.body, on: c.cause })),
   ].sort((a, b) => b.removedAt!.getTime() - a.removedAt!.getTime());
 
   return (
@@ -221,7 +244,7 @@ async function RecentlyRemoved() {
 }
 
 type CauseRow = Awaited<ReturnType<typeof loadCauses>>[number];
-type CommentRow = Awaited<ReturnType<typeof loadComments>>[number];
+type PostRow = Awaited<ReturnType<typeof loadComments>>[number] | Awaited<ReturnType<typeof loadAnnouncements>>[number];
 
 function loadCauses(ids: string[]) {
   return db.cause.findMany({ where: { id: { in: ids } }, include: { author: { select: { name: true, email: true, deactivatedAt: true } } } });
@@ -234,21 +257,28 @@ function loadComments(ids: string[]) {
   });
 }
 
+function loadAnnouncements(ids: string[]) {
+  return db.announcement.findMany({
+    where: { id: { in: ids } },
+    include: { author: { select: { name: true, email: true, deactivatedAt: true } }, cause: { select: { id: true, title: true } } },
+  });
+}
+
 function QueueList({
   list,
   causeById,
-  commentById,
+  postById,
 }: {
   list: Target[];
   causeById: Map<string, CauseRow>;
-  commentById: Map<string, CommentRow>;
+  postById: Map<string, PostRow>;
 }) {
   return (
     <ul className="space-y-4">
       {list.map((t) => {
         const cause = t.type === "cause" ? causeById.get(t.id) : undefined;
-        const comment = t.type === "comment" ? commentById.get(t.id) : undefined;
-        const content = cause ?? comment;
+        const post = t.type === "cause" ? undefined : postById.get(t.id);
+        const content = cause ?? post;
         const reasons = t.reports.map((r) => r.reason).filter(Boolean);
         return (
           <li key={`${t.type}:${t.id}`} className="rounded-xl border border-border bg-surface p-5">
@@ -272,15 +302,15 @@ function QueueList({
                     {cause.title}
                   </Link>
                 )}
-                {comment && (
+                {post && (
                   <p className="text-xs text-muted">
                     on{" "}
-                    <Link href={`/causes/${comment.cause.id}/chat`} className="underline">
-                      {comment.cause.title}
+                    <Link href={`/causes/${post.cause.id}/chat`} className="underline">
+                      {post.cause.title}
                     </Link>
                   </p>
                 )}
-                <p className="line-clamp-4 whitespace-pre-line text-sm">{cause?.description ?? comment?.body}</p>
+                <p className="line-clamp-4 whitespace-pre-line text-sm">{cause?.description ?? post?.body}</p>
                 <p className="text-xs text-muted">
                   by {displayName(content.author)} ({content.author.email})
                 </p>

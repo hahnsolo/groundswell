@@ -6,16 +6,20 @@ import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 import { cleanRemovalReason, purgeCutoff } from "@/lib/moderation";
 import { announceChatChange } from "@/lib/live-chat";
+import { notifyAlways, withdrawNotices } from "@/lib/notify";
 
 /** Open chats showing this content should update. Returns the cause it belongs to. */
-async function causeOf(targetType: "cause" | "comment", targetId: string) {
+async function causeOf(targetType: "cause" | "comment" | "announcement", targetId: string) {
   if (targetType === "cause") return targetId;
-  const comment = await db.comment.findUnique({ where: { id: targetId }, select: { causeId: true } });
-  return comment?.causeId ?? null;
+  const row =
+    targetType === "comment"
+      ? await db.comment.findUnique({ where: { id: targetId }, select: { causeId: true } })
+      : await db.announcement.findUnique({ where: { id: targetId }, select: { causeId: true } });
+  return row?.causeId ?? null;
 }
 
 const targetSchema = z.object({
-  targetType: z.enum(["cause", "comment"]),
+  targetType: z.enum(["cause", "comment", "announcement"]),
   targetId: z.string().min(1).max(40),
 });
 
@@ -39,8 +43,10 @@ export async function moderate(formData: FormData) {
       ? { hidden: false }
       : { hidden: true, removedAt: new Date(), removedById: admin.id, removalReason: cleanRemovalReason(formData.get("reason")) };
 
+  let announcementsChanged = 0;
   await db.$transaction(async (tx) => {
     if (targetType === "cause") await tx.cause.updateMany({ where, data });
+    else if (targetType === "announcement") announcementsChanged = (await tx.announcement.updateMany({ where, data })).count;
     // Keeping it also clears a leader's hide (#71).
     else await tx.comment.updateMany({ where, data: decision === "kept" ? { ...data, hiddenByLeaderId: null } : data });
     await tx.report.updateMany({
@@ -48,6 +54,15 @@ export async function moderate(formData: FormData) {
       data: { resolved: true, resolution: decision, resolvedById: admin.id, resolvedAt: new Date() },
     });
   });
+  if (announcementsChanged > 0 && decision === "removed") {
+    // Its words shouldn't stay in people's notifications (#97), and its author should hear why it went.
+    await withdrawNotices(targetId);
+    const removed = await db.announcement.findUnique({ where: { id: targetId }, select: { authorId: true, causeId: true, removalReason: true } });
+    if (removed) {
+      const why = removed.removalReason ? ` They said: "${removed.removalReason}"` : "";
+      await notifyAlways(removed.authorId, "leading", "A moderator removed your announcement", `It's no longer pinned, and it's gone from people's notifications.${why}`, `/causes/${removed.causeId}/chat`);
+    }
+  }
   const cause = await causeOf(targetType, targetId);
   if (cause) announceChatChange(cause);
   refresh();
@@ -64,7 +79,11 @@ export async function restore(formData: FormData) {
 
   await db.$transaction(async (tx) => {
     const { count } =
-      targetType === "cause" ? await tx.cause.updateMany({ where, data }) : await tx.comment.updateMany({ where, data: { ...data, hiddenByLeaderId: null } });
+      targetType === "cause"
+        ? await tx.cause.updateMany({ where, data })
+        : targetType === "announcement"
+          ? await tx.announcement.updateMany({ where, data })
+          : await tx.comment.updateMany({ where, data: { ...data, hiddenByLeaderId: null } });
     if (count === 0) return;
     // Record the reversal on the reports that led to the removal.
     await tx.report.updateMany({

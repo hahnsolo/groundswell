@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
   }
 
   const where = { removedAt: { lt: purgeCutoff() } };
-  const [causes, comments] = await db.$transaction([db.cause.deleteMany({ where }), db.comment.deleteMany({ where })]);
+  const [causes, comments] = await db.$transaction([db.cause.deleteMany({ where }), db.comment.deleteMany({ where }), db.announcement.deleteMany({ where })]);
   const accounts = await anonymizeExpiredAccounts();
   const reps = await refreshStaleAreaReps();
   const stages = await dailyStageHousekeeping();

@@ -8,7 +8,8 @@ import { findInviteCode } from "@/lib/spread";
 import { removedFromCause } from "@/lib/members";
 import { randomUUID } from "node:crypto";
 import { MAX_OCCURRENCES, occurrences, validTimeZone } from "@/lib/recurrence";
-import { notifyAlways, notifyCancelled, notifyWinCheck, notifyWon } from "@/lib/notify";
+import { notifyAlways, notifyCancelled, notifyWinCheck, notifyWon, withdrawNotices } from "@/lib/notify";
+import { acceptsPeople, CAUSE_NOT_ACCEPTING, REMOVED_FROM_CAUSE } from "@/lib/leader-moderation";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@/lib/db";
@@ -66,6 +67,11 @@ function editCheck(user: CurrentUser, formData: FormData, ...texts: (string | un
   if (honeypotTripped(formData)) return { error: "Something went wrong. Please try again." };
   const links = linkError(user, ...texts);
   return links ? { error: links } : null;
+}
+
+/** Joining, RSVPing and signing: only on a cause that's open, whatever the page's buttons show. */
+async function causeAcceptsPeople(causeId: string) {
+  return acceptsPeople(await db.cause.findUnique({ where: { id: causeId }, select: { stage: true, hidden: true, removedAt: true } }));
 }
 
 /** Comments, meetups and campaigns can only be added to causes a moderator hasn't removed. */
@@ -552,6 +558,7 @@ export async function toggleMembership(formData: FormData) {
     await db.coLeader.deleteMany({ where: { causeId, userId: user.id } }); // co-leading needs membership
   } else {
     if (await removedFromCause(causeId, user.id)) return; // the people leading it removed them (#71)
+    if (!(await causeAcceptsPeople(causeId))) return;
     // Through someone's invite link (#68): counts toward "joined from your invite" for them (not for inviting yourself).
     const tag = (await cookies()).get(sourceCookie(causeId))?.value;
     const code = inviteCodeIn(tag);
@@ -651,6 +658,7 @@ export async function createMeetup(_prev: FormState, formData: FormData): Promis
   const parsed = meetupSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return fromZodError(parsed.error);
   if (!(await causeOpen(parsed.data.causeId))) return CAUSE_GONE;
+  if (await removedFromCause(parsed.data.causeId, user.id)) return { error: REMOVED_FROM_CAUSE };
   if (parsed.data.startsAt.getTime() < Date.now()) {
     return { fieldErrors: { startsAt: ["Pick a time in the future."] } };
   }
@@ -794,7 +802,7 @@ export async function toggleRsvp(formData: FormData) {
   const key = { meetupId_userId: { meetupId, userId: user.id } };
   const existing = await db.rsvp.findUnique({ where: key });
   if (existing) await db.rsvp.delete({ where: key });
-  else if (await removedFromCause(meetup.causeId, user.id)) return;
+  else if ((await removedFromCause(meetup.causeId, user.id)) || !(await causeAcceptsPeople(meetup.causeId))) return;
   else if (!meetup.capacity || meetup._count.rsvps < meetup.capacity) {
     await db.rsvp.create({ data: { meetupId, userId: user.id, source: await arrivedFrom(meetupId) } });
   }
@@ -840,6 +848,7 @@ export async function createCampaign(_prev: FormState, formData: FormData): Prom
   const parsed = campaignSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return fromZodError(parsed.error);
   if (!(await causeOpen(parsed.data.causeId))) return CAUSE_GONE;
+  if (await removedFromCause(parsed.data.causeId, user.id)) return { error: REMOVED_FROM_CAUSE };
   const spam = await spamCheck(user, formData, "campaign", parsed.data.target, parsed.data.ask);
   if (spam) return spam;
   await db.campaign.create({
@@ -865,7 +874,8 @@ export async function signCampaign(_prev: FormState, formData: FormData): Promis
   if (!user.emailVerified) return { error: UNVERIFIED_ERROR };
   const links = linkError(user, parsed.data.note);
   if (links) return { error: links };
-  if (await removedFromCause(campaign.causeId, user.id)) return { error: "The people leading this cause removed you from it." };
+  if (await removedFromCause(campaign.causeId, user.id)) return { error: REMOVED_FROM_CAUSE };
+  if (!(await causeAcceptsPeople(campaign.causeId))) return { error: CAUSE_NOT_ACCEPTING };
   await db.signature.upsert({
     where: { campaignId_userId: { campaignId: parsed.data.campaignId, userId: user.id } },
     create: { campaignId: parsed.data.campaignId, userId: user.id, note: parsed.data.note || null },
@@ -889,7 +899,7 @@ export async function reportContent(formData: FormData) {
   if (!user?.emailVerified) return;
   if (!(await rateLimit(`report:${user.id}`, 20, HOUR))) return;
   const parsed = z
-    .object({ targetType: z.enum(["cause", "comment"]), targetId: id, reason: z.string().trim().max(300).default("") })
+    .object({ targetType: z.enum(["cause", "comment", "announcement"]), targetId: id, reason: z.string().trim().max(300).default("") })
     .safeParse(Object.fromEntries(formData));
   if (!parsed.success) return;
   const { targetType, targetId, reason } = parsed.data;
@@ -898,7 +908,9 @@ export async function reportContent(formData: FormData) {
   const target =
     targetType === "cause"
       ? await db.cause.findUnique({ where: { id: targetId }, select: { removedAt: true } })
-      : await db.comment.findUnique({ where: { id: targetId }, select: { removedAt: true, causeId: true } });
+      : targetType === "comment"
+        ? await db.comment.findUnique({ where: { id: targetId }, select: { removedAt: true, causeId: true } })
+        : await db.announcement.findUnique({ where: { id: targetId }, select: { removedAt: true, causeId: true } });
   if (!target || target.removedAt) return;
 
   await db.report.upsert({
@@ -920,7 +932,11 @@ export async function reportContent(formData: FormData) {
   });
   if (shouldAutoHide(count)) {
     if (targetType === "cause") await db.cause.update({ where: { id: targetId }, data: { hidden: true } });
-    else await db.comment.update({ where: { id: targetId }, data: { hidden: true } });
+    else if (targetType === "comment") await db.comment.update({ where: { id: targetId }, data: { hidden: true } });
+    else {
+      await db.announcement.update({ where: { id: targetId }, data: { hidden: true } });
+      await withdrawNotices(targetId);
+    }
     announceChatChange("causeId" in target ? (target.causeId as string) : targetId);
   }
   refresh();
