@@ -29,7 +29,7 @@ The screenshots come from the **dev site with demo data** (Alex, Sam and Priya a
 - **Your neighbourhood** (e.g. "Downtown Toronto ▾"): the last area you looked at, or your home area. Click it to jump back there or look up another postal code. It's remembered in a small cookie that holds only the area code and its name.
 - **+ Start something** (red, the one loud button) raises a new cause in the neighbourhood you're looking at. On a phone it's just a **+**.
 - **Signed out:** **Sign in** and **Join**.
-- **Signed in:** a circle with **your initial**, which goes to your activity page. **Sign out** is at the top of that page.
+- **Signed in:** a circle with **your initial**, with a red **unread count** when you have new notifications. Click it to see your latest notifications, each linking to the right page, and a link to your activity page. Opening them marks them read. **Sign out** is at the top of the activity page.
 - **Email not confirmed yet:** a yellow bar under the top bar says *"Confirm your email (…) to post causes, comments and meetups"* (this applies to chat messages too), with a button to resend the link (at most 3 times an hour).
 
 ---
@@ -144,7 +144,7 @@ Type your name (and the recipient's email if you have it). The app writes a poli
   - **The next step first**, with a button: *"Next: get 3 more neighbours to join"* (**Invite your group**, and the invite tools start open), *"Next: hold a first meetup"* (**Organize an event**), *"Next: start a campaign, or contact whoever should fix it"*, *"It's fixed? Propose a win"*, or *"Your win is waiting for members to confirm it"*.
   - Then the tools, in three groups: **Move it forward** (propose a win, log a contact or a reply, close), **People** (member count, where people came from, 👋 Bring your group over, co-leaders, hand over) and **The cause** (edit, who should fix it, cover image).
   - **👥 Members** (under People): everyone who's joined, when, signed the latest ask or not, going to the next event or not, and how they found it (*"from your invite"*, *"from the flyer"*). Sort newest or oldest; filter by *Hasn't signed* or *Not going*. Emails are never shown.
-  - **📢 Post an announcement** (under Move it forward): at most 3 per cause a week. It's pinned at the top of the chat until replaced or unpinned. Members are told by push if they have it on, otherwise in **one daily email per person** that bundles their announcements with the next day's reminders, so a 100-member cause doesn't use up the email budget at once. If the day's budget runs out, the rest go the next morning. People control it with *Announcements from leaders* on /me and by muting a cause. Never SMS.
+  - **📢 Post an announcement** (under Move it forward): at most 3 per cause a week. It's pinned at the top of the chat until replaced or unpinned. Members are told in their notifications, and by push if they have it on. People control it with *Announcements from leaders* on /me and by muting a cause. Never email or SMS.
   - The stage tracker in the header speaks to them in "you" words too (*"You can hold a first meetup to move this to Organizing"*).
   - The tools:
   - **It's fixed: propose a win.** Members are asked to confirm: 2 of them, or 1 if the cause has 3 or fewer members, within 7 days. Once confirmed it's **Won**, the date is recorded, and it shows in **Recent wins** on the neighbourhood pages for 30 days.
@@ -204,7 +204,7 @@ A member past the wait:
 - **⋯ on each message** opens a small menu: **Edit** your own message (for 15 minutes) or **Report** someone else's.
 - **For the people leading the cause,** the menu also has:
   - **Hide:** others see *"Hidden by the people leading this cause"*; the author still sees their message, with a note. It also files a report for moderators. **Unhide** takes it back.
-  - **Remove from this cause** (also in the Members list): asks why. The person leaves the cause, can't rejoin, sign or RSVP there, and is told why on the page and by email. Their messages stay.
+  - **Remove from this cause** (also in the Members list): asks why. The person leaves the cause, can't rejoin, sign or RSVP there, and is told why on the page and in their notifications. Their messages stay.
   - Not on moderators' messages, and co-leaders are removed under Co-leaders. Moderators see all of it under **What leaders did** in the queue, and can undo it.
 - **Why the 24-hour wait:** it gives newcomers a day to get a feel for the conversation, and it stops bots that join and spam straight away. Reading, RSVPing and signing aren't held back, only posting in the chat.
 - **Other rules:** a confirmed email is needed to post. New accounts (first 24 hours) can post 10 messages an hour and no links; established accounts 60 an hour with up to 3 links. The same message twice within 10 minutes is refused.
@@ -222,7 +222,7 @@ Every event belongs to a cause. The Events tab lists them, each with the date an
   - The Events tab shows the next 4 (*"2 more dates after this"*), and Events nearby the next 2.
   - The host can edit **just this meeting** or **this and all future meetings**, and under **Cancel a meeting**, cancel just this one or this and all future ones. Everyone going is told.
 - The host is automatically going and sees **✓ Hosting**.
-- **Can't host it?** → **Step down as host** passes the event to the first person who RSVP'd (who gets an email), or cancels it if nobody else is going. The event then shows *"hosted by Sam (took over)."*
+- **Can't host it?** → **Step down as host** passes the event to the first person who RSVP'd (who gets a notification), or cancels it if nobody else is going. The event then shows *"hosted by Sam (took over)."*
 
 ![Step down as host](images/walkthrough/21-step-down.webp)
 
@@ -240,6 +240,7 @@ Every event belongs to a cause. The Events tab lists them, each with the date an
 - **Add to calendar** downloads the event for Google Calendar, Apple Calendar or Outlook. It assumes two hours, since events don't have an end time yet. For online events the file says "Online (link on the event page)" rather than including the link.
 - **Who's going:** *"Alex and Sam are going,"* and places left if there's a capacity.
 - **Hosts** get **Can't host it?** here too.
+- **✉️ Email my list an update** (hosts): opens your own email app with a message ready, and you send it yourself. Optionally add your own list as a spreadsheet (.xlsx or .csv), read on your device only, and the addresses go in BCC (big lists open in groups of 40). Groundswell doesn't send it, and members' emails are never shared.
 
 ### Events nearby
 
@@ -309,11 +310,11 @@ Click your name in the top bar.
 - **Upcoming meetups** you've RSVP'd to, with times in your time zone. **✕ Not going** cancels your RSVP. Meetups you host are tagged **Hosting**, with a **Manage** link to the meetup (stepping down is confirmed there).
 - **Causes you started** that you don't lead any more (you handed them over), and any a moderator hid or removed, with an **Under review** or **Removed** tag.
 - **Privacy:** **Show my name on causes I join** (on by default). Off, you're "A neighbour" in chats, signatures and who's going, and just counted elsewhere. The people leading each cause and moderators still see your name, it still goes on a petition you sign, and leading or hosting stays public.
-- **Causes you've joined** (other than ones you lead), each with **Mute emails** (no notification emails about that cause) and **✕ Leave**.
-- **Notifications on this device** (`/me#push`): **Turn on notifications on this device**. The kinds you've chosen under Email then come as phone or computer notifications instead of emails, and tapping one opens the right page. It's free standard web push. It works on Android and computers in any modern browser, and on iPhones once Groundswell is on the home screen (there's a short how-to). Turning it off, or signing out, stops it on that device. After you join a cause, a quiet offer also appears on the cause page, until you answer it.
-- **Email** (`/me#email`): which notification emails you get. Defaults: **Event reminders** (the day before an event you're going to), **"Is it fixed?"** (a leader asks members to confirm a win), **Wins** (a cause you joined is won) and **New members** (daily, for causes you lead) and **Announcements from leaders** are on; **Chat summary** (daily, new messages in your causes) is off. Requests to lead or co-lead, and sign-in emails, always come.
-- **Every notification email** ends with links to change these settings, to stop that kind, or to stop them all. The links are signed, so nobody can turn off someone else's emails, and the page asks before unsubscribing (mail apps' own one-click unsubscribe works too).
-- **Sending limits:** notifications get 60 of Resend's 100 free emails a day, so sign-in emails always have room. Past that, notifications are skipped until the next day (most useful first: reminders, then new members, then chat summaries). Reminders and summaries go out with the daily job at 09:00 UTC.
+- **Notifications** (`/me#notifications`): your latest 30, the same ones as under your name icon. Seeing them here marks them read. They're kept for 90 days.
+- **Causes you've joined** (other than ones you lead), each with **Mute** (no notifications about that cause) and **✕ Leave**.
+- **Notifications on this device** (`/me#push`): **Turn on notifications on this device**. The kinds you've chosen below then also come as phone or computer notifications, and tapping one opens the right page. It's free standard web push. It works on Android and computers in any modern browser, and on iPhones once Groundswell is on the home screen (there's a short how-to). Turning it off, or signing out, stops it on that device. After you join a cause, a quiet offer also appears on the cause page, until you answer it.
+- **What you hear about** (`/me#email`): which kinds of notifications you get. Defaults: **Event reminders** (the day before an event you're going to), **"Is it fixed?"** (a leader asks members to confirm a win), **Wins** (a cause you joined is won) and **New members** (daily, for causes you lead) and **Announcements from leaders** are on; **Chat summary** (daily, new messages in your causes) is off. Requests to lead or co-lead, taking over as host and being removed always reach you.
+- **Email is only for confirming your address and resetting your password.** Everything else is a notification, which keeps Groundswell within Resend's free 100 emails a day. Reminders and summaries go out with the daily job at 09:00 UTC. To email people again, set `NOTIFICATION_EMAILS` in `src/lib/notify-rules.ts`; those emails carry unsubscribe links, and they get 60 of the 100 a day.
 - **Your account:** your sign-in email, and **Delete my account…** (below).
 - **Admins also see** a **Moderation queue** box at the top with the number of open reports.
 

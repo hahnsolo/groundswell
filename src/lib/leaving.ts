@@ -1,6 +1,6 @@
 import "server-only";
 import { db } from "./db";
-import { appUrl, sendEmail } from "./mail";
+import { notifyAlways } from "./notify";
 import { anonymizeCutoff, anonymizedEmail, FORMER_MEMBER, pickNewHost } from "./accounts";
 
 // Everything that happens when someone steps back: from a meetup they host,
@@ -11,7 +11,7 @@ const upcoming = () => ({ startsAt: { gt: new Date() } });
 
 /**
  * The host of an upcoming meetup is leaving it. Hand it to the earliest RSVP
- * who still has an account (and email them), or cancel it if there's nobody.
+ * who still has an account (and tell them), or cancel it if there's nobody.
  */
 export async function handOverMeetup(meetupId: string, leavingUserId: string) {
   const meetup = await db.meetup.findUnique({
@@ -37,17 +37,11 @@ export async function handOverMeetup(meetupId: string, leavingUserId: string) {
     db.rsvp.deleteMany({ where: { meetupId, userId: leavingUserId } }),
   ]);
 
-  const host = await db.user.findUnique({ where: { id: newHostId }, select: { name: true, email: true } });
-  if (!host) return;
   try {
-    await sendEmail({
-      to: host.email,
-      subject: `You're now hosting "${meetup.title}"`,
-      text: `Hi ${host.name},\n\nThe host of "${meetup.title}" (about "${meetup.cause.title}") had to step back. You were the first to RSVP, so you're now the host.\n\nIf you can't host it, open the meetup and choose "Step down as host" — it'll pass to the next person who's going:\n${appUrl(`/events/${meetup.id}`)}\n\nThanks for keeping it going!`,
-    });
+    await notifyAlways(newHostId, "hosting", `You're now hosting "${meetup.title}"`, `The host had to step back, and you were the first to RSVP. If you can't host it, step down on the event page and it passes to the next person going.`, `/events/${meetup.id}`);
   } catch (err) {
-    // The handover stands even if the email doesn't go out.
-    console.error("Couldn't email new meetup host", err);
+    // The handover stands even if telling them doesn't work.
+    console.error("Couldn't notify new meetup host", err);
   }
 }
 

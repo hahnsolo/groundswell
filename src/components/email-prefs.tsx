@@ -4,7 +4,7 @@ import { saveEmailPrefs } from "@/app/actions/notifications";
 import { NOTIFY_KIND_IDS, NOTIFY_KINDS, type NotifyPrefs } from "@/lib/notify-rules";
 import { SubmitButton, useFormAction } from "./ui";
 
-/** Which notification emails to get (#18). Sign-in and account emails always come. */
+/** Which kinds of notifications to get (#18, #95), in your list and by push. */
 export function EmailPrefsForm({ prefs }: { prefs: NotifyPrefs }) {
   const [state, action] = useFormAction(saveEmailPrefs);
   return (
@@ -26,10 +26,10 @@ export function EmailPrefsForm({ prefs }: { prefs: NotifyPrefs }) {
           );
         })}
       </ul>
-      <p className="text-xs text-muted">Requests to lead or co-lead a cause always come by email, as do sign-in and account emails.</p>
+      <p className="text-xs text-muted">Requests to lead or co-lead a cause always reach you. We only email you to confirm your address or reset your password.</p>
       <div className="flex items-center gap-3">
         <SubmitButton variant="secondary" pendingText="Saving…">
-          Save email settings
+          Save notification settings
         </SubmitButton>
         {state?.ok && <span role="status" className="text-sm text-muted">Saved.</span>}
       </div>

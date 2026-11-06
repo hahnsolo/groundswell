@@ -36,14 +36,29 @@ export function startOfBudgetDay(now = new Date()) {
   return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
 }
 
-/** Whether this person wants this email about this cause. Deactivated accounts get nothing. */
-export function wants(
-  user: NotifyPrefs & { deactivatedAt?: Date | null; emailVerified?: boolean },
-  kind: NotifyKind,
-  muted = false,
-) {
-  if (user.deactivatedAt || user.emailVerified === false || muted) return false;
+/** Whether this person wants this kind of notification about this cause. Deactivated accounts get nothing. */
+export function wants(user: NotifyPrefs & { deactivatedAt?: Date | null }, kind: NotifyKind, muted = false) {
+  if (user.deactivatedAt || muted) return false;
   return user[NOTIFY_KINDS[kind].pref];
+}
+
+/**
+ * Notifications go to the site and to push (#95). Email is kept for confirming
+ * sign-up and password resets, to stay within the free plan's daily limit.
+ * Turn this on to email people who have no push again (within the budget).
+ */
+export const NOTIFICATION_EMAILS = false as boolean;
+
+/** Notifications older than this are cleared by the daily job. */
+export const NOTIFICATION_KEEP_DAYS = 90;
+
+/** Kinds that always go through, because they're about you or need your answer. */
+export type AlwaysKind = "leading" | "hosting" | "removed";
+export type NoticeKind = NotifyKind | AlwaysKind;
+
+/** What's stored: short, with the title and text within their limits. */
+export function noticeRow(userId: string, kind: NoticeKind, message: { title: string; body: string; url: string }) {
+  return { userId, kind, title: message.title.slice(0, 120), body: message.body.slice(0, 300), url: message.url };
 }
 
 const HOUR = 60 * 60 * 1000;

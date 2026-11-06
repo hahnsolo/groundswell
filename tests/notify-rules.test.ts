@@ -4,6 +4,8 @@ import {
   checkUnsubscribe,
   DAILY_NOTIFY_BUDGET,
   digestSince,
+  noticeRow,
+  NOTIFICATION_EMAILS,
   prefsOff,
   reminderWindow,
   startOfBudgetDay,
@@ -27,10 +29,19 @@ describe("who gets which email", () => {
     expect(wants({ ...defaults, notifyChatDigest: true }, "chat_digest")).toBe(true);
   });
 
-  it("sends nothing about a muted cause, to deactivated accounts or to unconfirmed emails", () => {
+  it("tells people whose email isn't confirmed too, since nothing is emailed (#95)", () => {
+    expect(wants({ ...defaults, emailVerified: false } as typeof defaults, "won")).toBe(true);
+  });
+
+  it("sends nothing about a muted cause or to deactivated accounts", () => {
     expect(wants(defaults, "won", true)).toBe(false);
     expect(wants({ ...defaults, deactivatedAt: new Date() }, "won")).toBe(false);
-    expect(wants({ ...defaults, emailVerified: false }, "won")).toBe(false);
+  });
+
+  it("keeps notifications off email, and within their limits (#95)", () => {
+    expect(NOTIFICATION_EMAILS).toBe(false);
+    const row = noticeRow("u1", "leading", { title: "t".repeat(200), body: "b".repeat(500), url: "/causes/1" });
+    expect(row).toEqual({ userId: "u1", kind: "leading", title: "t".repeat(120), body: "b".repeat(300), url: "/causes/1" });
   });
 });
 

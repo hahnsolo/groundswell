@@ -13,7 +13,7 @@ export function HandOverForm({ causeId, members }: { causeId: string; members: {
     <form action={action} className="space-y-3">
       <input type="hidden" name="causeId" value={causeId} />
       <p className="text-muted">
-        They&apos;ll get an email and a note on the cause, and have 7 days to accept. You stay on as a member.
+        They&apos;ll get a notification and a note on the cause, and have 7 days to accept. You stay on as a member.
       </p>
       <FormError message={state?.error} />
       <div className="flex flex-wrap items-center gap-2">

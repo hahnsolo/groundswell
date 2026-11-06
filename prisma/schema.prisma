@@ -46,6 +46,7 @@ model User {
   notifyAnnouncements Boolean @default(true) // news from the people leading a cause they joined (#73)
 
   sessions           Session[]
+  inbox              Notification[]
   announcements      Announcement[]
   announcementNotices AnnouncementNotice[]
   pushSubscriptions  PushSubscription[]
@@ -83,6 +84,25 @@ model Session {
   pushSubscriptions PushSubscription[]
 
   @@index([userId])
+}
+
+// One notification in someone's list, under their name icon and on /me (#95).
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  // A kind from src/lib/notify-rules.ts, or one of leading | hosting | removed.
+  kind      String
+  title     String
+  body      String
+  // The page it opens.
+  url       String
+  createdAt DateTime  @default(now())
+  readAt    DateTime?
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([userId, readAt])
+  @@index([createdAt])
 }
 
 // A device getting push notifications (#72). Tied to the sign-in session, so

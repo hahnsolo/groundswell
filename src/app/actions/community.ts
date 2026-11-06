@@ -8,7 +8,7 @@ import { findInviteCode } from "@/lib/spread";
 import { removedFromCause } from "@/lib/members";
 import { randomUUID } from "node:crypto";
 import { MAX_OCCURRENCES, occurrences, validTimeZone } from "@/lib/recurrence";
-import { notifyCancelled, notifyWinCheck, notifyWon } from "@/lib/notify";
+import { notifyAlways, notifyCancelled, notifyWinCheck, notifyWon } from "@/lib/notify";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@/lib/db";
@@ -31,7 +31,6 @@ import { canReopen, confirmationsNeeded, isActive, proposalOpen } from "@/lib/st
 import { refreshStage } from "@/lib/cause-stage";
 import { canLeadAnother, LIMIT_REACHED } from "@/lib/leading-limit";
 import { getActiveLedCauses } from "@/lib/queries";
-import { appUrl, sendEmail } from "@/lib/mail";
 import { fromZodError, type FormState } from "@/lib/forms";
 
 const id = z.string().min(1).max(40);
@@ -405,15 +404,7 @@ export async function offerLead(_prev: FormState, formData: FormData): Promise<F
     db.leadOffer.updateMany({ where: { causeId, answeredAt: null }, data: { answeredAt: new Date(), accepted: false } }),
     db.leadOffer.create({ data: { causeId, fromUserId: user.id, toUserId } }),
   ]);
-  try {
-    await sendEmail({
-      to: membership.user.email,
-      subject: `${user.name} would like you to lead "${cause.title}"`,
-      text: `Hi ${membership.user.name},\n\n${user.name} has asked you to take over leading "${cause.title}" on Groundswell. You'd be able to edit it, move it forward and organize around it; ${user.name} stays on as a member.\n\nAccept or decline here (the offer is open for ${LEAD_OFFER_DAYS} days):\n${appUrl(`/causes/${causeId}`)}\n\nThanks for caring about your neighbourhood!`,
-    });
-  } catch (e) {
-    console.warn("Lead offer email failed:", (e as Error).message); // the offer still shows on the cause
-  }
+  await notifyAlways(toUserId, "leading", `${user.name} would like you to lead "${cause.title}"`, `Accept or decline on the cause. The offer is open for ${LEAD_OFFER_DAYS} days.`, `/causes/${causeId}`);
   refresh();
   return { ok: true };
 }
@@ -456,17 +447,13 @@ export async function answerLeadOffer(formData: FormData) {
         ]
       : []),
   ]);
-  try {
-    await sendEmail({
-      to: offer.from.email,
-      subject: accept ? `${user.name} now leads "${offer.cause.title}"` : `${user.name} can't take over "${offer.cause.title}"`,
-      text: accept
-        ? `Hi ${offer.from.name},\n\n${user.name} accepted and now leads "${offer.cause.title}". You're still a member.\n\n${appUrl(`/causes/${offer.causeId}`)}`
-        : `Hi ${offer.from.name},\n\n${user.name} isn't able to lead "${offer.cause.title}" right now. You still lead it, and you can offer it to someone else:\n${appUrl(`/causes/${offer.causeId}`)}`,
-    });
-  } catch (e) {
-    console.warn("Lead answer email failed:", (e as Error).message);
-  }
+  await notifyAlways(
+    offer.fromUserId,
+    "leading",
+    accept ? `${user.name} now leads "${offer.cause.title}"` : `${user.name} can't take over "${offer.cause.title}"`,
+    accept ? "You're still a member." : "You still lead it, and you can offer it to someone else.",
+    `/causes/${offer.causeId}`,
+  );
   refresh();
 }
 
@@ -495,15 +482,7 @@ export async function inviteCoLeader(_prev: FormState, formData: FormData): Prom
     create: { causeId, userId: toUserId, invitedById: user.id },
     update: { invitedById: user.id, createdAt: new Date(), acceptedAt: null },
   });
-  try {
-    await sendEmail({
-      to: membership.user.email,
-      subject: `${user.name} would like you to co-lead "${cause.title}"`,
-      text: `Hi ${membership.user.name},\n\n${user.name} has asked you to help lead "${cause.title}" on Groundswell. Co-leaders can edit the cause, move it forward and organize around it, alongside ${user.name}.\n\nAccept or decline here (the invite is open for ${LEAD_OFFER_DAYS} days):\n${appUrl(`/causes/${causeId}`)}\n\nThanks for caring about your neighbourhood!`,
-    });
-  } catch (e) {
-    console.warn("Co-lead invite email failed:", (e as Error).message); // the invite still shows on the cause
-  }
+  await notifyAlways(toUserId, "leading", `${user.name} would like you to co-lead "${cause.title}"`, `Accept or decline on the cause. The invite is open for ${LEAD_OFFER_DAYS} days.`, `/causes/${causeId}`);
   refresh();
   return { ok: true };
 }
@@ -524,16 +503,8 @@ export async function answerCoLeadInvite(formData: FormData) {
     if (!canLeadAnother((await getActiveLedCauses(user.id)).length, user.isAdmin)) return; // the notice explains
     await db.coLeader.update({ where: key, data: { acceptedAt: new Date() } });
   }
-  try {
-    const accepted = parsed.data.answer === "accept";
-    await sendEmail({
-      to: invite.invitedBy.email,
-      subject: accepted ? `${user.name} is now co-leading "${invite.cause.title}"` : `${user.name} can't co-lead "${invite.cause.title}"`,
-      text: `Hi ${invite.invitedBy.name},\n\n${user.name} ${accepted ? "accepted and now co-leads" : "isn't able to co-lead"} "${invite.cause.title}".\n\n${appUrl(`/causes/${parsed.data.causeId}`)}`,
-    });
-  } catch (e) {
-    console.warn("Co-lead answer email failed:", (e as Error).message);
-  }
+  const accepted = parsed.data.answer === "accept";
+  await notifyAlways(invite.invitedById, "leading", accepted ? `${user.name} is now co-leading "${invite.cause.title}"` : `${user.name} can't co-lead "${invite.cause.title}"`, "", `/causes/${parsed.data.causeId}`);
   refresh();
 }
 

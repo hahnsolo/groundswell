@@ -446,12 +446,12 @@ let CAUSE;
   // 11. Email notifications (#18). Events starting about a day from now get reminders from the daily job.
   // Sam hosts: demo accounts are new for a day (2 events an hour), and Alex has made his two.
   const host = page;
-  const runDailyEmails = async () => {
+  const runDailyEmails = async () => { // the daily job's report of who it told
     const env = readFileSync(new URL("../../.env", import.meta.url), "utf8");
     const cronSecret = env.match(/^CRON_SECRET="?([^"\r\n]*)"?/m)?.[1];
     const res = await host.request.get(`${BASE}/api/cron/daily`, { headers: { Authorization: `Bearer ${cronSecret}` } });
     assert.equal(res.status(), 200);
-    return (await res.json()).emails;
+    return (await res.json()).notifications;
   };
   const runDaily = async () => (await runDailyEmails()).reminded;
   const eventTomorrow = async (title) => {
@@ -492,7 +492,7 @@ let CAUSE;
   assert.equal((await host.request.post(pushApi, { data: fakeDevice("sam-phone") })).status(), 200);
   assert.equal((await host.request.post(pushApi, { data: fakeDevice("gone") })).status(), 200);
   const reminded = await runDaily();
-  assert.equal(reminded.find((r) => r.email === "sam@demo.test" && r.event === "Litter pick tomorrow")?.channel, "push", "someone with push on gets it instead of an email");
+  assert.equal(reminded.find((r) => r.email === "sam@demo.test" && r.event === "Litter pick tomorrow")?.channel, "push", "someone with push on gets it there too");
   assert.deepEqual(await myDevices(host), [fakeDevice("sam-phone").endpoint], "a device that's gone for good is forgotten");
   // Signing out stops it on that device, and only that one.
   const samLaptop = await signIn(browser, "sam@demo.test", opts);
@@ -504,7 +504,7 @@ let CAUSE;
   assert.equal((await getPush(samLaptop)).status(), 401);
   assert.deepEqual(await myDevices(host), [fakeDevice("sam-phone").endpoint], "signing out stops push on that device, not the others");
   await samLaptop.context().close();
-  step("Push: stored for this device, used instead of email, dead devices forgotten, signing out stops it");
+  step("Push: stored for this device, dead devices forgotten, signing out stops it");
   assert.ok(reminded.some((r) => r.email === "sam@demo.test" && r.event === "Litter pick tomorrow"), "the host who's going wasn't reminded");
   assert.ok(!reminded.some((r) => r.email === "alex@demo.test" && r.event === "Litter pick tomorrow"), "someone not going was reminded");
   assert.equal((await runDaily()).filter((r) => r.event === "Litter pick tomorrow").length, 0, "a reminder went out twice");
@@ -514,7 +514,7 @@ let CAUSE;
   const prefs = host.locator("#email");
   assert.equal(await prefs.getByLabel(/Chat summary/).isChecked(), false, "the chat summary should be off by default");
   await prefs.getByLabel(/Event reminders/).uncheck();
-  await prefs.getByRole("button", { name: "Save email settings" }).click();
+  await prefs.getByRole("button", { name: "Save notification settings" }).click();
   await prefs.getByText("Saved.").waitFor({ timeout: 30000 });
   await go(host, "/me");
   assert.equal(await host.locator("#email").getByLabel(/Event reminders/).isChecked(), false, "the setting wasn't saved");
@@ -927,13 +927,33 @@ let CAUSE;
   assert.match(await pinnedNews.innerText(), /Bring your rent notices/, "the latest is pinned");
   assert.doesNotMatch(await pinnedNews.innerText(), /moved to Thursday/, "and it replaces the one before");
   assert.equal(await pinnedNews.getByRole("button", { name: "Unpin" }).count(), 0, "members can't unpin");
-  const daily = await runDailyEmails();
-  const alexEmail = daily.announced.filter((a) => a.email === "alex@demo.test");
-  assert.equal(alexEmail.length, 1, "one email per person");
-  assert.equal(alexEmail[0].announcements, 2, "bundling both announcements");
-  assert.ok(!daily.announced.some((a) => a.email === "sam@demo.test"), "Sam has push on, so he got them already");
-  assert.ok(!daily.announced.some((a) => a.email === "priya@demo.test"), "the author isn't told about their own");
-  assert.equal((await runDailyEmails()).announced.length, 0, "nobody is emailed twice");
+  // Notifications (#95): under the name icon, with an unread count, and on /me. Telling people happens just after the post, so allow a moment.
+  const unreadBadge = alex.getByTestId("unread-count");
+  for (let tries = 0; tries < 10 && !(await unreadBadge.count()); tries++) {
+    await alex.waitForTimeout(1500);
+    await go(alex, `/causes/${park}/chat`);
+  }
+  assert.equal(await unreadBadge.count(), 1, "the name icon shows an unread count");
+  const nameIcon = alex.getByRole("button", { name: /notifications and your activity/ });
+  await nameIcon.click();
+  const dropdown = alex.getByRole("region", { name: "Notifications" });
+  assert.match(await dropdown.innerText(), /News from "Rent increases[\s\S]*Bring your rent notices/, "the dropdown lists it");
+  await unreadBadge.waitFor({ state: "detached", timeout: 30000 });
+  await dropdown.getByRole("link", { name: /Bring your rent notices/ }).first().click();
+  await alex.waitForURL(new RegExp(`/causes/${park}/chat`), { timeout: 30000 });
+  await alex.waitForTimeout(1500);
+  await go(alex, `/causes/${park}`);
+  assert.equal(await unreadBadge.count(), 0, "opening them marks them read");
+  await go(alex, "/me");
+  assert.match(await alex.locator("#notifications").innerText(), /News from "Rent increases[\s\S]*moved to Thursday/, "and they're on the profile page too");
+  await go(priya4, "/me");
+  assert.doesNotMatch(await priya4.locator("#notifications").innerText(), /News from "Rent increases/, "the author isn't told about their own");
+  await go(page, "/me");
+  assert.match(await page.locator("#notifications").innerText(), /You were removed from "Rent increases[\s\S]*Repeated spam/, "a removal shows there, with the reason");
+  const dailyRun = await runDailyEmails();
+  assert.equal(dailyRun.announced, undefined, "announcements aren't emailed");
+  step("Notifications: unread count on the name icon, a dropdown that links to the right page, marked read when opened, and listed on /me");
+
   await postNews("Third and last one this week.");
   await go(priya4, `/causes/${park}`);
   await priya4.getByText("📢 Post an announcement").click();
@@ -942,7 +962,7 @@ let CAUSE;
   await priya4.getByRole("complementary", { name: "Announcement" }).getByRole("button", { name: "Unpin" }).click();
   await priya4.getByRole("complementary", { name: "Announcement" }).waitFor({ state: "detached", timeout: 30000 });
   await priya4.context().close();
-  step("Announcements: pinned in the chat, push now or one daily email per person, at most 3 a week, and the leader can unpin");
+  step("Announcements: pinned in the chat, at most 3 a week, and the leader can unpin");
 
   // 22. Recurring events (#78). Priya sets up a weekly meeting, 6 times; the next 4 show; she changes the future ones and cancels one, then the rest.
   const priya5 = await signIn(browser, "priya@demo.test", opts);
@@ -985,6 +1005,17 @@ let CAUSE;
   assert.match(await weekly.nth(0).innerText(), /Fort York library/, "the one before is unchanged");
   assert.match(await weekly.nth(1).innerText(), /Community room/);
   assert.match(await weekly.nth(3).innerText(), /Community room/, "and all future ones changed");
+  // Email my list an update (#95): opens her own email app, with her own list in BCC. Nothing is uploaded.
+  await go(priya5, secondHref);
+  await priya5.locator("#email-list summary").click();
+  const listBox = priya5.locator("#email-list");
+  const plainMail = await listBox.getByRole("link", { name: "Open in my email" }).getAttribute("href");
+  assert.match(plainMail, /^mailto:\?subject=Update/, "it opens her own email with the message ready");
+  assert.doesNotMatch(plainMail, /bcc=/, "and no addresses until she adds her list");
+  await listBox.locator('input[type="file"]').setInputFiles({ name: "list.csv", mimeType: "text/csv", buffer: Buffer.from("Name,Email\nMaya,maya.update@example.com\n") });
+  await listBox.getByRole("status").waitFor({ timeout: 30000 });
+  assert.match(decodeURIComponent(await listBox.getByRole("link", { name: "Open in my email" }).getAttribute("href")), /^mailto:\?bcc=maya\.update@example\.com&subject=Update/);
+  step("Email my list: a host's update opens their own email, with their own list in BCC");
   // Cancel just the second.
   await go(priya5, secondHref);
   await priya5.locator("#cancel summary").click();
