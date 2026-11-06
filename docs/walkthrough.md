@@ -217,6 +217,10 @@ Every event belongs to a cause. The Events tab lists them, each with the date an
 ![Events tab with the new-event form open](images/walkthrough/08-meetup-form.webp)
 
 - **+ Organize an event** opens the form: title, when, where (a public place is suggested), an optional plan, and an optional capacity. Tick **Online meetup** and *Where* becomes *Video link*. **The link is only shown to people going**, so random visitors can't drop into the call.
+- **Repeats** (on the same form): just once, every week, every 2 weeks, or every month on the same weekday (the 2nd Tuesday stays the 2nd Tuesday; a 5th becomes the last), for a number of times or until a date, up to 26. It stays at the same time on the clock when the clocks change.
+  - Each meeting is its own event with its own page: people say they're going per meeting, and each gets its own reminder.
+  - The Events tab shows the next 4 (*"2 more dates after this"*), and Events nearby the next 2.
+  - The host can edit **just this meeting** or **this and all future meetings**, and under **Cancel a meeting**, cancel just this one or this and all future ones. Everyone going is told.
 - The host is automatically going and sees **✓ Hosting**.
 - **Can't host it?** → **Step down as host** passes the event to the first person who RSVP'd (who gets an email), or cancels it if nobody else is going. The event then shows *"hosted by Sam (took over)."*
 

@@ -4,6 +4,7 @@ import { connection } from "next/server";
 import { db } from "./db";
 import { boundingBox, distanceKm } from "./geo";
 import { eventState } from "./event-times";
+import { nextOfEachSeries } from "./recurrence";
 
 const HOUR = 60 * 60 * 1000;
 const DAY = 24 * HOUR;
@@ -84,8 +85,9 @@ export async function getNearbyEvents(opts: { country: string; lat: number; lng:
       rsvps: viewerId ? { where: { userId: viewerId }, select: { userId: true } } : false,
     },
   });
-  return rows
-    .map((e) => ({
+  // A weekly meeting shows its next two, not two months of the same thing (#78).
+  return nextOfEachSeries(rows, 2)
+    .shown.map((e) => ({
       ...e,
       distanceKm: distanceKm(opts.lat, opts.lng, e.cause.lat, e.cause.lng),
       viewerGoing: Array.isArray(e.rsvps) && e.rsvps.length > 0,

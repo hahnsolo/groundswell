@@ -944,6 +944,66 @@ let CAUSE;
   await priya4.context().close();
   step("Announcements: pinned in the chat, push now or one daily email per person, at most 3 a week, and the leader can unpin");
 
+  // 22. Recurring events (#78). Priya sets up a weekly meeting, 6 times; the next 4 show; she changes the future ones and cancels one, then the rest.
+  const priya5 = await signIn(browser, "priya@demo.test", opts);
+  await go(priya5, `/causes/${park}/events`);
+  await priya5.getByText("+ Organize an event").click();
+  const weeklyForm = priya5.locator("form", { has: priya5.getByRole("button", { name: "Create meetup" }) });
+  await weeklyForm.getByLabel("Title").fill("Weekly tenants check-in");
+  await weeklyForm.getByLabel("Starts").fill(`${ymd}T18:30`);
+  await weeklyForm.getByLabel("Where").fill("Fort York library");
+  await weeklyForm.getByLabel("Repeats").selectOption("weekly");
+  await weeklyForm.getByLabel("How many times").fill("6");
+  await Promise.all([priya5.waitForURL(/\/events\/\w+/, { timeout: 60000, waitUntil: "commit" }), weeklyForm.getByRole("button", { name: "Create meetup" }).click()]);
+  await settle(priya5);
+  assert.match(await text(priya5), /Repeats every week/);
+  await go(priya5, `/causes/${park}/events`);
+  const weekly = priya5.locator("section", { has: priya5.getByRole("heading", { name: "Weekly tenants check-in" }) });
+  assert.equal(await weekly.count(), 4, "the next 4 show");
+  assert.match(await weekly.nth(3).innerText(), /2 more dates after this/);
+  const whenOf = async (i) => (await weekly.nth(i).locator("time").getAttribute("datetime"));
+  const week = 7 * 24 * 60 * 60 * 1000;
+  const firstAt = new Date(await whenOf(0)).getTime();
+  assert.ok(Math.abs(new Date(await whenOf(1)).getTime() - firstAt - week) <= 60 * 60 * 1000, "a week apart (give or take a clock change)");
+  // People say they're going per meeting.
+  const secondHref = await weekly.nth(1).getByRole("link", { name: "Weekly tenants check-in" }).getAttribute("href");
+  await go(alex, secondHref);
+  await alex.getByRole("button", { name: "I'll be there" }).click();
+  await waitText(alex, /You're going/);
+  await go(alex, `/causes/${park}/events`);
+  const alexWeekly = alex.locator("section", { has: alex.getByRole("heading", { name: "Weekly tenants check-in" }) });
+  assert.match(await alexWeekly.nth(1).innerText(), /✓ Going/);
+  assert.match(await alexWeekly.nth(0).innerText(), /I'll be there/, "going to one isn't going to all");
+  // Change this and all future ones, from the second.
+  await go(priya5, secondHref);
+  await priya5.getByText("Edit event details").click();
+  await priya5.locator("form", { has: priya5.getByRole("button", { name: "Save changes" }) }).locator('input[name="location"]').fill("Community room, 2nd floor");
+  await priya5.getByLabel("This and all future meetings").check();
+  await priya5.getByRole("button", { name: "Save changes" }).click();
+  await priya5.getByText("Saved.").waitFor({ timeout: 30000 });
+  await go(priya5, `/causes/${park}/events`);
+  assert.match(await weekly.nth(0).innerText(), /Fort York library/, "the one before is unchanged");
+  assert.match(await weekly.nth(1).innerText(), /Community room/);
+  assert.match(await weekly.nth(3).innerText(), /Community room/, "and all future ones changed");
+  // Cancel just the second.
+  await go(priya5, secondHref);
+  await priya5.locator("#cancel summary").click();
+  await Promise.all([priya5.waitForURL(new RegExp(`/causes/${park}/events`), { timeout: 60000, waitUntil: "commit" }), priya5.getByRole("button", { name: "Cancel just this one" }).click()]);
+  await settle(priya5);
+  assert.equal(await weekly.count(), 4, "the next one takes its place");
+  assert.match(await weekly.nth(3).innerText(), /1 more date after this/, "one fewer in the series");
+  // Cancel from the third on (taking its link first, as the list is on screen now).
+  const thirdHref = await weekly.nth(1).getByRole("link", { name: "Weekly tenants check-in" }).getAttribute("href");
+  await go(priya5, secondHref);
+  assert.doesNotMatch(await text(priya5), /Weekly tenants check-in/, "the cancelled one is gone");
+  await go(priya5, thirdHref);
+  await priya5.locator("#cancel summary").click();
+  await Promise.all([priya5.waitForURL(new RegExp(`/causes/${park}/events`), { timeout: 60000, waitUntil: "commit" }), priya5.getByRole("button", { name: "Cancel this and all future ones" }).click()]);
+  await settle(priya5);
+  assert.equal(await weekly.count(), 1, "only the first is left");
+  await priya5.context().close();
+  step("Recurring events: the next 4 show, going is per meeting, the host changes all future ones and cancels one or the rest");
+
   await alex.context().close();
   await page.context().close();
 }

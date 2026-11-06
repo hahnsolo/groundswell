@@ -6,7 +6,8 @@ import { getCurrentUser } from "@/lib/auth";
 import { getEventDetail } from "@/lib/event-queries";
 import { displayName } from "@/lib/accounts";
 import { peopleLine } from "@/lib/momentum";
-import { stepDownAsHost, toggleRsvp } from "@/app/actions/community";
+import { cancelOccurrence, stepDownAsHost, toggleRsvp } from "@/app/actions/community";
+import { isRepeat, REPEATS } from "@/lib/recurrence";
 import { LocalTimeRange } from "@/components/local-time";
 import { EditEventForm, ShareButton } from "@/components/cause-forms";
 import { canEditEvent } from "@/lib/editing";
@@ -136,6 +137,12 @@ async function Event({ params }: Pick<PageProps<"/events/[id]">, "params">) {
               {e.hostChangedAt && " (took over)"}
             </dd>
           </div>
+          {isRepeat(e.repeat) && (
+            <div className="flex gap-3">
+              <dt className="w-5 shrink-0" aria-label="Repeats">🔁</dt>
+              <dd>Repeats {REPEATS[e.repeat]}. Say you&apos;re going to each meeting on its own.</dd>
+            </div>
+          )}
         </dl>
 
         {!e.over && (
@@ -221,6 +228,7 @@ async function Event({ params }: Pick<PageProps<"/events/[id]">, "params">) {
                 location: e.location,
                 isOnline: e.isOnline,
                 capacity: e.capacity,
+                seriesId: e.seriesId,
               }}
             />
           </div>
@@ -233,6 +241,24 @@ async function Event({ params }: Pick<PageProps<"/events/[id]">, "params">) {
           <div className="mt-3 max-w-xl">
             <CoverPicker target="event" id={e.id} current={e.coverUrl} currentAlt={e.coverAlt} label="Choose a cover image for this event" />
           </div>
+        </details>
+      )}
+
+      {hosting && e.upcoming && e.seriesId && (
+        <details className="mt-6 border-t border-border pt-4 text-sm" id="cancel">
+          <summary className="cursor-pointer text-muted hover:text-foreground">Cancel a meeting</summary>
+          <form action={cancelOccurrence} className="mt-2 max-w-md space-y-2">
+            <input type="hidden" name="meetupId" value={e.id} />
+            <p className="text-muted">Everyone going is told. Other people&apos;s RSVPs to it go with it.</p>
+            <div className="flex flex-wrap gap-2">
+              <button name="scope" value="one" className={`${buttonStyles.secondary} !px-3 !py-1 text-xs`}>
+                Cancel just this one
+              </button>
+              <button name="scope" value="future" className={`${buttonStyles.secondary} !px-3 !py-1 text-xs text-red-700 dark:text-red-400`}>
+                Cancel this and all future ones
+              </button>
+            </div>
+          </form>
         </details>
       )}
 

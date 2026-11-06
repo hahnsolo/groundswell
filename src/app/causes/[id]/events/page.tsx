@@ -8,6 +8,7 @@ import { LocalTimeRange } from "@/components/local-time";
 import { MeetupForm } from "@/components/cause-forms";
 import { Panel, SignInPrompt } from "@/components/cause-parts";
 import { buttonStyles } from "@/components/styles";
+import { isRepeat, nextOfEachSeries, REPEATS } from "@/lib/recurrence";
 
 // Events belong to a cause: meetups in person or online.
 export default function EventsTab(props: PageProps<"/causes/[id]/events">) {
@@ -24,11 +25,15 @@ async function Events({ params }: Pick<PageProps<"/causes/[id]/events">, "params
   const cause = await getCauseDetail(id, user?.id ?? null);
   if (!cause || cause.removedAt || (cause.hidden && cause.authorId !== user?.id)) return null; // the layout explains
   const here = `/causes/${cause.id}/events`;
+  // A recurring meeting shows its next 4 here (#78).
+  const { shown, more } = nextOfEachSeries(cause.meetups, 4);
 
   return (
     <div className="space-y-4">
-      {cause.meetups.map((m) => {
+      {shown.map((m, i) => {
         const going = Array.isArray(m.rsvps) && m.rsvps.length > 0;
+        // After the last one shown of a series: how many more dates there are.
+        const moreDates = m.seriesId && !shown.slice(i + 1).some((later) => later.seriesId === m.seriesId) ? more.get(m.seriesId) : undefined;
         const full = !!m.capacity && m._count.rsvps >= m.capacity;
         const hosting = user?.id === m.organizerId;
         return (
@@ -57,6 +62,7 @@ async function Events({ params }: Pick<PageProps<"/causes/[id]/events">, "params
                   {m.isOnline ? "🖥️ Online" : `📍 ${m.location}`} · hosted by {displayName(m.organizer)}
                   {m.hostChangedAt && " (took over)"}
                 </p>
+                {isRepeat(m.repeat) && <p className="mt-1 text-xs text-muted">🔁 Repeats {REPEATS[m.repeat]}{moreDates ? ` · ${moreDates} more date${moreDates === 1 ? "" : "s"} after this` : ""}</p>}
               </div>
               <div className="flex shrink-0 flex-col items-end gap-1">
                 {hosting ? (
