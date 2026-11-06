@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { requireAdmin } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { moderate, restore } from "@/app/actions/admin";
+import { liftCauseBan, undoLeaderHide } from "@/app/actions/leader-moderation";
 import { RelativeTime } from "@/components/local-time";
 import { buttonStyles, inputStyles } from "@/components/styles";
 import { displayName } from "@/lib/accounts";
@@ -82,7 +83,84 @@ async function Queue() {
         <QueueList list={list} causeById={causeById} commentById={commentById} />
       )}
       <RecentlyRemoved />
+      <LeaderLog />
     </>
+  );
+}
+
+const ACTION_WORDS: Record<string, string> = {
+  hide: "hid a message by",
+  unhide: "un-hid a message by",
+  remove: "removed",
+  undo_hide: "(moderator) undid hiding a message by",
+  lift_ban: "(moderator) lifted the removal of",
+};
+
+/** What leaders did in their own causes (#71): every hide and removal, with undo while it still stands. */
+async function LeaderLog() {
+  const actions = await db.leaderAction.findMany({ orderBy: { createdAt: "desc" }, take: 100 });
+  const unique = (ids: (string | null)[]) => [...new Set(ids.filter((i): i is string => !!i))];
+  const [people, causes, comments, bans] = await Promise.all([
+    db.user.findMany({ where: { id: { in: unique(actions.flatMap((a) => [a.byUserId, a.targetUserId])) } }, select: { id: true, name: true, deactivatedAt: true } }),
+    db.cause.findMany({ where: { id: { in: unique(actions.map((a) => a.causeId)) } }, select: { id: true, title: true } }),
+    db.comment.findMany({ where: { id: { in: unique(actions.map((a) => a.commentId)) } }, select: { id: true, body: true, hiddenByLeaderId: true } }),
+    db.causeBan.findMany({ where: { causeId: { in: unique(actions.map((a) => a.causeId)) }, liftedAt: null }, select: { causeId: true, userId: true } }),
+  ]);
+  const person = new Map(people.map((p) => [p.id, displayName(p)]));
+  const cause = new Map(causes.map((c) => [c.id, c.title]));
+  const comment = new Map(comments.map((c) => [c.id, c]));
+  const banned = new Set(bans.map((b) => `${b.causeId}:${b.userId}`));
+  const seen = new Set<string>(); // only the latest action on something offers an undo
+
+  return (
+    <section className="mt-12" aria-labelledby="leader-log">
+      <h2 id="leader-log" className="text-lg font-semibold tracking-tight">
+        What leaders did
+      </h2>
+      <p className="mb-4 mt-1 text-sm text-muted">Every message hidden and person removed by the people leading a cause. You can undo any that still stand.</p>
+      {actions.length === 0 ? (
+        <p className="rounded-xl border border-dashed border-border bg-surface p-6 text-center text-sm text-muted">Nothing yet.</p>
+      ) : (
+        <ul className="space-y-3">
+          {actions.map((a) => {
+            const c = a.commentId ? comment.get(a.commentId) : undefined;
+            const key = a.commentId ?? `${a.causeId}:${a.targetUserId}`;
+            const first = !seen.has(key);
+            seen.add(key);
+            const undoHide = first && a.kind === "hide" && !!c?.hiddenByLeaderId;
+            const undoBan = first && a.kind === "remove" && banned.has(`${a.causeId}:${a.targetUserId}`);
+            return (
+              <li key={a.id} className="rounded-xl border border-border bg-surface p-4 text-sm">
+                <p>
+                  <strong>{person.get(a.byUserId) ?? "Someone"}</strong> {ACTION_WORDS[a.kind] ?? a.kind} <strong>{person.get(a.targetUserId) ?? "someone"}</strong> in{" "}
+                  <Link href={`/causes/${a.causeId}`} className="underline">
+                    {cause.get(a.causeId) ?? "a cause"}
+                  </Link>{" "}
+                  <span className="text-xs text-muted">
+                    <RelativeTime iso={a.createdAt.toISOString()} />
+                  </span>
+                </p>
+                {c && <p className="mt-1 line-clamp-3 whitespace-pre-line text-xs text-muted">&ldquo;{c.body}&rdquo;</p>}
+                {a.reason && <p className="mt-1 text-xs text-muted">Reason: &ldquo;{a.reason}&rdquo;</p>}
+                {undoHide && (
+                  <form action={undoLeaderHide} className="mt-2">
+                    <input type="hidden" name="commentId" value={a.commentId!} />
+                    <button className={buttonStyles.secondary}>Undo: show the message</button>
+                  </form>
+                )}
+                {undoBan && (
+                  <form action={liftCauseBan} className="mt-2">
+                    <input type="hidden" name="causeId" value={a.causeId} />
+                    <input type="hidden" name="userId" value={a.targetUserId} />
+                    <button className={buttonStyles.secondary}>Undo: let them rejoin</button>
+                  </form>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </section>
   );
 }
 

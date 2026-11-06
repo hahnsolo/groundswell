@@ -66,6 +66,11 @@ export default function ConductPage() {
             Moderators decide whether to keep or remove it. If something of yours is removed, you&apos;ll see the moderator&apos;s
             reason. Removals can be undone for {REMOVAL_RETENTION_DAYS} days, then the content is deleted for good.
           </li>
+          <li>
+            The people leading a cause can hide a message in its chat, or remove someone from the cause with a plain reason. A removed
+            person can&apos;t rejoin that cause. Moderators see every hide and removal, and can undo it. Leaders can&apos;t do this to
+            moderators or co-leaders.
+          </li>
           <li>For serious or repeated problems, we may close an account.</li>
         </ul>
       </section>

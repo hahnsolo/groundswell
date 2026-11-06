@@ -126,9 +126,12 @@ export const getCauseDetail = cache(async (id: string, viewerId: string | null) 
       },
       comments: {
         // Authors still see their own hidden or removed comments, with a note.
-        where: viewerId ? { OR: [{ hidden: false }, { authorId: viewerId }] } : { hidden: false },
+        // Hidden by a leader (#71): everyone sees a placeholder, without the words (the page leaves them out).
+        where: {
+          OR: [{ hidden: false }, ...(viewerId ? [{ authorId: viewerId }] : []), { hiddenByLeaderId: { not: null }, removedAt: null }],
+        },
         orderBy: { createdAt: "asc" },
-        include: { author: { select: { id: true, name: true, deactivatedAt: true, showName: true } } },
+        include: { author: { select: { id: true, name: true, deactivatedAt: true, showName: true, isAdmin: true } } },
       },
       meetups: {
         where: { endsAt: { gt: new Date() } },
@@ -174,15 +177,16 @@ export const getCauseDetail = cache(async (id: string, viewerId: string | null) 
   });
   if (stage !== cause.stage) after(() => db.cause.updateMany({ where: { id, stage: cause.stage }, data: { stage } }));
 
-  const [supported, signedIds] = viewerId
+  const [supported, signedIds, removal] = viewerId
     ? await Promise.all([
         db.causeMember.findUnique({ where: { causeId_userId: { causeId: id, userId: viewerId } } }),
         db.signature.findMany({
           where: { userId: viewerId, campaign: { causeId: id } },
           select: { campaignId: true },
         }),
+        db.causeBan.findFirst({ where: { causeId: id, userId: viewerId, liftedAt: null }, select: { reason: true } }),
       ])
-    : [null, []];
+    : [null, [], null];
 
   const now = Date.now();
   const { members, winProposals, ...rest } = cause;
@@ -203,6 +207,8 @@ export const getCauseDetail = cache(async (id: string, viewerId: string | null) 
     // The list includes meetups that are on right now; only ones still to come can change host.
     meetups: cause.meetups.map((m) => ({ ...m, upcoming: m.startsAt.getTime() > now })),
     viewerIsMember: !!supported,
+    // The people leading it removed the viewer (#71): why, and they can't rejoin.
+    viewerRemoval: removal,
     // When the viewer joined (clicked "Join"): starts the chat's 24-hour wait.
     viewerJoinedAt: supported?.createdAt ?? null,
     viewerSigned: new Set(signedIds.map((s) => s.campaignId)),

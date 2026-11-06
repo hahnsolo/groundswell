@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import { editComment, reportContent } from "@/app/actions/community";
+import { hideMessage, unhideMessage } from "@/app/actions/leader-moderation";
+import { RemoveMemberForm } from "./remove-member";
 import type { FormState } from "@/lib/forms";
 import { dayLabel } from "@/lib/chat-days";
 import { FormError, SubmitButton, inputStyles, useFormAction } from "./ui";
@@ -166,6 +168,9 @@ export function MessageActions({
   body,
   canEdit,
   canReport,
+  canHide = false,
+  canUnhide = false,
+  remove,
   mine,
   children,
 }: {
@@ -173,10 +178,15 @@ export function MessageActions({
   body: string;
   canEdit: boolean;
   canReport: boolean;
+  /** For the people leading the cause (#71). */
+  canHide?: boolean;
+  canUnhide?: boolean;
+  remove?: { causeId: string; userId: string; name: string };
   mine: boolean;
   children: React.ReactNode;
 }) {
   const [editing, setEditing] = useState(false);
+  const [removing, setRemoving] = useState(false);
   const [state, action] = useFormAction(async (prev: FormState, formData: FormData) => {
     const result = await editComment(prev, formData);
     if (result?.ok) setEditing(false);
@@ -202,10 +212,19 @@ export function MessageActions({
     );
   }
 
+  if (removing && remove) {
+    return (
+      <div className="space-y-2 rounded-md border-[1.5px] border-ink bg-surface p-3">
+        {children}
+        <RemoveMemberForm {...remove} onCancel={() => setRemoving(false)} />
+      </div>
+    );
+  }
+
   return (
     <div className={`flex items-start gap-1 ${mine ? "flex-row-reverse" : ""}`}>
       {children}
-      {(canEdit || canReport) && (
+      {(canEdit || canReport || canHide || canUnhide || remove) && (
         <details className="relative shrink-0">
           <summary
             aria-label="Message options"
@@ -213,10 +232,27 @@ export function MessageActions({
           >
             ⋯
           </summary>
-          <div className={`absolute top-full z-10 mt-1 w-36 rounded-md border-[1.5px] border-ink bg-surface p-1 text-left text-sm shadow-lg ${mine ? "right-0" : "left-0"}`}>
+          <div className={`absolute top-full z-10 mt-1 w-44 rounded-md border-[1.5px] border-ink bg-surface p-1 text-left text-sm shadow-lg ${mine ? "right-0" : "left-0"}`}>
             {canEdit && (
               <button type="button" onClick={() => setEditing(true)} className="block w-full rounded px-2 py-1.5 text-left hover:bg-border/50">
                 Edit
+              </button>
+            )}
+            {canHide && (
+              <form action={hideMessage}>
+                <input type="hidden" name="commentId" value={commentId} />
+                <button className="block w-full rounded px-2 py-1.5 text-left hover:bg-border/50">Hide</button>
+              </form>
+            )}
+            {canUnhide && (
+              <form action={unhideMessage}>
+                <input type="hidden" name="commentId" value={commentId} />
+                <button className="block w-full rounded px-2 py-1.5 text-left hover:bg-border/50">Unhide</button>
+              </form>
+            )}
+            {remove && (
+              <button type="button" onClick={() => setRemoving(true)} className="block w-full rounded px-2 py-1.5 text-left text-red-700 hover:bg-border/50 dark:text-red-400">
+                Remove from this cause
               </button>
             )}
             {canReport && (

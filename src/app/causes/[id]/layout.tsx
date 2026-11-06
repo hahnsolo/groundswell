@@ -116,6 +116,13 @@ async function CauseHeader({ params, children }: { params: LayoutProps<"/causes/
         </p>
       )}
 
+      {cause.viewerRemoval && (
+        <p role="status" className="mt-4 rounded-md border-[1.5px] border-dashed border-ink p-3 text-sm">
+          <strong>The people leading this cause removed you from it.</strong> They said: &ldquo;{cause.viewerRemoval.reason}&rdquo; You can&apos;t rejoin it, or sign or RSVP
+          here. You can still report the cause if you think this is wrong.
+        </p>
+      )}
+
       {offerForMe && (
         <form action={answerLeadOffer} className="mt-4 flex flex-wrap items-center gap-3 rounded-md border-[1.5px] border-ink bg-mustard/25 p-3 text-sm">
           <input type="hidden" name="offerId" value={offerForMe.id} />
@@ -305,8 +312,8 @@ async function CauseHeader({ params, children }: { params: LayoutProps<"/causes/
                 </details>
                 )}
               </>
-            ) : cause.stage === "closed" ? null : (
-              <form action={toggleMembership} title="The people leading this cause can see that you joined.">
+            ) : cause.stage === "closed" || cause.viewerRemoval ? null : (
+              <form action={toggleMembership}>
                 <input type="hidden" name="causeId" value={cause.id} />
                 <button className={buttonStyles.primary}>Join this cause</button>
               </form>
@@ -314,7 +321,9 @@ async function CauseHeader({ params, children }: { params: LayoutProps<"/causes/
             <ShareButton url={taggedUrl(`${appUrl}/causes/${cause.id}`, "link")} title={cause.title} />
           </div>
         </div>
-        {!cause.viewerIsMember && cause.stage !== "closed" && <p className="mt-2 text-right text-xs text-muted">The people leading this cause can see that you joined.</p>}
+        {!cause.viewerIsMember && cause.stage !== "closed" && !cause.viewerRemoval && (
+          <p className="mt-2 text-right text-xs text-muted">The people leading this cause can see that you joined.</p>
+        )}
       </header>
 
       <CauseTabs id={cause.id} chatLocked={!canReadChat(access)} messages={cause._count.comments} events={upcomingEvents} />
