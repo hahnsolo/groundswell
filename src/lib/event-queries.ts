@@ -38,7 +38,8 @@ export const getEventDetail = cache(async (id: string, viewerId: string | null) 
       },
       _count: { select: { rsvps: true } },
       // The first few people going, for "Priya, Sam and 12 neighbours are going".
-      rsvps: { orderBy: { createdAt: "asc" }, take: 4, select: { userId: true, user: { select: { name: true, deactivatedAt: true } } } },
+      // Only people who allow their name; everyone else is just counted (#79).
+      rsvps: { where: { user: { showName: true } }, orderBy: { createdAt: "asc" }, take: 4, select: { userId: true, user: { select: { name: true, deactivatedAt: true } } } },
     },
   });
   if (!event) return null;
