@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { closeCause, logContact, logReply, markDelivered, proposeWin } from "@/app/actions/community";
+import { postAnnouncement } from "@/app/actions/announcements";
 import { Field, FormError, SubmitButton, inputStyles, useFormAction } from "./ui";
 import { Honeypot } from "./bot-check";
 
@@ -100,6 +101,37 @@ export function LogContactForm({ causeId, suggestedWho }: { causeId: string; sug
           {state?.ok && <span className="text-muted">Added.</span>}
         </div>
       </form>
+    </Tool>
+  );
+}
+
+/** News for all members (#73): pinned at the top of the chat, and they're told. */
+export function AnnouncementForm({ causeId, left, members }: { causeId: string; left: number; members: number }) {
+  const [state, action] = useFormAction(postAnnouncement);
+  return (
+    <Tool summary="📢 Post an announcement" open={!!state && !state.ok}>
+      {left === 0 ? (
+        <p className="text-muted">You&apos;ve posted 3 this week, the most at once, so they never feel spammy. You can still post in the chat.</p>
+      ) : (
+        <form action={action} className="space-y-3">
+          <input type="hidden" name="causeId" value={causeId} />
+          <p className="text-muted">
+            Pinned at the top of the chat until you replace or unpin it. {members === 1 ? "Your member is" : `Your ${members} members are`} told by notification, or in their daily email. {left} left this
+            week.
+          </p>
+          <FormError message={state?.error} />
+          <Field label="Your announcement" name="body" errors={state?.fieldErrors}>
+            <textarea name="body" required rows={3} maxLength={1000} placeholder="The council meeting moved to Thursday. Can you come?" defaultValue={state?.values?.body} className={inputStyles} />
+          </Field>
+          <Honeypot />
+          <div className="flex items-center gap-3">
+            <SubmitButton variant="secondary" pendingText="Posting…">
+              Post announcement
+            </SubmitButton>
+            {state?.ok && <span className="text-muted">Posted.</span>}
+          </div>
+        </form>
+      )}
     </Tool>
   );
 }

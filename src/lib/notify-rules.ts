@@ -10,6 +10,7 @@ export const NOTIFY_KINDS = {
   won: { pref: "notifyWins", label: "Wins", hint: "When a cause you joined is won" },
   new_members: { pref: "notifyNewMembers", label: "New members", hint: "Daily, for causes you lead: who joined" },
   chat_digest: { pref: "notifyChatDigest", label: "Chat summary", hint: "Daily: new messages in your causes" },
+  announcement: { pref: "notifyAnnouncements", label: "Announcements from leaders", hint: "News from the people leading a cause you joined" },
 } as const;
 
 export type NotifyKind = keyof typeof NOTIFY_KINDS;

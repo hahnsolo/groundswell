@@ -9,6 +9,7 @@ import { CHAT_COOLING_OFF_HOURS, chatAccess } from "@/lib/chat-rules";
 import { chatPass } from "@/lib/live-chat";
 import { LiveChat } from "@/components/live-chat";
 import { toggleMembership } from "@/app/actions/community";
+import { unpinAnnouncement } from "@/app/actions/announcements";
 import { LocalTime } from "@/components/local-time";
 import { CommentForm } from "@/components/cause-forms";
 import { canEditMessage } from "@/lib/editing";
@@ -74,6 +75,7 @@ async function Chat({ params }: Pick<PageProps<"/causes/[id]/chat">, "params">) 
   const comments = cause.comments;
   const last = comments.at(-1);
   const viewerLeads = leadsCause(cause, user?.id);
+  const pinned = cause.announcements[0];
 
   return (
     <ChatShell
@@ -82,6 +84,22 @@ async function Chat({ params }: Pick<PageProps<"/causes/[id]/chat">, "params">) 
       lastId={last?.id ?? null}
       lastMine={!!last && last.author.id === user?.id}
       status={<LiveChat pass={pass} />}
+      pinned={
+        pinned && (
+          <aside aria-label="Announcement" className="max-h-36 overflow-y-auto border-b border-border bg-mustard/20 px-3 py-2 text-sm lg:px-5">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">
+              📌 Announcement · {pinned.author.deactivatedAt ? "the people leading this" : pinned.author.name} · <LocalTime iso={pinned.createdAt.toISOString()} options={{ month: "short", day: "numeric" }} />
+            </p>
+            <p className="mt-0.5 whitespace-pre-line break-words">{pinned.body}</p>
+            {viewerLeads && (
+              <form action={unpinAnnouncement} className="mt-1">
+                <input type="hidden" name="announcementId" value={pinned.id} />
+                <button className="text-xs text-muted underline hover:text-foreground">Unpin</button>
+              </form>
+            )}
+          </aside>
+        )
+      }
       composer={
         <ChatComposer
           closed={cause.stage === "closed"}

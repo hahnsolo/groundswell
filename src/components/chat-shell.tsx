@@ -26,6 +26,7 @@ export function ChatShell({
   lastId,
   lastMine,
   status,
+  pinned,
   composer,
   children,
 }: {
@@ -36,6 +37,8 @@ export function ChatShell({
   /** The newest message is the viewer's own (they just sent it): always go to it. */
   lastMine: boolean;
   status?: React.ReactNode;
+  /** An announcement pinned above the messages (#73). */
+  pinned?: React.ReactNode;
   composer: React.ReactNode;
   children: React.ReactNode;
 }) {
@@ -122,6 +125,7 @@ export function ChatShell({
         </Link>
         <span className="min-w-0 flex-1 truncate font-display text-base font-semibold">{title}</span>
       </header>
+      {pinned}
       <div className="relative min-h-0 flex-1">
         <div ref={scroller} onScroll={onScroll} className="h-full overflow-y-auto overscroll-contain px-3 py-3 lg:px-5" data-chat-scroll>
           <div ref={content}>

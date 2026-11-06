@@ -446,13 +446,14 @@ let CAUSE;
   // 11. Email notifications (#18). Events starting about a day from now get reminders from the daily job.
   // Sam hosts: demo accounts are new for a day (2 events an hour), and Alex has made his two.
   const host = page;
-  const runDaily = async () => {
+  const runDailyEmails = async () => {
     const env = readFileSync(new URL("../../.env", import.meta.url), "utf8");
     const cronSecret = env.match(/^CRON_SECRET="?([^"\r\n]*)"?/m)?.[1];
     const res = await host.request.get(`${BASE}/api/cron/daily`, { headers: { Authorization: `Bearer ${cronSecret}` } });
     assert.equal(res.status(), 200);
-    return (await res.json()).emails.reminded;
+    return (await res.json()).emails;
   };
+  const runDaily = async () => (await runDailyEmails()).reminded;
   const eventTomorrow = async (title) => {
     await go(host, `/causes/${trail}/events`);
     await host.getByText("+ Organize an event").click();
@@ -906,6 +907,42 @@ let CAUSE;
   await page.locator("main").getByRole("button", { name: "Join this cause" }).first().waitFor({ timeout: 30000 });
   await priya3.context().close();
   step("A leader removes someone: they're told why and can't rejoin, until a moderator lifts it");
+
+  // 21. Announcements (#73). Priya posts: it's pinned for members; Sam (push on) hears now, Alex gets one daily email.
+  await page.locator("main").getByRole("button", { name: "Join this cause" }).first().click();
+  await page.getByText("✓ Joined").first().waitFor({ timeout: 30000 });
+  const priya4 = await signIn(browser, "priya@demo.test", opts);
+  const postNews = async (body) => {
+    await go(priya4, `/causes/${park}`);
+    const tool = priya4.locator("details", { hasText: "Post an announcement" });
+    await tool.getByText("📢 Post an announcement").click();
+    await tool.getByLabel("Your announcement").fill(body);
+    await tool.getByRole("button", { name: "Post announcement" }).click();
+    await tool.getByText(/^Posted\.$|posted 3 this week/).waitFor({ timeout: 30000 }); // the third fills the week, so the form gives way to that
+  };
+  await postNews("The tenants meeting moved to Thursday at 7.");
+  await postNews("Bring your rent notices on Thursday.");
+  await go(alex, `/causes/${park}/chat`);
+  const pinnedNews = alex.getByRole("complementary", { name: "Announcement" });
+  assert.match(await pinnedNews.innerText(), /Bring your rent notices/, "the latest is pinned");
+  assert.doesNotMatch(await pinnedNews.innerText(), /moved to Thursday/, "and it replaces the one before");
+  assert.equal(await pinnedNews.getByRole("button", { name: "Unpin" }).count(), 0, "members can't unpin");
+  const daily = await runDailyEmails();
+  const alexEmail = daily.announced.filter((a) => a.email === "alex@demo.test");
+  assert.equal(alexEmail.length, 1, "one email per person");
+  assert.equal(alexEmail[0].announcements, 2, "bundling both announcements");
+  assert.ok(!daily.announced.some((a) => a.email === "sam@demo.test"), "Sam has push on, so he got them already");
+  assert.ok(!daily.announced.some((a) => a.email === "priya@demo.test"), "the author isn't told about their own");
+  assert.equal((await runDailyEmails()).announced.length, 0, "nobody is emailed twice");
+  await postNews("Third and last one this week.");
+  await go(priya4, `/causes/${park}`);
+  await priya4.getByText("📢 Post an announcement").click();
+  assert.match(await priya4.locator("details", { hasText: "Post an announcement" }).innerText(), /You.ve posted 3 this week/, "at most 3 a week");
+  await go(priya4, `/causes/${park}/chat`);
+  await priya4.getByRole("complementary", { name: "Announcement" }).getByRole("button", { name: "Unpin" }).click();
+  await priya4.getByRole("complementary", { name: "Announcement" }).waitFor({ state: "detached", timeout: 30000 });
+  await priya4.context().close();
+  step("Announcements: pinned in the chat, push now or one daily email per person, at most 3 a week, and the leader can unpin");
 
   await alex.context().close();
   await page.context().close();

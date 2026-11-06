@@ -5,7 +5,7 @@ import { purgeCutoff } from "@/lib/moderation";
 import { anonymizeExpiredAccounts } from "@/lib/leaving";
 import { refreshStaleAreaReps } from "@/lib/area-reps";
 import { dailyStageHousekeeping } from "@/lib/cause-stage";
-import { pruneNotificationLog, sendChatDigests, sendEventReminders, sendNewMemberDigests } from "@/lib/notify";
+import { pruneNotificationLog, sendChatDigests, sendDailyBundles, sendNewMemberDigests } from "@/lib/notify";
 import { cleanupDetachedMedia } from "@/lib/covers";
 
 // Daily housekeeping (see vercel.json). Vercel calls this with
@@ -34,21 +34,22 @@ export async function GET(request: NextRequest) {
   const reps = await refreshStaleAreaReps();
   const stages = await dailyStageHousekeeping();
   // Notification emails, most useful first, so the daily budget goes to reminders before summaries.
-  const reminded = await sendEventReminders();
+  const { reminded, announced } = await sendDailyBundles();
   const memberDigests = await sendNewMemberDigests();
   const chatDigests = await sendChatDigests();
   await pruneNotificationLog();
   // Images whose cause or event was purged above, or that were replaced (#66).
   const images = await cleanupDetachedMedia();
   console.log(
-    `Daily clean-up: purged ${causes.count} removed cause(s) and ${comments.count} removed comment(s); anonymized ${accounts} deleted account(s); re-checked representatives for ${reps} area(s); stages: ${stages.moved} moved forward, ${stages.lapsed} win proposal(s) lapsed, ${stages.asked} quiet cause(s) asked, ${stages.closed} closed as quiet; emails: ${reminded.length} event reminder(s), ${memberDigests} new-member and ${chatDigests} chat summaries; deleted ${images} unused image(s).`,
+    `Daily clean-up: purged ${causes.count} removed cause(s) and ${comments.count} removed comment(s); anonymized ${accounts} deleted account(s); re-checked representatives for ${reps} area(s); stages: ${stages.moved} moved forward, ${stages.lapsed} win proposal(s) lapsed, ${stages.asked} quiet cause(s) asked, ${stages.closed} closed as quiet; emails: ${reminded.length} event reminder(s), ${announced.length} with announcements, ${memberDigests} new-member and ${chatDigests} chat summaries; deleted ${images} unused image(s).`,
   );
   const emails = {
     reminders: reminded.length,
+    announcements: announced.length,
     memberDigests,
     chatDigests,
-    // Who was reminded, for the click-through checks; never in production.
-    ...(process.env.NODE_ENV !== "production" && { reminded }),
+    // Who was told what, for the click-through checks; never in production.
+    ...(process.env.NODE_ENV !== "production" && { reminded, announced }),
   };
   return Response.json({ causes: causes.count, comments: comments.count, accounts, reps, stages, emails });
 }

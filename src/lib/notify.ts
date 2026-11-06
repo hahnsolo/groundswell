@@ -13,6 +13,7 @@ import {
   wants,
   type NotifyKind,
 } from "./notify-rules";
+import { buildBundles, NOTICE_EXPIRES_DAYS, splitByBudget } from "./announcements";
 import { sendPush } from "./push";
 import { chooseChannel, pushMessage } from "./push-rules";
 
@@ -31,6 +32,7 @@ const PREFS = {
   notifyWins: true,
   notifyNewMembers: true,
   notifyChatDigest: true,
+  notifyAnnouncements: true,
 } as const;
 
 type Recipient = { id: string; name: string; email: string };
@@ -58,7 +60,17 @@ export async function unsubscribe(userId: string, kind: string, token: string) {
 export async function notify(to: Recipient, kind: NotifyKind, subject: string, body: string, url = "/me"): Promise<false | "push" | "email"> {
   const { devices, delivered } = await sendPush(to.id, pushMessage(subject, body, url));
   if (chooseChannel(devices, delivered) === "push") return "push";
+  return (await emailNotice(to, kind, subject, body)) ? "email" : false;
+}
 
+/** Pushes to someone's devices only. Whether it reached one. */
+async function pushOnly(to: Recipient, subject: string, body: string, url: string) {
+  const { devices, delivered } = await sendPush(to.id, pushMessage(subject, body, url));
+  return chooseChannel(devices, delivered) === "push";
+}
+
+/** Emails one notification if today's budget allows. Returns whether it went. */
+async function emailNotice(to: Recipient, kind: NotifyKind, subject: string, body: string) {
   const sentToday = await db.notificationLog.count({ where: { createdAt: { gte: startOfBudgetDay() } } });
   if (budgetLeft(sentToday) === 0) {
     console.warn(`Notification budget reached for today; skipped a "${kind}" email.`);
@@ -83,7 +95,7 @@ export async function notify(to: Recipient, kind: NotifyKind, subject: string, b
     return false;
   }
   await db.notificationLog.create({ data: { userId: to.id, kind } });
-  return "email";
+  return true;
 }
 
 /** Members of a cause who want this kind of email about it. */
@@ -130,8 +142,34 @@ export async function notifyWon(causeId: string) {
 
 // ---------- Daily (from the daily job, in this order, so reminders come first) ----------
 
-/** The day before: everyone going to an event, once per event. */
-export async function sendEventReminders(now = new Date()) {
+/**
+ * An announcement was posted (#73). Whoever has push on hears now; everyone else
+ * gets it in their one daily email. Muting or the setting stops both.
+ */
+export async function notifyAnnouncement(announcementId: string) {
+  const a = await db.announcement.findUnique({
+    where: { id: announcementId },
+    select: { body: true, authorId: true, causeId: true, cause: { select: { title: true } } },
+  });
+  if (!a) return 0;
+  const people = await membersWanting(a.causeId, "announcement", a.authorId);
+  const subject = `News from "${a.cause.title}"`;
+  let pushed = 0;
+  for (const person of people) {
+    const ok = await pushOnly(person, subject, a.body, `/causes/${a.causeId}/chat`);
+    if (ok) pushed++;
+    await db.announcementNotice.create({ data: { announcementId, userId: person.id, ...(ok ? { via: "push", sentAt: new Date() } : {}) } });
+  }
+  return pushed;
+}
+
+/**
+ * The daily email (#73): one per person, bundling tomorrow's events with any
+ * announcements waiting for them. Runs first in the daily job, so reminders get
+ * the budget before summaries. Announcements past the budget stay unsent and
+ * go the next morning. Reminders reach people with push on individually.
+ */
+export async function sendDailyBundles(now = new Date()) {
   const { from, to } = reminderWindow(now);
   const events = await db.meetup.findMany({
     where: { reminderSentAt: null, startsAt: { gte: from, lt: to }, cause: { removedAt: null } },
@@ -139,6 +177,8 @@ export async function sendEventReminders(now = new Date()) {
     take: 200,
   });
   const reminded: { email: string; event: string; channel: "push" | "email" }[] = [];
+  type Person = (typeof events)[number]["rsvps"][number]["user"];
+  const forEmail: { user: Person; reminder: { event: string; text: string } }[] = [];
   for (const e of events) {
     const muted = new Set(
       (await db.causeMember.findMany({ where: { causeId: e.causeId, muted: true }, select: { userId: true } })).map((m) => m.userId),
@@ -149,11 +189,49 @@ export async function sendEventReminders(now = new Date()) {
       if (!wants(user, "event_tomorrow", muted.has(user.id))) continue;
       const where = e.isOnline ? "Online (the link is on the event page)" : e.location;
       // No time in the email: we don't know their time zone, and the event page shows it in theirs.
-      const ok = await notify(user, "event_tomorrow", `Tomorrow: ${e.title}`, `A reminder that you're going to "${e.title}" tomorrow.\nWhere: ${where}\n\nThe time, the details, or to say you can't make it:\n${appUrl(`/events/${e.id}`)}`, `/events/${e.id}`);
-      if (ok) reminded.push({ email: user.email, event: e.title, channel: ok });
+      const text = `A reminder that you're going to "${e.title}" tomorrow.\nWhere: ${where}\n\nThe time, the details, or to say you can't make it:\n${appUrl(`/events/${e.id}`)}`;
+      if (await pushOnly(user, `Tomorrow: ${e.title}`, text, `/events/${e.id}`)) reminded.push({ email: user.email, event: e.title, channel: "push" });
+      else forEmail.push({ user, reminder: { event: e.title, text } });
     }
   }
-  return reminded;
+
+  // Announcements still waiting, unless the person has since turned them off or muted the cause.
+  const waiting = await db.announcementNotice.findMany({
+    where: { sentAt: null, announcement: { createdAt: { gte: new Date(now.getTime() - NOTICE_EXPIRES_DAYS * 24 * 60 * 60 * 1000) }, cause: { removedAt: null } } },
+    select: {
+      user: { select: PREFS },
+      announcement: { select: { id: true, body: true, createdAt: true, causeId: true, cause: { select: { title: true } }, author: { select: { name: true, deactivatedAt: true } } } },
+    },
+    take: 5000,
+  });
+  const mutes = await db.causeMember.findMany({ where: { muted: true, userId: { in: [...new Set(waiting.map((w) => w.user.id))] } }, select: { userId: true, causeId: true } });
+  const mutedKeys = new Set(mutes.map((m) => `${m.userId}:${m.causeId}`));
+  const wanted = waiting.filter((w) => wants(w.user, "announcement", mutedKeys.has(`${w.user.id}:${w.announcement.causeId}`)));
+
+  const sentToday = await db.notificationLog.count({ where: { createdAt: { gte: startOfBudgetDay() } } });
+  const { send, carry } = splitByBudget(buildBundles(forEmail, wanted), budgetLeft(sentToday));
+  if (carry.length) console.warn(`Notification budget reached; ${carry.length} daily email(s) wait for tomorrow (announcements carry over).`);
+
+  const announced: { email: string; announcements: number; reminders: number }[] = [];
+  for (const { user, reminders, announcements } of send) {
+    const news = announcements.map((a) => `News from "${a.cause.title}" (${a.author.deactivatedAt ? "the people leading it" : a.author.name}):\n\n${a.body}\n\n${appUrl(`/causes/${a.causeId}/chat`)}`);
+    const body = [...news, ...reminders.map((r) => r.text)].join("\n\n— — —\n\n");
+    const subject =
+      announcements.length === 0
+        ? reminders.length === 1
+          ? `Tomorrow: ${reminders[0].event}`
+          : `Tomorrow: ${reminders.length} events`
+        : announcements.length === 1 && reminders.length === 0
+          ? `News from "${announcements[0].cause.title}"`
+          : "News from your causes";
+    if (!(await emailNotice(user, announcements.length ? "announcement" : "event_tomorrow", subject, body))) continue;
+    for (const r of reminders) reminded.push({ email: user.email, event: r.event, channel: "email" });
+    if (announcements.length) {
+      await db.announcementNotice.updateMany({ where: { userId: user.id, announcementId: { in: announcements.map((a) => a.id) } }, data: { via: "email", sentAt: now } });
+      announced.push({ email: user.email, announcements: announcements.length, reminders: reminders.length });
+    }
+  }
+  return { reminded, announced };
 }
 
 /** For leaders and co-leaders: who joined their causes in the last day. */

@@ -162,6 +162,8 @@ export const getCauseDetail = cache(async (id: string, viewerId: string | null) 
         take: 1,
         include: { proposedBy: { select: { id: true, name: true } }, confirmations: { select: { userId: true } } },
       },
+      // What's pinned at the top of the chat (#73).
+      announcements: { where: { unpinnedAt: null }, orderBy: { createdAt: "desc" }, take: 1, include: { author: { select: { name: true, deactivatedAt: true } } } },
       // The timeline: contacts, replies, check-ins.
       actions: { orderBy: { happenedAt: "desc" }, take: 50, include: { createdBy: { select: { name: true, deactivatedAt: true } } } },
     },

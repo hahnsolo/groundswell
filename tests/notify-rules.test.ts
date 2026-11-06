@@ -11,7 +11,7 @@ import {
   wants,
 } from "@/lib/notify-rules";
 
-const defaults = { notifyEvents: true, notifyWinCheck: true, notifyWins: true, notifyNewMembers: true, notifyChatDigest: false };
+const defaults = { notifyEvents: true, notifyWinCheck: true, notifyWins: true, notifyNewMembers: true, notifyChatDigest: false, notifyAnnouncements: true };
 
 describe("who gets which email", () => {
   it("uses the defaults: everything on except the chat summary", () => {
@@ -74,6 +74,6 @@ describe("unsubscribe links", () => {
 
   it("turn off one kind, or all of them", () => {
     expect(prefsOff("won")).toEqual({ notifyWins: false });
-    expect(prefsOff("all")).toEqual({ notifyEvents: false, notifyWinCheck: false, notifyWins: false, notifyNewMembers: false, notifyChatDigest: false });
+    expect(prefsOff("all")).toEqual({ notifyEvents: false, notifyWinCheck: false, notifyWins: false, notifyNewMembers: false, notifyChatDigest: false, notifyAnnouncements: false });
   });
 });
