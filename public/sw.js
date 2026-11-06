@@ -3,7 +3,7 @@
 // shows an offline page instead of the browser's error. It never caches page
 // HTML or data, so nobody sees stale (or someone else's) signed-in content.
 
-const CACHE = "groundswell-v2";
+const CACHE = "groundswell-v3";
 const OFFLINE_URL = "/offline";
 const PRECACHE = [OFFLINE_URL, "/icons/icon-192.png", "/icon.svg"];
 
@@ -18,6 +18,31 @@ self.addEventListener("activate", (event) => {
       .keys()
       .then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k))))
       .then(() => self.clients.claim()),
+  );
+});
+
+// Push notifications (#72): show what the site sent, and open the right page when tapped.
+self.addEventListener("push", (event) => {
+  let message = { title: "Groundswell", body: "", url: "/me" };
+  try {
+    message = { ...message, ...event.data.json() };
+  } catch {
+    // Not what we send: show the plain default.
+  }
+  event.waitUntil(self.registration.showNotification(message.title, { body: message.body, icon: "/icons/icon-192.png", badge: "/icons/icon-192.png", data: { url: message.url } }));
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  // Only ever a page on this site.
+  const target = new URL(event.notification.data?.url ?? "/me", self.location.origin);
+  const url = target.origin === self.location.origin ? target.href : self.location.origin;
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((open) => {
+      const same = open.find((c) => c.url === url);
+      if (same) return same.focus();
+      return self.clients.openWindow(url);
+    }),
   );
 });
 

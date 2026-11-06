@@ -45,6 +45,7 @@ model User {
   notifyChatDigest Boolean   @default(false) // daily: new chat messages in their causes
 
   sessions           Session[]
+  pushSubscriptions  PushSubscription[]
   notifications      NotificationLog[]
   accounts           Account[]
   causes             Cause[]           @relation("CausesStarted")
@@ -76,8 +77,26 @@ model Session {
   userAgent String?
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pushSubscriptions PushSubscription[]
 
   @@index([userId])
+}
+
+// A device getting push notifications (#72). Tied to the sign-in session, so
+// signing out (or the session ending) stops notifications on that device.
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String
+  sessionId String
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  session   Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([sessionId])
 }
 
 // One row per way of signing in: "credential" (email + password), "google", "apple".

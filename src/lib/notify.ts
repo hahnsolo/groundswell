@@ -13,9 +13,12 @@ import {
   wants,
   type NotifyKind,
 } from "./notify-rules";
+import { sendPush } from "./push";
+import { chooseChannel, pushMessage } from "./push-rules";
 
-// Sending notification emails (#18). Every one goes through notify(), which
-// keeps to the daily budget, adds the unsubscribe links and logs the send.
+// Sending notifications (#18, #72). Every one goes through notify(): push where
+// someone has it on, otherwise email, which keeps to the daily budget, adds the
+// unsubscribe links and logs the send.
 
 const PREFS = {
   id: true,
@@ -47,8 +50,15 @@ export async function unsubscribe(userId: string, kind: string, token: string) {
   return true;
 }
 
-/** Sends one notification if today's budget allows. Returns whether it went. */
-export async function notify(to: Recipient, kind: NotifyKind, subject: string, body: string) {
+/**
+ * Tells one person: by push where they have it on (#72), which costs nothing,
+ * otherwise by email if today's budget allows. Returns how it went, or false.
+ * `url` is where tapping the notification goes.
+ */
+export async function notify(to: Recipient, kind: NotifyKind, subject: string, body: string, url = "/me"): Promise<false | "push" | "email"> {
+  const { devices, delivered } = await sendPush(to.id, pushMessage(subject, body, url));
+  if (chooseChannel(devices, delivered) === "push") return "push";
+
   const sentToday = await db.notificationLog.count({ where: { createdAt: { gte: startOfBudgetDay() } } });
   if (budgetLeft(sentToday) === 0) {
     console.warn(`Notification budget reached for today; skipped a "${kind}" email.`);
@@ -73,7 +83,7 @@ export async function notify(to: Recipient, kind: NotifyKind, subject: string, b
     return false;
   }
   await db.notificationLog.create({ data: { userId: to.id, kind } });
-  return true;
+  return "email";
 }
 
 /** Members of a cause who want this kind of email about it. */
@@ -99,6 +109,7 @@ export async function notifyWinCheck(causeId: string, proposerId: string) {
       "win_check",
       `Is it fixed? "${cause.title}"`,
       `${proposal.proposedBy.name} says "${cause.title}" is fixed: "${proposal.note}"\n\nIf you agree, confirm it on the cause (it's open for 7 days):\n${appUrl(`/causes/${causeId}#win`)}`,
+      `/causes/${causeId}#win`,
     );
     if (ok) sent++;
   }
@@ -111,7 +122,7 @@ export async function notifyWon(causeId: string) {
   if (!cause) return 0;
   let sent = 0;
   for (const m of await membersWanting(causeId, "won")) {
-    const ok = await notify(m, "won", `Won: "${cause.title}" 🎉`, `Members confirmed it: "${cause.title}" is won. Thanks for being part of it.\n\n${appUrl(`/causes/${causeId}`)}`);
+    const ok = await notify(m, "won", `Won: "${cause.title}" 🎉`, `Members confirmed it: "${cause.title}" is won. Thanks for being part of it.\n\n${appUrl(`/causes/${causeId}`)}`, `/causes/${causeId}`);
     if (ok) sent++;
   }
   return sent;
@@ -127,7 +138,7 @@ export async function sendEventReminders(now = new Date()) {
     select: { id: true, causeId: true, title: true, startsAt: true, location: true, isOnline: true, rsvps: { select: { user: { select: PREFS } } } },
     take: 200,
   });
-  const reminded: { email: string; event: string }[] = [];
+  const reminded: { email: string; event: string; channel: "push" | "email" }[] = [];
   for (const e of events) {
     const muted = new Set(
       (await db.causeMember.findMany({ where: { causeId: e.causeId, muted: true }, select: { userId: true } })).map((m) => m.userId),
@@ -138,8 +149,8 @@ export async function sendEventReminders(now = new Date()) {
       if (!wants(user, "event_tomorrow", muted.has(user.id))) continue;
       const where = e.isOnline ? "Online (the link is on the event page)" : e.location;
       // No time in the email: we don't know their time zone, and the event page shows it in theirs.
-      const ok = await notify(user, "event_tomorrow", `Tomorrow: ${e.title}`, `A reminder that you're going to "${e.title}" tomorrow.\nWhere: ${where}\n\nThe time, the details, or to say you can't make it:\n${appUrl(`/events/${e.id}`)}`);
-      if (ok) reminded.push({ email: user.email, event: e.title });
+      const ok = await notify(user, "event_tomorrow", `Tomorrow: ${e.title}`, `A reminder that you're going to "${e.title}" tomorrow.\nWhere: ${where}\n\nThe time, the details, or to say you can't make it:\n${appUrl(`/events/${e.id}`)}`, `/events/${e.id}`);
+      if (ok) reminded.push({ email: user.email, event: e.title, channel: ok });
     }
   }
   return reminded;
@@ -178,7 +189,7 @@ export async function sendNewMemberDigests(now = new Date()) {
     if (lines.length === 0) continue;
     const total = lines.reduce((n, [, c]) => n + c.names.length, 0);
     const body = lines.map(([id, c]) => `${c.title}: ${c.names.join(", ")}\n${appUrl(`/causes/${id}`)}`).join("\n\n");
-    if (await notify(leader, "new_members", `${total} new member${total === 1 ? "" : "s"} joined your cause${lines.length === 1 ? "" : "s"}`, `In the last day:\n\n${body}\n\nA welcome in the chat goes a long way.`)) sent++;
+    if (await notify(leader, "new_members", `${total} new member${total === 1 ? "" : "s"} joined your cause${lines.length === 1 ? "" : "s"}`, `In the last day:\n\n${body}\n\nA welcome in the chat goes a long way.`, lines.length === 1 ? `/causes/${lines[0][0]}#members` : "/me")) sent++;
   }
   return sent;
 }
@@ -191,12 +202,16 @@ export async function sendChatDigests(now = new Date()) {
   for (const p of people) {
     const memberships = await db.causeMember.findMany({ where: { userId: p.id, muted: false, cause: { removedAt: null } }, select: { cause: { select: { id: true, title: true } } } });
     const lines: string[] = [];
+    let onlyChat = "/me";
     for (const { cause } of memberships) {
       const count = await db.comment.count({ where: { causeId: cause.id, createdAt: { gte: since }, authorId: { not: p.id }, hidden: false, removedAt: null } });
-      if (count > 0) lines.push(`${cause.title}: ${count} new message${count === 1 ? "" : "s"}\n${appUrl(`/causes/${cause.id}/chat`)}`);
+      if (count > 0) {
+        lines.push(`${cause.title}: ${count} new message${count === 1 ? "" : "s"}\n${appUrl(`/causes/${cause.id}/chat`)}`);
+        onlyChat = lines.length === 1 ? `/causes/${cause.id}/chat` : "/me";
+      }
     }
     if (lines.length === 0) continue;
-    if (await notify(p, "chat_digest", "New messages in your causes", `In the last day:\n\n${lines.join("\n\n")}`)) sent++;
+    if (await notify(p, "chat_digest", "New messages in your causes", `In the last day:\n\n${lines.join("\n\n")}`, onlyChat)) sent++;
   }
   return sent;
 }

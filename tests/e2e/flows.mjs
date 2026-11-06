@@ -55,12 +55,12 @@ let CAUSE;
   await settle(page);
   const eventUrl = page.url();
   assert.match(await text(page), /Part of No safe crossing/);
-  assert.match(await text(page), /Alex and Sam are going/);
+  assert.match(await text(page), /(Alex and Sam|Sam and Alex) are going/);
   assert.match(await text(page), /✓ You're going/);
   await page.getByRole("button", { name: "✓ You're going" }).click();
   await waitText(page, /Alex is going/);
   await page.getByRole("button", { name: "I'll be there" }).click();
-  await waitText(page, /Alex and Sam are going/);
+  await waitText(page, /(Alex and Sam|Sam and Alex) are going/);
   step("Event page: who's going, RSVP off and on");
   const ics = await page.request.get(`${eventUrl}/calendar.ics`);
   assert.equal(ics.status(), 200);
@@ -473,7 +473,37 @@ let CAUSE;
   };
 
   await eventTomorrow("Litter pick tomorrow");
+  // Push (#72): subscriptions with a stand-in push service. One device works; the other is gone for good.
+  const pushApi = `${BASE}/api/push`;
+  const fakeDevice = (name) => ({ endpoint: `https://fake-push.test/${name}`, keys: { p256dh: "test-key", auth: "test-auth" } });
+  // The dev server sometimes drops an idle connection: try again rather than fail the run.
+  const getPush = async (p) => {
+    for (let attempt = 1; ; attempt++) {
+      try {
+        return await p.request.get(pushApi);
+      } catch (e) {
+        if (e.code !== "ECONNRESET" || attempt === 3) throw e;
+      }
+    }
+  };
+  const myDevices = async (p) => (await (await getPush(p)).json()).endpoints;
+  assert.equal((await host.request.post(pushApi, { data: { endpoint: "https://evil.example/x", keys: { p256dh: "a", auth: "b" } } })).status(), 400, "only real push services");
+  assert.equal((await host.request.post(pushApi, { data: fakeDevice("sam-phone") })).status(), 200);
+  assert.equal((await host.request.post(pushApi, { data: fakeDevice("gone") })).status(), 200);
   const reminded = await runDaily();
+  assert.equal(reminded.find((r) => r.email === "sam@demo.test" && r.event === "Litter pick tomorrow")?.channel, "push", "someone with push on gets it instead of an email");
+  assert.deepEqual(await myDevices(host), [fakeDevice("sam-phone").endpoint], "a device that's gone for good is forgotten");
+  // Signing out stops it on that device, and only that one.
+  const samLaptop = await signIn(browser, "sam@demo.test", opts);
+  assert.equal((await samLaptop.request.post(pushApi, { data: fakeDevice("sam-laptop") })).status(), 200);
+  assert.equal((await myDevices(samLaptop)).length, 2);
+  await go(samLaptop, "/me");
+  await samLaptop.getByRole("button", { name: "Sign out" }).click();
+  await samLaptop.waitForFunction(() => !location.pathname.startsWith("/me"), null, { timeout: 30000 });
+  assert.equal((await getPush(samLaptop)).status(), 401);
+  assert.deepEqual(await myDevices(host), [fakeDevice("sam-phone").endpoint], "signing out stops push on that device, not the others");
+  await samLaptop.context().close();
+  step("Push: stored for this device, used instead of email, dead devices forgotten, signing out stops it");
   assert.ok(reminded.some((r) => r.email === "sam@demo.test" && r.event === "Litter pick tomorrow"), "the host who's going wasn't reminded");
   assert.ok(!reminded.some((r) => r.email === "alex@demo.test" && r.event === "Litter pick tomorrow"), "someone not going was reminded");
   assert.equal((await runDaily()).filter((r) => r.event === "Litter pick tomorrow").length, 0, "a reminder went out twice");

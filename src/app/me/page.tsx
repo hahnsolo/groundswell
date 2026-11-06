@@ -14,6 +14,8 @@ import { LocalTime } from "@/components/local-time";
 import { SubmitButton } from "@/components/ui";
 import { inputStyles } from "@/components/styles";
 import { getLeaderHome } from "@/lib/leader-home";
+import { PushToggle } from "@/components/push-toggle";
+import { pushPublicKey } from "@/lib/push";
 import type { NeedKind } from "@/lib/needs-you";
 import { STAGE_LABELS, type Stage } from "@/lib/stages";
 
@@ -51,6 +53,7 @@ async function Me({ searchParams }: Pick<PageProps<"/me">, "searchParams">) {
         ? "Welcome to Groundswell! Set your home area below so we can show you what's happening nearby."
         : null;
   const openReports = user.isAdmin ? await db.report.count({ where: { resolved: false } }) : 0;
+  const pushKey = pushPublicKey();
   const home = await getLeaderHome(user.id);
   const ledIds = home.led.map((c) => c.id);
   const [causes, supported, rsvps, credential, prefs] = await Promise.all([
@@ -248,9 +251,18 @@ async function Me({ searchParams }: Pick<PageProps<"/me">, "searchParams">) {
         </form>
       </section>
 
+      {pushKey && (
+        <section className={`${section} scroll-mt-20`} id="push">
+          <h2 className="mb-3 font-semibold">Notifications on this device</h2>
+          <PushToggle publicKey={pushKey} />
+        </section>
+      )}
+
       <section className={`${section} scroll-mt-20`} id="email">
         <h2 className="mb-1 font-semibold">Email</h2>
-        <p className="mb-4 text-sm text-muted">What we email you about. To stop emails about one cause, mute it above.</p>
+        <p className="mb-4 text-sm text-muted">
+          What you hear about. With notifications on, these come to your device instead of by email. To stop them for one cause, mute it above.
+        </p>
         <EmailPrefsForm prefs={prefs} />
       </section>
 

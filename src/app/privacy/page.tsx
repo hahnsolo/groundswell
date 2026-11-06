@@ -115,6 +115,11 @@ export default function PrivacyPage() {
           <li>
             <strong>Open North</strong> answers representative lookups.
           </li>
+          <li>
+            <strong>Your browser&apos;s push service</strong> (Google, Apple, Mozilla or Microsoft, depending on your device) delivers
+            notifications if you turn them on. The message is encrypted so only your device can read it. We keep the address your browser
+            gives us for that device until you turn notifications off or sign out.
+          </li>
         </ul>
         <p>
           Because these services are based in or store information in the United States, your information may be handled there and be
