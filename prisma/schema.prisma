@@ -415,6 +415,9 @@ model Meetup {
   coverAlt       String?
   // As on Cause (#67).
   shortCode      String?      @unique
+  // A recurring event (#78): every occurrence is its own event, sharing this id. weekly | biweekly | monthly
+  seriesId       String?
+  repeat         String?
   createdAt      DateTime     @default(now())
   cause          Cause        @relation(fields: [causeId], references: [id], onDelete: Cascade)
   organizer      User         @relation(fields: [organizerId], references: [id], onDelete: Cascade)
@@ -422,6 +425,7 @@ model Meetup {
   media          MediaAsset[]
 
   @@index([causeId, startsAt])
+  @@index([seriesId, startsAt])
 }
 
 // Every uploaded file (#66), so we know how much storage is used (and pause

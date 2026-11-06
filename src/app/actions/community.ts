@@ -6,7 +6,9 @@ import { after } from "next/server";
 import { inviteCodeIn, readSource, sourceCookie } from "@/lib/sources";
 import { findInviteCode } from "@/lib/spread";
 import { removedFromCause } from "@/lib/members";
-import { notifyWinCheck, notifyWon } from "@/lib/notify";
+import { randomUUID } from "node:crypto";
+import { MAX_OCCURRENCES, occurrences, validTimeZone } from "@/lib/recurrence";
+import { notifyCancelled, notifyWinCheck, notifyWon } from "@/lib/notify";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@/lib/db";
@@ -665,6 +667,13 @@ const meetupSchema = z.object({
   capacity: z.preprocess((v) => (v === "" || v == null ? undefined : v), z.coerce.number().int().min(2).max(10000).optional()),
 });
 
+const repeatSchema = z.object({
+  repeat: z.enum(["once", "weekly", "biweekly", "monthly"]).default("once"),
+  repeatEnd: z.enum(["count", "until"]).default("count"),
+  repeatCount: z.preprocess((v) => (v === "" || v == null ? 8 : v), z.coerce.number({ message: "How many times?" }).int().min(2, "At least 2 times.").max(MAX_OCCURRENCES, `At most ${MAX_OCCURRENCES} times.`)),
+  repeatUntil: z.preprocess((v) => (v === "" || v == null ? undefined : v), z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Pick the last day.").optional()),
+});
+
 export async function createMeetup(_prev: FormState, formData: FormData): Promise<FormState> {
   const user = await requireUser();
   if (!user.emailVerified) return { error: UNVERIFIED_ERROR };
@@ -677,9 +686,42 @@ export async function createMeetup(_prev: FormState, formData: FormData): Promis
   const badEnd = endProblem(parsed.data.startsAt, parsed.data.endsAt);
   if (badEnd) return { fieldErrors: { endsAt: [badEnd] } };
   const { isOnline, ...data } = parsed.data;
+  // Repeating (#78): worked out up front, so a problem is reported before anything's made.
+  const series = repeatSchema.safeParse(Object.fromEntries(formData));
+  if (!series.success) return fromZodError(series.error);
+  const { repeat, repeatEnd, repeatCount, repeatUntil } = series.data;
+  let starts: Date[] | null = null;
+  if (repeat !== "once") {
+    const timeZone = validTimeZone(formData.get("timeZone")) ?? "UTC";
+    if (repeatEnd === "until" && !repeatUntil) return { fieldErrors: { repeatUntil: ["Pick the last day."] } };
+    starts = occurrences(parsed.data.startsAt, repeat, timeZone, repeatEnd === "until" ? { until: repeatUntil } : { count: repeatCount });
+    if (starts.length < 2) return { fieldErrors: { repeatUntil: ["Pick a later day, so it repeats at least once."] } };
+  }
   // The venue of an online meetup *is* a link, so it doesn't count against the limit.
   const spam = await spamCheck(user, formData, "meetup", data.title, data.description, isOnline ? undefined : data.location);
   if (spam) return spam;
+  if (starts && repeat !== "once") {
+    const seriesId = randomUUID();
+    const length = data.endsAt.getTime() - data.startsAt.getTime();
+    // Each occurrence is its own event: people say they're going per meeting, and reminders go per meeting.
+    const made = await db.$transaction(
+      starts.map((startsAt) =>
+        db.meetup.create({
+          data: {
+            ...data,
+            startsAt,
+            endsAt: new Date(startsAt.getTime() + length),
+            isOnline: isOnline === "on",
+            organizerId: user.id,
+            seriesId,
+            repeat,
+            rsvps: { create: { userId: user.id } },
+          },
+        }),
+      ),
+    );
+    redirect(`/events/${made[0].id}`);
+  }
   const meetup = await db.meetup.create({
     data: {
       ...data,
@@ -698,7 +740,7 @@ export async function editMeetup(_prev: FormState, formData: FormData): Promise<
   if (!parsed.success) return fromZodError(parsed.error);
   const meetup = await db.meetup.findUnique({
     where: { id: parsed.data.meetupId },
-    select: { organizerId: true, startsAt: true, endsAt: true, causeId: true, cause: { select: { removedAt: true } }, _count: { select: { rsvps: true } } },
+    select: { organizerId: true, startsAt: true, endsAt: true, causeId: true, seriesId: true, cause: { select: { removedAt: true } }, _count: { select: { rsvps: true } } },
   });
   if (!meetup || !canEditEvent(meetup, user.id)) return { error: "Only the host can change this event, until it's over." };
   const { meetupId, isOnline, ...data } = parsed.data;
@@ -713,12 +755,59 @@ export async function editMeetup(_prev: FormState, formData: FormData): Promise<
   }
   const problem = editCheck(user, formData, data.title, data.description, isOnline ? undefined : data.location);
   if (problem) return problem;
+  const moved = data.startsAt.getTime() - meetup.startsAt.getTime();
   await db.meetup.update({
     where: { id: meetupId },
-    data: { ...data, capacity: data.capacity ?? null, isOnline: isOnline === "on", editedAt: new Date() },
+    // Moved to another time: its day-before reminder should go (again).
+    data: { ...data, capacity: data.capacity ?? null, isOnline: isOnline === "on", editedAt: new Date(), ...(moved ? { reminderSentAt: null } : {}) },
   });
+  // "This and all future meetings" (#78): the same changes, and the same shift in time. Only ones they still host.
+  if (formData.get("scope") === "future" && meetup.seriesId) {
+    const length = data.endsAt.getTime() - data.startsAt.getTime();
+    const later = await db.meetup.findMany({
+      where: { seriesId: meetup.seriesId, organizerId: user.id, startsAt: { gt: meetup.startsAt }, id: { not: meetupId } },
+      select: { id: true, startsAt: true, _count: { select: { rsvps: true } } },
+    });
+    await db.$transaction(
+      later.map((m) => {
+        const startsAt = new Date(m.startsAt.getTime() + moved);
+        const room = data.capacity && data.capacity >= m._count.rsvps ? data.capacity : data.capacity ? m._count.rsvps : null; // never below who's going
+        return db.meetup.update({
+          where: { id: m.id },
+          data: {
+            title: data.title,
+            description: data.description,
+            location: data.location,
+            isOnline: isOnline === "on",
+            capacity: room,
+            startsAt,
+            endsAt: new Date(startsAt.getTime() + length),
+            editedAt: new Date(),
+            ...(moved ? { reminderSentAt: null } : {}),
+          },
+        });
+      }),
+    );
+  }
   refresh();
   return { ok: true };
+}
+
+/** The host cancels one meeting of a series, or it and all future ones (#78). Everyone going is told. */
+export async function cancelOccurrence(formData: FormData) {
+  const user = await requireUser();
+  const meetupId = id.parse(formData.get("meetupId"));
+  const meetup = await db.meetup.findUnique({ where: { id: meetupId }, select: { organizerId: true, seriesId: true, startsAt: true, causeId: true, title: true } });
+  if (!meetup?.seriesId || meetup.organizerId !== user.id || meetup.startsAt.getTime() <= Date.now()) return;
+  const all = formData.get("scope") === "future";
+  const targets = await db.meetup.findMany({
+    where: all ? { seriesId: meetup.seriesId, organizerId: user.id, startsAt: { gte: meetup.startsAt } } : { id: meetupId },
+    select: { id: true, rsvps: { select: { userId: true } } },
+  });
+  const going = [...new Set(targets.flatMap((t) => t.rsvps.map((r) => r.userId)))].filter((u) => u !== user.id);
+  await db.meetup.deleteMany({ where: { id: { in: targets.map((t) => t.id) } } });
+  after(() => notifyCancelled({ causeId: meetup.causeId, title: meetup.title, userIds: going, all, startsAt: meetup.startsAt }));
+  redirect(`/causes/${meetup.causeId}/events`);
 }
 
 export async function toggleRsvp(formData: FormData) {

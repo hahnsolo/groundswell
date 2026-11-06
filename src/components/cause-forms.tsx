@@ -5,6 +5,7 @@ import { addComment, createCampaign, createMeetup, editMeetup, signCampaign, uns
 import { Field, FormError, SubmitButton, buttonStyles, inputStyles, useFormAction } from "./ui";
 import { Honeypot } from "./bot-check";
 import { defaultEnd } from "@/lib/event-times";
+import { MAX_OCCURRENCES } from "@/lib/recurrence";
 
 const MAX_BOX_PX = 160;
 
@@ -77,6 +78,8 @@ export type EditableEvent = {
   location: string;
   isOnline: boolean;
   capacity: number | null;
+  /** Part of a recurring series (#78). */
+  seriesId?: string | null;
 };
 
 const noSubscribe = () => () => {};
@@ -104,6 +107,9 @@ export function MeetupForm({ causeId, event }: { causeId?: string; event?: Edita
   // Lazy init: computed once in the browser's timezone; the server re-validates.
   // (An event that's already on keeps its start, so editing has no minimum.)
   const [min] = useState(() => (event ? undefined : toLocalInputValue(new Date())));
+  const inBrowser = useSyncExternalStore(noSubscribe, () => true, () => false);
+  const [repeat, setRepeat] = useState("once");
+  const [repeatEnd, setRepeatEnd] = useState("count");
   const e = state?.fieldErrors;
   const v = state?.values;
   return (
@@ -154,6 +160,57 @@ export function MeetupForm({ causeId, event }: { causeId?: string; event?: Edita
       <Field label="Capacity (optional)" name="capacity" errors={e}>
         <input name="capacity" type="number" min={2} defaultValue={v?.capacity ?? event?.capacity ?? undefined} className={`${inputStyles} w-32`} />
       </Field>
+      {!event && (
+        <div className="space-y-3 rounded-md border border-border p-3">
+          {/* Your time zone, so "7pm every week" stays 7pm when the clocks change. */}
+          <input type="hidden" name="timeZone" value={inBrowser ? Intl.DateTimeFormat().resolvedOptions().timeZone : ""} />
+          <Field label="Repeats" name="repeat" errors={e}>
+            <select name="repeat" value={repeat} onChange={(ev) => setRepeat(ev.target.value)} className={`${inputStyles} sm:w-64`}>
+              <option value="once">Just once</option>
+              <option value="weekly">Every week</option>
+              <option value="biweekly">Every 2 weeks</option>
+              <option value="monthly">Every month, same weekday</option>
+            </select>
+          </Field>
+          {repeat !== "once" && (
+            <>
+              <fieldset className="flex flex-wrap gap-4 text-sm">
+                <legend className="sr-only">When it stops</legend>
+                <label className="flex items-center gap-2">
+                  <input type="radio" name="repeatEnd" value="count" checked={repeatEnd === "count"} onChange={() => setRepeatEnd("count")} />
+                  A number of times
+                </label>
+                <label className="flex items-center gap-2">
+                  <input type="radio" name="repeatEnd" value="until" checked={repeatEnd === "until"} onChange={() => setRepeatEnd("until")} />
+                  Until a date
+                </label>
+              </fieldset>
+              {repeatEnd === "count" ? (
+                <Field label="How many times" name="repeatCount" errors={e} hint={`Up to ${MAX_OCCURRENCES}. Each one gets its own page, and people say they're going per meeting.`}>
+                  <input name="repeatCount" type="number" min={2} max={MAX_OCCURRENCES} defaultValue={v?.repeatCount ?? 8} className={`${inputStyles} w-32`} />
+                </Field>
+              ) : (
+                <Field label="Last day" name="repeatUntil" errors={e} hint={`Up to ${MAX_OCCURRENCES} meetings. Each one gets its own page, and people say they're going per meeting.`}>
+                  <input name="repeatUntil" type="date" defaultValue={v?.repeatUntil} className={`${inputStyles} sm:w-52`} />
+                </Field>
+              )}
+            </>
+          )}
+        </div>
+      )}
+      {event?.seriesId && (
+        <fieldset className="space-y-1 rounded-md border border-border p-3 text-sm">
+          <legend className="px-1 font-medium">This is one of a series. Change:</legend>
+          <label className="flex items-center gap-2">
+            <input type="radio" name="scope" value="one" defaultChecked />
+            Just this meeting
+          </label>
+          <label className="flex items-center gap-2">
+            <input type="radio" name="scope" value="future" />
+            This and all future meetings
+          </label>
+        </fieldset>
+      )}
       <Honeypot />
       <div className="flex items-center gap-3">
         {event ? (

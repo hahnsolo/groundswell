@@ -14,6 +14,7 @@ import {
   type NotifyKind,
 } from "./notify-rules";
 import { buildBundles, NOTICE_EXPIRES_DAYS, splitByBudget } from "./announcements";
+import { flyerWhen } from "./share-meta";
 import { sendPush } from "./push";
 import { chooseChannel, pushMessage } from "./push-rules";
 
@@ -141,6 +142,26 @@ export async function notifyWon(causeId: string) {
 }
 
 // ---------- Daily (from the daily job, in this order, so reminders come first) ----------
+
+/** A host cancelled a meeting of a series, or the rest of them (#78): everyone going hears. Muting or turning off reminders stops it. */
+export async function notifyCancelled({ causeId, title, userIds, all, startsAt }: { causeId: string; title: string; userIds: string[]; all: boolean; startsAt: Date }) {
+  if (userIds.length === 0) return 0;
+  const [people, muted, cause] = await Promise.all([
+    db.user.findMany({ where: { id: { in: userIds } }, select: PREFS }),
+    db.causeMember.findMany({ where: { causeId, muted: true, userId: { in: userIds } }, select: { userId: true } }),
+    db.cause.findUnique({ where: { id: causeId }, select: { country: true, region: true } }),
+  ]);
+  const mutedIds = new Set(muted.map((m) => m.userId));
+  // In the place's own time zone, as on flyers: we don't know theirs.
+  const day = cause ? flyerWhen(startsAt, startsAt, cause.country, cause.region).day : "";
+  const what = all ? `All the remaining "${title}" meetings, from ${day}, have been cancelled.` : `The "${title}" meeting on ${day} has been cancelled.`;
+  let sent = 0;
+  for (const person of people) {
+    if (!wants(person, "event_tomorrow", mutedIds.has(person.id))) continue;
+    if (await notify(person, "event_tomorrow", `Cancelled: ${title}`, `${what}\n\nWhat else is coming up:\n${appUrl(`/causes/${causeId}/events`)}`, `/causes/${causeId}/events`)) sent++;
+  }
+  return sent;
+}
 
 /**
  * An announcement was posted (#73). Whoever has push on hears now; everyone else
