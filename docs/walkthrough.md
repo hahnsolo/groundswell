@@ -196,11 +196,13 @@ A member past the wait:
 
 ![Chat for a member](images/walkthrough/23-chat-member.webp)
 
-- Your own messages sit on the right in green; everyone else's on the left. Hover over someone else's message to **Report** it.
+- Your own messages sit on the right in green; everyone else's on the left. Messages from the same person in a row are grouped (the name shows once), each bubble has its time, and **Today**, **Yesterday** or the day separates days.
+- **On a phone** the chat fills the screen like a group chat: a one-line header (**←** back to the cause, and its title), the messages, and the message box pinned to the bottom, above the keyboard. It opens at the newest message and stays there as new ones arrive. If you've scrolled up to read, **New messages ↓** appears instead of jumping you down. On a computer it's a roomy panel under the cause's header.
+- **The message box** starts as one line and grows as you type. **Send** is the round arrow button. On a computer, Enter sends (Shift+Enter for a new line); on a phone, Enter is a new line.
+- **⋯ on each message** opens a small menu: **Edit** your own message (for 15 minutes) or **Report** someone else's. (Leaders' **Hide** joins it with #71.)
 - **Why the 24-hour wait:** it gives newcomers a day to get a feel for the conversation, and it stops bots that join and spam straight away. Reading, RSVPing and signing aren't held back, only posting in the chat.
 - **Other rules:** a confirmed email is needed to post. New accounts (first 24 hours) can post 10 messages an hour and no links; established accounts 60 an hour with up to 3 links. The same message twice within 10 minutes is refused.
 - The server checks all of this on every message, so the rules can't be dodged by skipping the page.
-- **Not live yet:** for now, new messages appear when you send one or reload. Instant, WhatsApp-style delivery (through Cloudflare) is the next phase of the build.
 
 ### Events
 

@@ -134,6 +134,7 @@ let CAUSE;
 
   // Sam fixes a typo in the message he just sent.
   const mine = page.locator("li", { hasText: "Counted 4 near-misses this morning" });
+  await mine.getByLabel("Message options").click(); // the small ⋯ menu on each message (#70)
   await mine.getByRole("button", { name: "Edit" }).click();
   await page.getByLabel("Edit your message").fill("Counted 5 near-misses this morning.");
   await page.getByRole("button", { name: "Save", exact: true }).click();
@@ -739,6 +740,49 @@ let CAUSE;
   assert.match(await priyaLeads.locator("[aria-label^='Stage:']").getAttribute("aria-label"), /Taking action/);
   await priyaLeads.context().close();
   step("'We delivered it' logs the delivery on the timeline and the cause is Taking action");
+
+  // 18. The chat on a phone (#70): fills the screen, the box is in view, it stays at the newest message,
+  //     and someone scrolled up gets "New messages ↓" instead of being yanked down.
+  const phone = await signIn(browser, "sam@demo.test", { ...opts, viewport: { width: 390, height: 560 }, isMobile: true, hasTouch: true });
+  await go(phone, `/causes/${trail}/chat`);
+  const phoneBox = phone.getByLabel("Your message");
+  const inView = () =>
+    phone.evaluate(() => {
+      const s = document.querySelector("[data-chat-scroll]");
+      const box = document.querySelector("textarea[aria-label='Your message']").getBoundingClientRect();
+      return { boxVisible: box.top >= 0 && box.bottom <= window.innerHeight, fromBottom: Math.round(s.scrollHeight - s.scrollTop - s.clientHeight), scrollable: s.scrollHeight > s.clientHeight };
+    });
+  assert.ok(await phone.getByRole("link", { name: "Back to the cause" }).isVisible(), "a one-line header with a way back");
+  // Enough messages that the chat scrolls.
+  for (let n = 1; n <= 12 && (n <= 3 || !(await inView()).scrollable); n++) {
+    await phoneBox.fill(`Phone check ${n}: on my way to the trailhead with bags, gloves and the grabbers from the hardware store.`);
+    await phone.getByRole("button", { name: "Send" }).click();
+    await phone.locator("li[data-message]", { hasText: `Phone check ${n}:` }).waitFor({ timeout: 30000 });
+    await phone.waitForTimeout(300);
+  }
+  let v = await inView();
+  assert.ok(v.boxVisible, "the message box is on screen without scrolling");
+  assert.ok(v.scrollable && v.fromBottom < 5, `sending keeps you at the newest message (${v.fromBottom}px from the bottom)`);
+  await go(phone, `/causes/${trail}/chat`);
+  await phone.waitForTimeout(800);
+  v = await inView();
+  assert.ok(v.fromBottom < 5, "it opens at the newest message");
+  assert.match(await phone.getByRole("separator").first().getAttribute("aria-label"), /Today|Yesterday|day|\d/);
+  // Grouped: Sam's five messages in a row show his name at most once.
+  await phone.evaluate(() => (document.querySelector("[data-chat-scroll]").scrollTop = 0));
+  await go(alex, `/causes/${trail}/chat`);
+  await alex.getByLabel("Your message").fill("Great, I'll bring the gloves.");
+  await alex.getByRole("button", { name: "Send" }).click();
+  await phone.getByRole("button", { name: "New messages ↓" }).waitFor({ timeout: 30000 });
+  assert.ok((await inView()).fromBottom > 50, "someone scrolled up stays where they were");
+  await phone.getByRole("button", { name: "New messages ↓" }).click();
+  await phone.waitForFunction(() => {
+    const s = document.querySelector("[data-chat-scroll]");
+    return s.scrollHeight - s.scrollTop - s.clientHeight < 5;
+  });
+  await phone.getByText("Great, I'll bring the gloves.").waitFor();
+  await phone.context().close();
+  step("Phone chat: the box is in view, it opens and stays at the newest message, and 'New messages ↓' when scrolled up");
 
   await alex.context().close();
   await page.context().close();
