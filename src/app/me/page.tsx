@@ -73,7 +73,7 @@ async function Me({ searchParams }: Pick<PageProps<"/me">, "searchParams">) {
     db.account.findFirst({ where: { userId: user.id, providerId: "credential" }, select: { id: true } }),
     db.user.findUniqueOrThrow({
       where: { id: user.id },
-      select: { notifyEvents: true, notifyWinCheck: true, notifyWins: true, notifyNewMembers: true, notifyChatDigest: true, showName: true },
+      select: { notifyEvents: true, notifyWinCheck: true, notifyWins: true, notifyNewMembers: true, notifyChatDigest: true, notifyAnnouncements: true, showName: true },
     }),
   ]);
 

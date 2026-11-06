@@ -43,8 +43,11 @@ model User {
   notifyWins       Boolean   @default(true) // a cause they joined is won
   notifyNewMembers Boolean   @default(true) // daily: who joined the causes they lead
   notifyChatDigest Boolean   @default(false) // daily: new chat messages in their causes
+  notifyAnnouncements Boolean @default(true) // news from the people leading a cause they joined (#73)
 
   sessions           Session[]
+  announcements      Announcement[]
+  announcementNotices AnnouncementNotice[]
   pushSubscriptions  PushSubscription[]
   notifications      NotificationLog[]
   accounts           Account[]
@@ -227,6 +230,7 @@ model Cause {
   winProposals WinProposal[]
   actions      CauseAction[]
   coLeaders    CoLeader[]
+  announcements Announcement[]
 
   @@index([country, lat, lng])
   @@index([authorId])
@@ -323,6 +327,38 @@ model Comment {
 
   @@index([causeId, createdAt])
   @@index([removedAt])
+}
+
+// News from the people leading a cause (#73). The latest is pinned at the top of
+// the chat until replaced or unpinned.
+model Announcement {
+  id         String    @id @default(cuid())
+  causeId    String
+  authorId   String
+  body       String
+  createdAt  DateTime  @default(now())
+  unpinnedAt DateTime?
+  cause      Cause     @relation(fields: [causeId], references: [id], onDelete: Cascade)
+  author     User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  notices    AnnouncementNotice[]
+
+  @@index([causeId, createdAt])
+}
+
+// One person to tell about one announcement: by push right away, otherwise in
+// their one daily email. Still unsent (sentAt null) if the day's budget ran out.
+model AnnouncementNotice {
+  announcementId String
+  userId         String
+  // push | email
+  via            String?
+  sentAt         DateTime?
+  announcement   Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([announcementId, userId])
+  @@index([sentAt])
+  @@index([userId])
 }
 
 // Someone the people leading a cause removed from it (#71): they can't rejoin

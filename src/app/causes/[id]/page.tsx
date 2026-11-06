@@ -12,7 +12,8 @@ import { buttonStyles } from "@/components/styles";
 import { MemberList } from "@/components/member-list";
 import { getMemberRows } from "@/lib/members";
 import { shownName, type MemberRow } from "@/lib/member-list";
-import { CloseCauseForm, DeliveredForm, LogContactForm, LogReplyForm, ProposeWinForm } from "@/components/stage-parts";
+import { AnnouncementForm, CloseCauseForm, DeliveredForm, LogContactForm, LogReplyForm, ProposeWinForm } from "@/components/stage-parts";
+import { announcementsLeft, weekAgo } from "@/lib/announcements";
 import { DELIVERED_HOW } from "@/lib/petition";
 import { db } from "@/lib/db";
 import { LEAD_OFFER_DAYS, offerOpen } from "@/lib/leadership";
@@ -84,6 +85,8 @@ async function About({ params }: Pick<PageProps<"/causes/[id]">, "params">) {
   const memberRows = leads && user ? await getMemberRows(cause, user.id, next?.id ?? null) : [];
   // Names people hid are still shown to the people leading the cause, and to moderators.
   const seesAll = leads || !!user?.isAdmin;
+  // Announcements left this week (#73).
+  const announcementsToGo = leads ? announcementsLeft(await db.announcement.count({ where: { causeId: cause.id, createdAt: { gte: weekAgo() } } })) : 0;
   const active = isActive(cause.stage);
   // What's been done, newest first: logged contacts and replies, campaigns, the first meetup, the outcome.
   const HOW: Record<string, string> = { letter: "by letter", email: "by email", call: "by phone", meeting: "in a meeting" };
@@ -127,6 +130,7 @@ async function About({ params }: Pick<PageProps<"/causes/[id]">, "params">) {
           isLeader={isLeader}
           active={active}
           campaignTarget={campaignTarget}
+          announcementsToGo={announcementsToGo}
           sources={sources}
           inviteCode={inviteCode}
           invitedCount={invitedCount}
@@ -313,6 +317,7 @@ function LeaderPanel({
   isLeader,
   active,
   campaignTarget,
+  announcementsToGo,
   sources,
   inviteCode,
   invitedCount,
@@ -331,6 +336,7 @@ function LeaderPanel({
   isLeader: boolean;
   active: boolean;
   campaignTarget: string;
+  announcementsToGo: number;
   sources: string | null;
   inviteCode: string | null;
   invitedCount: number;
@@ -375,6 +381,7 @@ function LeaderPanel({
             ) : (
               <ProposeWinForm causeId={cause.id} />
             )}
+            <AnnouncementForm causeId={cause.id} left={announcementsToGo} members={cause._count.members} />
             <LogContactForm causeId={cause.id} suggestedWho={campaignTarget} />
             {cause.actions.some((a) => a.kind === "contacted") && <LogReplyForm causeId={cause.id} />}
             <CloseCauseForm causeId={cause.id} />
