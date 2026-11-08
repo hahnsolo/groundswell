@@ -14,18 +14,28 @@ export async function rateLimit(key: string, limit: number, windowMs: number): P
   const now = new Date();
 
   // Common case: inside an open window with room left — one atomic increment.
-  const { count } = await db.throttle.updateMany({
-    where: { key: id, resetAt: { gt: now }, count: { lt: limit } },
-    data: { count: { increment: 1 } },
-  });
-  if (count === 1) return true;
+  const takeASlot = async () => {
+    const { count } = await db.throttle.updateMany({
+      where: { key: id, resetAt: { gt: now }, count: { lt: limit } },
+      data: { count: { increment: 1 } },
+    });
+    return count === 1;
+  };
+  if (await takeASlot()) return true;
 
-  const row = await db.throttle.findUnique({ where: { key: id } });
-  if (row && row.resetAt > now) return false; // window still open and full
-
-  // No row yet, or the old window expired: start a new one.
+  // The window is full, or there isn't an open one. Try to start a new one. People
+  // on one network often arrive together, so each step is atomic: when several
+  // requests get here at once, exactly one of them starts the window.
   const resetAt = new Date(now.getTime() + windowMs);
-  await db.throttle.upsert({ where: { key: id }, create: { key: id, count: 1, resetAt }, update: { count: 1, resetAt } });
+  const { count: restarted } = await db.throttle.updateMany({
+    where: { key: id, resetAt: { lte: now } },
+    data: { count: 1, resetAt },
+  });
+  const started =
+    restarted === 1 || (await db.throttle.createMany({ data: [{ key: id, count: 1, resetAt }], skipDuplicates: true })).count === 1;
+
+  // Didn't start it: it's either really full, or someone else started it just now.
+  if (!started) return takeASlot();
 
   // Occasionally sweep long-expired rows so the table stays small.
   if (Math.random() < 0.01) {

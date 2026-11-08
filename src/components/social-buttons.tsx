@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { authClient } from "@/lib/auth-client";
+import { SOCIAL_ADDRESS_BLOCKED } from "@/lib/auth-limits";
 import { buttonStyles } from "./styles";
 
 type Provider = "google" | "apple";
@@ -24,7 +25,7 @@ export function SocialButtons({ providers, next }: { providers: Provider[]; next
       errorCallbackURL: "/signin",
     });
     if (error) {
-      setError(error.message ?? "Something went wrong. Please try again.");
+      setError(error.status === 429 ? SOCIAL_ADDRESS_BLOCKED : (error.message ?? "Something went wrong. Please try again."));
       setPending(null);
     }
   }
