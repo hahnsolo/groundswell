@@ -106,7 +106,7 @@ export default function PrivacyPage() {
             <strong>Neon</strong> stores the database, in Ohio, USA.
           </li>
           <li>
-            <strong>Resend</strong> sends our emails: confirming your email and resetting your password. Everything else shows as a notification on the site.
+            <strong>Brevo</strong> and <strong>Resend</strong> send our emails: confirming your email and resetting your password. Each email goes through one of them. Everything else shows as a notification on the site.
           </li>
           <li>
             <strong>Cloudflare</strong> runs the &quot;are you human?&quot; check on sign-up and sign-in, and passes along live chat

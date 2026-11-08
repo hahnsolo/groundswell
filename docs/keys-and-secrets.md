@@ -23,7 +23,8 @@ After changing a variable in Vercel, you must **redeploy** for it to take effect
 | `APP_URL` | The site's public address, used in emailed links, share links and sign-in callbacks | Config | `http://localhost:3000` | `https://groundswell.hahnsolo.ca` |
 | `BETTER_AUTH_SECRET` | Signs login sessions so they can't be forged | **Secret** | Its own random value | A **different** random value |
 | `CRON_SECRET` | Lets only Vercel run the daily clean-up job (deletes removed content after 7 days, anonymizes deleted accounts after 30) | **Secret** | Optional (only for testing the job) | **Set** (needed for the job to run) |
-| `RESEND_API_KEY` | Lets the app send email through Resend | **Secret** | Leave unset (emails print in the terminal instead) | Set |
+| `BREVO_API_KEY` | Lets the app send email through Brevo, tried first | **Secret** | Leave unset (emails print in the terminal instead) | Set |
+| `RESEND_API_KEY` | Lets the app send email through Resend, the backup | **Secret** | Leave unset (emails print in the terminal instead) | Set |
 | `MAIL_FROM` | Who emails come from: `Groundswell <no-reply@groundswell.hahnsolo.ca>` | Config | Not needed | Set |
 | `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | Turnstile's public key, shown to browsers (not a secret) | Config (public) | Optional; Cloudflare's test key | Set (previews: Cloudflare's test key) |
 | `TURNSTILE_SECRET_KEY` | Turnstile's private key, used to check answers | **Secret** | Optional; Cloudflare's test key | Set (previews: Cloudflare's test key) |
@@ -85,6 +86,13 @@ General pattern: **make the new one → put it in Vercel → redeploy → check 
 1. Generate a new value with the same command as `BETTER_AUTH_SECRET` above.
 2. Paste it into Vercel and redeploy. Vercel automatically sends it when it runs the daily job, so there's nothing else to update.
 3. No side effects for visitors.
+
+### `BREVO_API_KEY`
+Use an API key (it starts with `xkeysib-`), not an SMTP key. The first time, in Brevo → **Senders, Domains & Dedicated IPs → Domains**, add `groundswell.hahnsolo.ca` and put the records it lists into GoDaddy. Keep the existing Resend records, and don't add a second SPF record at `@`.
+1. Brevo → **SMTP & API → API Keys → Generate a new API key**.
+2. Put it in Vercel and redeploy.
+3. Test it: use "Forgot password" on the live site with your own email, then check Brevo's transactional logs.
+4. Delete the old key in Brevo.
 
 ### `RESEND_API_KEY`
 1. Resend → **API Keys → Create API Key**. "Sending access" for just the `groundswell.hahnsolo.ca` domain is enough.

@@ -11,7 +11,8 @@ Free-plan limits change from time to time. The numbers below are approximate as 
 | GitHub | Stores the code | Free | Nothing we need |
 | Vercel | Runs the website | Hobby (free) | Commercial use, or very heavy traffic |
 | Neon | The database | Free | Lots of data, or being busy around the clock |
-| Resend | Sends emails | Free | More than ~3,000 emails/month or ~100/day |
+| Brevo | Sends emails first | Free | Nothing: past ~300/day, email moves on to Resend |
+| Resend | Backup for sending emails | Free | Nothing: past ~3,000 emails/month or ~100/day, confirmations wait for the daily job |
 | GoDaddy | The `hahnsolo.ca` domain and DNS | Already paid for | The yearly domain renewal (which you already pay) |
 | Cloudflare Turnstile | Bot check | Free | Nothing at our scale |
 | Google sign-in *(optional, not set up)* | "Sign in with Google" | Free | Nothing |
@@ -40,11 +41,11 @@ Free-plan limits change from time to time. The numbers below are approximate as 
 - **Plan:** Free. It includes a small amount of storage per project (about 0.5 GB, which is a lot of text posts) and a monthly allowance of compute time. The database **goes to sleep after a few minutes of no visitors** and wakes on the next visit. That's how it stays free; see [Troubleshooting](troubleshooting.md#the-first-page-load-after-a-quiet-spell-is-slow).
 - **Would cost money:** outgrowing the storage, or having steady traffic all day and night so it never sleeps. Neon's Launch plan is usage-based (starting around $5–20 USD/month for a small site). The free plan stops rather than billing you.
 
-## Resend: email
+## Brevo and Resend: email
 
-- **What it does:** sends the two kinds of email the site needs: "confirm your email" and "reset your password." They come from `Groundswell <no-reply@groundswell.hahnsolo.ca>`.
-- **Plan:** Free, about 3,000 emails per month and 100 per day, for one domain.
-- **Would cost money:** going past those limits. The Pro plan is about $20 USD/month for 50,000 emails. Past the free limit, sending simply fails until the next day or month, with no surprise bill. The site's own rate limits (a few emails per person per hour) keep a bot from burning through the allowance.
+- **What they do:** send the two kinds of email the site needs: "confirm your email" and "reset your password." They come from `Groundswell <no-reply@groundswell.hahnsolo.ca>`. Brevo is tried first and Resend is the backup (#105).
+- **Plan:** Both free. Brevo sends about 300 a day, and Resend about 3,000 per month and 100 per day for one domain. Check Brevo's plan page for its current limit; free Brevo emails may carry a small logo.
+- **Cost:** nothing, and that's the decision: we don't pay to send email. Past the free limits, sending fails until the next day or month, with no surprise bill. Sign-up still works and confirmations wait for the daily job. The site's own rate limits (a few emails per person per hour) keep a bot from burning through the allowance.
 
 ## GoDaddy: the domain and DNS
 
