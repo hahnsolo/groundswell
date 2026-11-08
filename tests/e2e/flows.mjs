@@ -9,7 +9,8 @@ import { BASE, CONTEXT, PW, findCause, go, launch, settle, signIn } from "./help
 const browser = await launch();
 const opts = { viewport: { width: 1280, height: 860 }, colorScheme: "light", ...CONTEXT };
 const text = (page) => page.locator("main").innerText();
-const waitText = (page, re) => page.waitForFunction((src) => new RegExp(src, "i").test(document.querySelector("main").innerText), re.source, { timeout: 30000 });
+// The page can be briefly without <main> while it re-renders; keep waiting through that.
+const waitText = (page, re) => page.waitForFunction((src) => new RegExp(src, "i").test(document.querySelector("main")?.innerText ?? ""), re.source, { timeout: 30000 });
 const step = (s) => console.log("✓", s);
 
 let CAUSE;
@@ -790,6 +791,11 @@ let CAUSE;
     await phoneBox.fill(`Phone check ${n}: on my way to the trailhead with bags, gloves and the grabbers from the hardware store.`);
     await phone.getByRole("button", { name: "Send" }).click();
     await phone.locator("li[data-message]", { hasText: `Phone check ${n}:` }).waitFor({ timeout: 30000 });
+    // The message can show (fetched as new, #101) a moment before the send finishes and clears the box: wait for that first.
+    await phone.waitForFunction(() => {
+      const send = document.querySelector("button[aria-label='Send']");
+      return !!send && !send.disabled && send.textContent.trim() !== "…" && document.querySelector("textarea[aria-label='Your message']")?.value === "";
+    }, null, { timeout: 30000 });
     await phone.waitForTimeout(300);
   }
   let v = await inView();

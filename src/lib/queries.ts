@@ -229,6 +229,25 @@ export async function getCauseMessages(causeId: string, viewerId: string | null,
   return { messages: rows.slice(0, take).reverse(), hasEarlier: rows.length > take };
 }
 
+/**
+ * Messages newer than the one an open chat already has (#101), oldest first, by
+ * the same rules as getCauseMessages. One query, so a busy chat stays cheap.
+ */
+export async function getCauseMessagesAfter(causeId: string, viewerId: string | null, after: { id: string; createdAt: Date }, take: number) {
+  return db.comment.findMany({
+    where: {
+      causeId,
+      AND: [
+        { OR: [{ createdAt: { gt: after.createdAt } }, { createdAt: after.createdAt, id: { gt: after.id } }] },
+        { OR: [{ hidden: false }, ...(viewerId ? [{ authorId: viewerId }] : []), { hiddenByLeaderId: { not: null }, removedAt: null }] },
+      ],
+    },
+    orderBy: [{ createdAt: "asc" }, { id: "asc" }],
+    take,
+    include: { author: { select: { id: true, name: true, deactivatedAt: true, showName: true, isAdmin: true } } },
+  });
+}
+
 /** Just what a shared link's preview needs about a cause (src/lib/share-meta.ts). */
 export const getCauseForShare = cache(async (id: string) => {
   const c = await db.cause.findUnique({

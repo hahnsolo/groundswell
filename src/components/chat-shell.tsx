@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
+import { createContext, useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
 import { editComment, reportContent } from "@/app/actions/community";
 import { hideMessage, unhideMessage } from "@/app/actions/leader-moderation";
 import { RemoveMemberForm } from "./remove-member";
@@ -17,14 +17,17 @@ import { Honeypot } from "./bot-check";
 // as new ones arrive, unless you've scrolled up: then "New messages ↓" appears.
 
 const NEAR_BOTTOM_PX = 80;
+
+/** Messages that arrive without a page reload (#101) report the newest here, so the chat follows them. */
+export const ChatLatestContext = createContext<(id: string, mine: boolean) => void>(() => {});
 const noSubscribe = () => () => {};
 const useInBrowser = () => useSyncExternalStore(noSubscribe, () => true, () => false);
 
 export function ChatShell({
   backHref,
   title,
-  lastId,
-  lastMine,
+  lastId: pageLastId,
+  lastMine: pageLastMine,
   status,
   pinned,
   composer,
@@ -46,6 +49,12 @@ export function ChatShell({
   const scroller = useRef<HTMLDivElement>(null);
   const atBottom = useRef(true);
   const [bottom, setBottom] = useState(true);
+  // The newest message that arrived live, on top of the page's own newest (`base`); a page reload supersedes it.
+  const [live, setLive] = useState<{ base: string | null; id: string; mine: boolean } | null>(null);
+  const current = live && live.base === pageLastId ? live : null;
+  const lastId = current?.id ?? pageLastId;
+  const lastMine = current ? current.mine : pageLastMine;
+  const reportLatest = useCallback((id: string, mine: boolean) => setLive({ base: pageLastId, id, mine }), [pageLastId]);
   const [seenId, setSeenId] = useState(lastId);
 
   const toBottom = (smooth = false) => {
@@ -130,7 +139,7 @@ export function ChatShell({
         <div ref={scroller} onScroll={onScroll} className="h-full overflow-y-auto overscroll-contain px-3 py-3 lg:px-5" data-chat-scroll>
           <div ref={content}>
             {status}
-            {children}
+            <ChatLatestContext.Provider value={reportLatest}>{children}</ChatLatestContext.Provider>
           </div>
         </div>
         {seenId !== lastId && !bottom && (

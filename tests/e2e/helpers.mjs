@@ -1,6 +1,7 @@
 // Shared bits for the browser checks. They drive a LOCAL dev server signed in as
 // the demo accounts from prisma/seed.ts, and change its data, so never point
 // them anywhere else.
+import { PrismaClient } from "@prisma/client";
 import { chromium } from "playwright-core";
 import { mkdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -34,8 +35,14 @@ export async function go(page, path) {
   await settle(page);
 }
 
+// Sign-ins are limited to 20 per address per 15 minutes, and the flows sign in more
+// often than that on a fast database: start each from clean counters (local only, see BASE).
+const limits = new PrismaClient();
+
 export async function signIn(browser, email, options = {}) {
-  const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 }, ...CONTEXT, ...options });
+  await limits.throttle.deleteMany();
+  await limits.rateLimit.deleteMany();
+  const ctx =await browser.newContext({ viewport: { width: 1280, height: 900 }, ...CONTEXT, ...options });
   const page = await ctx.newPage();
   await go(page, "/signin");
   const form = page.locator("form:visible").filter({ has: page.locator('input[type="password"]') }).first();
