@@ -9,7 +9,15 @@ import { auth } from "@/lib/better-auth";
 import { verifyPassword } from "better-auth/crypto";
 import { getCurrentUser, requireUser, safeNext } from "@/lib/auth";
 import { deactivateAccount } from "@/lib/leaving";
-import { clientIp, HOUR, MINUTE, rateLimit } from "@/lib/rate-limit";
+import { clientIp, HOUR, rateLimit } from "@/lib/rate-limit";
+import {
+  SIGN_IN_ACCOUNT_BLOCKED,
+  SIGN_IN_ADDRESS_BLOCKED,
+  SIGN_IN_PER_ACCOUNT,
+  SIGN_IN_PER_ADDRESS,
+  SIGN_UP_ADDRESS_BLOCKED,
+  SIGN_UP_PER_ADDRESS,
+} from "@/lib/auth-limits";
 import { BOT_CHECK_ERROR, honeypotTripped, verifyHuman } from "@/lib/spam";
 import { fromZodError, type FormState } from "@/lib/forms";
 import { parsePostal } from "@/lib/countries";
@@ -31,11 +39,12 @@ const signUpSchema = z.object({
 
 export async function signUp(_prev: FormState, formData: FormData): Promise<FormState> {
   if (honeypotTripped(formData)) return { error: "Something went wrong. Please try again." };
-  if (!(await rateLimit(`signup:${await clientIp()}`, 10, HOUR))) {
-    return { error: "Too many sign-up attempts. Try again later." };
-  }
   const parsed = signUpSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return fromZodError(parsed.error);
+  // After the form check, so a mistyped form doesn't use up a shared network's allowance.
+  if (!(await rateLimit(`signup:${await clientIp()}`, SIGN_UP_PER_ADDRESS.limit, SIGN_UP_PER_ADDRESS.windowMs))) {
+    return { error: SIGN_UP_ADDRESS_BLOCKED };
+  }
   if (!(await verifyHuman(formData))) return { error: BOT_CHECK_ERROR };
   const { name, email, password, country, postal } = parsed.data;
 
@@ -68,16 +77,19 @@ const signInSchema = z.object({
 });
 
 export async function signIn(_prev: FormState, formData: FormData): Promise<FormState> {
-  if (!(await rateLimit(`signin:${await clientIp()}`, 20, 15 * MINUTE))) {
-    return { error: "Too many attempts. Wait a few minutes and try again." };
-  }
   const parsed = signInSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return fromZodError(parsed.error);
-  // Per-account limit too, so password guessing spread across many IPs still stalls.
-  if (!(await rateLimit(`signin-account:${parsed.data.email}`, 10, 15 * MINUTE))) {
-    return { error: "Too many attempts for this account. Wait 15 minutes, or reset your password." };
+  // After the form check, so a mistyped form doesn't use up a shared network's allowance.
+  if (!(await rateLimit(`signin:${await clientIp()}`, SIGN_IN_PER_ADDRESS.limit, SIGN_IN_PER_ADDRESS.windowMs))) {
+    return { error: SIGN_IN_ADDRESS_BLOCKED };
   }
+  // Before the per-account limit, so a script can't lock someone out of their
+  // account without passing the bot check for every try.
   if (!(await verifyHuman(formData))) return { error: BOT_CHECK_ERROR };
+  // Per-account limit too, so password guessing spread across many IPs still stalls.
+  if (!(await rateLimit(`signin-account:${parsed.data.email}`, SIGN_IN_PER_ACCOUNT.limit, SIGN_IN_PER_ACCOUNT.windowMs))) {
+    return { error: SIGN_IN_ACCOUNT_BLOCKED };
+  }
   // Signing in during the grace period restores a deleted account (see the
   // session hook in better-auth.ts); remember so we can say so.
   const returning = await db.user.findFirst({

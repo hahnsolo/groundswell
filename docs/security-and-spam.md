@@ -23,17 +23,37 @@ The main code is in `src/lib/spam.ts`, `src/lib/rate-limit.ts`, `src/lib/better-
 - Previews and your PC use Cloudflare's published test keys, which always pass.
 
 ### Rate limits ("slow down" counters)
-The counters are stored in the database, not in server memory. Vercel runs many short-lived copies of the app, and in-memory counters would reset constantly. Database counters are shared and survive restarts.
+The counters are stored in the database, not in server memory. Vercel runs many short-lived copies of the app, and in-memory counters would reset constantly. Database counters are shared and survive restarts. They also count correctly when many people arrive at the same moment (#103). Before that, a group starting together could get someone wrongly told "too many."
 
 | Action | Limit |
 |---|---|
-| Sign in | 20 per 15 min per network address, **and** 10 per 15 min per account (stops password guessing spread across many addresses) |
-| Sign up | 10 per hour per network address |
+| Sign in | 200 per 15 min per network address, **and** 10 per 15 min per account (stops password guessing spread across many addresses) |
+| Sign up | 100 per hour per network address |
+| Sign in or sign up by calling the login system's public addresses directly, skipping our forms | 20 per 15 min and 10 per hour per network address |
+| Google and Apple buttons | 100 per minute per network address |
 | Password reset | 5 per hour per network address, 3 per hour per email |
 | Resend confirmation email | 3 per hour per account |
 | Report content | 20 per hour per account |
 | Representative lookup | 30 per hour per network address |
 | Everything else in the login system | 100 per minute |
+
+The sign-in and sign-up numbers are in `src/lib/auth-limits.ts`.
+
+#### Why sign-in and sign-up allow so many from one address (#103)
+Everyone on one wifi network usually shares one network address, and meetings and flyer sign-ups are how organizers grow a cause. The old limits (20 sign-ins, 10 sign-ups) would have turned away the 11th person signing up at a meeting. The new ones fit a room of 100: everyone can sign in with a retry each, or everyone can sign up. A form sent back for a typo or a short password doesn't count.
+
+**The trade-off:** one address can now make 10 times as many attempts.
+
+- **What stays the same:** guessing one person's password. That's still 10 tries per account per 15 minutes, however many addresses the guesses come from. That's up to 960 tries a day against one account, which is why passwords must be at least 10 characters.
+- **What gets easier:** trying one common password against many different accounts. One address can make up to 19,200 sign-in attempts a day, up from 1,920. The per-account limit doesn't catch this, because each account only gets one try. **The bot check is now the main thing stopping it:** every attempt needs a fresh pass. If Turnstile were ever turned off or got beaten, this limit alone wouldn't hold.
+- **What else gets easier:** creating fake accounts. One address can make up to 2,400 a day, up from 240. Each needs a bot-check pass and a confirmed email before it can post, and each uses one of the day's confirmation emails.
+- **To keep the risk down:** the per-account check now comes after the bot check, so a script can't lock people out of their accounts without passing it each time. The login system's public addresses stay at the old low limits, because they have no per-account limit and our forms don't use them.
+
+**What still blocks a room:**
+
+- **More than about 100 people at once on one address.** They're told it can happen on shared wifi, and to switch to mobile data or wait up to 15 minutes (sign-in) or an hour (sign-up). One person running a script on the same network could also use up the allowance for everyone there.
+- **The daily email allowance.** Resend's free plan sends about 100 emails a day, and every new account gets a confirmation email. Past that, sign-up still works but the confirmation email doesn't arrive, so the person can't post until they use **resend** later. Before a big sign-up event, check how much of the day's allowance is left.
+- **Password resets** (5 per hour per address). Those send email too, so they weren't raised.
 
 ### Posting rules
 | | Established accounts | New accounts (first 24 hours) |

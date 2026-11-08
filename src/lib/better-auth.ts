@@ -4,6 +4,7 @@ import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { nextCookies } from "better-auth/next-js";
 import { captcha } from "better-auth/plugins";
+import { BETTER_AUTH_RATE_LIMIT_RULES } from "./auth-limits";
 import { db } from "./db";
 import { sendEmail } from "./mail";
 
@@ -150,12 +151,7 @@ export const auth = betterAuth({
     storage: "database",
     window: 60,
     max: 100,
-    customRules: {
-      "/sign-in/email": { window: 15 * 60, max: 20 },
-      "/sign-up/email": { window: 60 * 60, max: 10 },
-      "/request-password-reset": { window: 60 * 60, max: 5 },
-      "/send-verification-email": { window: 60 * 60, max: 5 },
-    },
+    customRules: BETTER_AUTH_RATE_LIMIT_RULES,
   },
 
   plugins: [
