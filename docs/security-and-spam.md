@@ -52,7 +52,7 @@ Everyone on one wifi network usually shares one network address, and meetings an
 **What still blocks a room:**
 
 - **More than about 100 people at once on one address.** They're told it can happen on shared wifi, and to switch to mobile data or wait up to 15 minutes (sign-in) or an hour (sign-up). One person running a script on the same network could also use up the allowance for everyone there.
-- **The daily email allowance.** Resend's free plan sends about 100 emails a day, and every new account gets a confirmation email. Past that, sign-up still works but the confirmation email doesn't arrive, so the person can't post until they use **resend** later. Before a big sign-up event, check how much of the day's allowance is left.
+- **The daily email allowance.** Brevo and Resend's free plans together send about 400 emails a day, and every new account gets a confirmation email. Past that, sign-up still works: the person is signed in and can read and join, a banner says their link is delayed, and the daily job sends it (#105). They can't post until they confirm. The job uses at most half the day's allowance, so the rest stays free for password resets and new sign-ups. A password reset that can't be sent isn't retried: the person still sees the usual "on its way" message, so they'd need to ask again later.
 - **Password resets** (5 per hour per address). Those send email too, so they weren't raised.
 
 ### Posting rules

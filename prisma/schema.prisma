@@ -34,6 +34,8 @@ model User {
   // details wiped, posts kept as "Former member") and sets anonymizedAt.
   deactivatedAt    DateTime?
   anonymizedAt     DateTime?
+  // Their confirmation email couldn't be sent yet (#105); the daily job sends a fresh link.
+  confirmEmailDueAt DateTime?
   // "Show my name on causes I join" (#79). Off: "A neighbour" to everyone but the people leading the cause.
   showName         Boolean   @default(true)
   // Which notification emails they want (#18; src/lib/notify-rules.ts). Lead and

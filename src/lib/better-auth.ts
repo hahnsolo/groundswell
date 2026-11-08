@@ -5,6 +5,7 @@ import { prismaAdapter } from "better-auth/adapters/prisma";
 import { nextCookies } from "better-auth/next-js";
 import { captcha } from "better-auth/plugins";
 import { BETTER_AUTH_RATE_LIMIT_RULES } from "./auth-limits";
+import { sendConfirmationEmail } from "./confirm-email";
 import { db } from "./db";
 import { sendEmail } from "./mail";
 
@@ -94,13 +95,8 @@ export const auth = betterAuth({
     sendOnSignUp: true,
     autoSignInAfterVerification: true,
     expiresIn: 48 * 60 * 60,
-    sendVerificationEmail: async ({ user, url }) => {
-      await sendEmail({
-        to: user.email,
-        subject: "Confirm your email for Groundswell",
-        text: `Hi ${user.name},\n\nConfirm your email so you can start causes, chat and organize events:\n${url}\n\nThis link expires in 48 hours. If you didn't sign up, you can ignore this email.`,
-      });
-    },
+    // Better Auth waits for this during sign-up, so it must not throw (#105).
+    sendVerificationEmail: sendConfirmationEmail,
   },
 
   socialProviders: { ...(google && { google }), ...(apple && { apple }) },

@@ -8,6 +8,7 @@ import { db } from "@/lib/db";
 import { auth } from "@/lib/better-auth";
 import { verifyPassword } from "better-auth/crypto";
 import { getCurrentUser, requireUser, safeNext } from "@/lib/auth";
+import { confirmEmailDelayed } from "@/lib/confirm-email";
 import { deactivateAccount } from "@/lib/leaving";
 import { clientIp, HOUR, rateLimit } from "@/lib/rate-limit";
 import {
@@ -164,6 +165,9 @@ export async function resendVerification(): Promise<FormState> {
   } catch (e) {
     console.error("Resend verification failed", e);
     return { error: "We couldn't send the email. Please try again shortly." };
+  }
+  if (await confirmEmailDelayed(user.id)) {
+    return { error: "Our email is backed up right now. We'll send your link automatically, usually by tomorrow." };
   }
   return { ok: true };
 }
