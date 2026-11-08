@@ -19,13 +19,15 @@ New messages in a cause's chat appear for everyone straight away, without refres
 
 1. The site saves the message exactly as before, with all the usual rules: members only, the 24-hour wait, spam checks.
 2. It then tells the **chat server** on Cloudflare "something changed in cause X". That's all it sends: no message text, no names.
-3. The chat server passes that on to every browser with cause X's chat open. Each browser asks the site for the latest messages, so who can see what is still decided by the site alone.
+3. The chat server passes that on to every browser with cause X's chat open. Each browser asks the site for just the messages newer than the last one it has (`/causes/X/chat/messages`), a small list, and adds them in place (#101). Who can see what is still decided by the site alone, by the same rules as the chat page.
+
+**Why only the new messages:** before #101, every open chat reloaded the whole chat page after each message (about 85 KB and 16 database queries each). The load test (`tests/load/`) showed one server failing at about 200 people with the same chat open. Fetching only what's new is about 400 bytes per message and a handful of quick queries, and the same server now copes with 400 people in one chat and starts failing at about 800. That test ran on one computer with a local database, so it doesn't cover Vercel, Neon or the Cloudflare chat server.
 
 **Passes:** when someone allowed to read a chat opens it, the site gives their browser a pass for that one cause, valid for 1–2 hours. The chat server only lets browsers listen with a valid pass, and only from Groundswell's own addresses.
 
-**If the chat server is down, or over its free limit,** nothing breaks: open chats check for new messages every 10 seconds instead and say so under the chat heading. Messages are never lost, because they always live in our own database.
+**If the chat server is down, or over its free limit,** nothing breaks: open chats check for new messages every 10 seconds instead (the same small fetch) and say so under the chat heading, and reload fully about once a minute to pick up edits and hides. Messages are never lost, because they always live in our own database.
 
-Moderation updates live too: when a message is removed, restored or hidden after reports, open chats refresh.
+Everything else updates live too: when a message is edited, removed, restored or hidden, or an announcement is posted, the small fetch finds nothing new, so open chats reload the page instead. These are rare next to new messages. If an edit and a new message land within the same second or so, the edit can show up a little later, on the next reload.
 
 ## The pieces
 

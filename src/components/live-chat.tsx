@@ -3,9 +3,10 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import type { ChatPass } from "@/lib/live-chat";
+import { CHAT_CHANGED_EVENT, type ChatChangedDetail } from "./chat-messages";
 
 // Keeps an open chat up to date. With a pass, it listens to the live chat
-// server and refreshes the messages the moment something changes. Without one,
+// server and fetches new messages the moment something changes. Without one,
 // or while the connection is down, it checks every few seconds instead.
 // Either way the messages themselves always come from the site.
 
@@ -31,13 +32,15 @@ export function LiveChat({ pass }: { pass: ChatPass | null }) {
 
     // A burst of changes (say, a moderator clearing several messages) becomes one
     // refresh, and open chats spread out over a moment rather than all reloading at once (#97).
+    // The messages list fetches just what's new (#101); see ChatMessages.
+    const changed = (live: boolean) => window.dispatchEvent(new CustomEvent<ChatChangedDetail>(CHAT_CHANGED_EVENT, { detail: { live } }));
     const refreshSoon = () => {
       clearTimeout(refreshTimer);
-      refreshTimer = setTimeout(() => router.refresh(), 150 + Math.random() * 1350);
+      refreshTimer = setTimeout(() => changed(true), 150 + Math.random() * 1350);
     };
     const startChecking = () => {
       checkTimer ??= setInterval(() => {
-        if (document.visibilityState === "visible") router.refresh();
+        if (document.visibilityState === "visible") changed(false);
       }, CHECK_EVERY_MS);
     };
     const stopChecking = () => {

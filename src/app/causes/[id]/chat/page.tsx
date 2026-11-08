@@ -1,12 +1,12 @@
-import { Fragment, Suspense } from "react";
-import { ChatShell, DayDivider, MessageActions } from "@/components/chat-shell";
+import { Suspense } from "react";
+import { ChatShell } from "@/components/chat-shell";
+import { ChatMessages } from "@/components/chat-messages";
 import Link from "next/link";
-import { CHAT_PAGE, MAX_CHAT_SHOWN, messagesToShow, startsGroup } from "@/lib/chat-days";
+import { CHAT_PAGE, MAX_CHAT_SHOWN, messagesToShow } from "@/lib/chat-days";
 import { getCurrentUser } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { getCauseDetail, getCauseMessages } from "@/lib/queries";
-import { shownName } from "@/lib/member-list";
-import { canHideMessage, HIDDEN_BY_LEADERS, removeProblem } from "@/lib/leader-moderation";
+import { chatMessageView } from "@/lib/chat-view";
 import { CHAT_COOLING_OFF_HOURS, chatAccess } from "@/lib/chat-rules";
 import { chatPass } from "@/lib/live-chat";
 import { LiveChat } from "@/components/live-chat";
@@ -14,9 +14,8 @@ import { reportContent, toggleMembership } from "@/app/actions/community";
 import { unpinAnnouncement } from "@/app/actions/announcements";
 import { LocalTime } from "@/components/local-time";
 import { CommentForm } from "@/components/cause-forms";
-import { canEditMessage } from "@/lib/editing";
 import { leadsCause } from "@/lib/leadership";
-import { Panel, RemovedNotice, SignInPrompt } from "@/components/cause-parts";
+import { Panel, SignInPrompt } from "@/components/cause-parts";
 import { buttonStyles } from "@/components/styles";
 
 // The cause's conversation. Members only (see src/lib/chat-rules.ts): join to
@@ -130,81 +129,7 @@ async function Chat({ params, searchParams }: Pick<PageProps<"/causes/[id]/chat"
           </Link>
         </p>
       )}
-      <ol aria-label="Messages">
-        {comments.map((c, i) => {
-          const prev = i > 0 ? comments[i - 1] : null;
-          const mine = c.author.id === user?.id;
-          const first = startsGroup(prev && { authorId: prev.author.id, createdAt: prev.createdAt, removed: !!prev.removedAt }, { authorId: c.author.id, createdAt: c.createdAt });
-          const role =
-            c.author.id === cause.leaderId ? "leads this" : leadsCause(cause, c.author.id) ? "co-leads this" : c.author.id === cause.authorId ? "started this" : null;
-          // Hidden by a leader (#71): only its author still sees the words.
-          const hiddenByLeader = !!c.hiddenByLeaderId;
-          const placeholder = hiddenByLeader && !mine;
-          const viewer = { id: user?.id, leads: viewerLeads };
-          const canRemove = !c.author.deactivatedAt && !removeProblem(viewer, {
-            id: c.author.id,
-            isAdmin: c.author.isAdmin,
-            isLeader: c.author.id === cause.leaderId,
-            isCoLeader: leadsCause(cause, c.author.id) && c.author.id !== cause.leaderId,
-          });
-          const bubble = (
-            <div
-              className={`min-w-0 whitespace-pre-line break-words rounded-2xl border px-3 py-1.5 text-left text-[15px] leading-relaxed ${
-                mine ? "rounded-br-md border-sage/60 bg-sage/25" : "rounded-bl-md border-border bg-surface lg:bg-background"
-              } ${c.hidden ? "text-muted" : ""} ${placeholder ? "italic" : ""}`}
-            >
-              {placeholder ? HIDDEN_BY_LEADERS : c.body}
-              <span className="ml-2 inline-block translate-y-0.5 whitespace-nowrap text-[11px] text-muted">
-                <LocalTime iso={c.createdAt.toISOString()} options={{ hour: "numeric", minute: "2-digit" }} />
-                {c.editedAt && " · edited"}
-              </span>
-            </div>
-          );
-          return (
-            <Fragment key={c.id}>
-              <DayDivider iso={c.createdAt.toISOString()} prevIso={prev ? prev.createdAt.toISOString() : null} />
-              <li className={`flex ${mine ? "justify-end" : "justify-start"} ${first ? "mt-3" : "mt-0.5"}`} data-message>
-                <div className={`flex max-w-[88%] flex-col sm:max-w-[75%] ${mine ? "items-end" : "items-start"}`}>
-                  {first && !mine && (
-                    <p className="mb-0.5 px-1 text-xs text-muted">
-                      <span className={`font-semibold ${c.author.deactivatedAt ? "" : "text-foreground"}`}>
-                        {shownName(c.author, { viewerId: user?.id, seesAll: leadsCause(cause, user?.id) || !!user?.isAdmin, publicRole: !!role })}
-                      </span>
-                      {role && <span className="ml-1">· {role}</span>}
-                    </p>
-                  )}
-                  <MessageActions
-                    commentId={c.id}
-                    body={placeholder ? "" : c.body}
-                    mine={mine}
-                    canEdit={!hiddenByLeader && canEditMessage({ ...c, authorId: c.author.id }, user?.id)}
-                    // Hiding already files a report, so leaders get Report only on what they can't hide (a moderator's message).
-                    canReport={!!user?.emailVerified && !mine && !hiddenByLeader && !canHideMessage(viewer, c.author)}
-                    canHide={!c.hidden && !c.removedAt && canHideMessage(viewer, c.author)}
-                    canUnhide={hiddenByLeader && viewerLeads}
-                    remove={canRemove ? { causeId: cause.id, userId: c.author.id, name: c.author.name } : undefined}
-                  >
-                    {bubble}
-                  </MessageActions>
-                  {c.removedAt ? (
-                    <div className="mt-2 text-left">
-                      <RemovedNotice what="message" removedAt={c.removedAt} reason={c.removalReason} />
-                    </div>
-                  ) : (
-                    c.hidden &&
-                    (mine || !hiddenByLeader) && (
-                      <p className="mt-1 text-xs text-amber-800 dark:text-amber-300">
-                        {hiddenByLeader ? "Hidden by the people leading this cause. Only you can still read it; moderators are reviewing it." : "Hidden after reports. Only you can see it while it's reviewed."}
-                      </p>
-                    )
-                  )}
-                </div>
-              </li>
-            </Fragment>
-          );
-        })}
-        {comments.length === 0 && <li className="py-6 text-center text-sm text-muted">No messages yet. Say hello!</li>}
-      </ol>
+      <ChatMessages causeId={cause.id} messages={comments.map((c) => chatMessageView(c, cause, user))} />
     </ChatShell>
   );
 }
